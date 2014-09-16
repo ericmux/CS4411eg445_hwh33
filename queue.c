@@ -194,13 +194,15 @@ queue_dequeue(queue_t queue, void** item) {
  */
 int
 queue_iterate(queue_t queue, func_t f, void* item) {
-    	// we cannot iterate over an empty queue
-    	if (queue->length <= 0) {
+
+	node *current_node;
+	// we cannot iterate over an empty queue
+	if (queue->length <= 0) {
 		return -1;
 	}
 
 	// apply f to the head, then iterate until the tail is reached
-	node *current_node = queue->head;
+	current_node = queue->head;
 	f(current_node, item);		// TODO: see if this is correct
 	while (!current_node->is_tail) {
 		current_node = current_node->right_node;
@@ -219,6 +221,7 @@ queue_free (queue_t queue) {
 	// TODO: check implementation
 
 	node *current_node;
+	node *next_node;
 
 	if (queue->length < 0) {
 		return -1;
@@ -231,7 +234,6 @@ queue_free (queue_t queue) {
 	}
 
 	current_node = queue->head;
-	node *next_node;
 	while (!current_node->is_tail) {
 		next_node = current_node->right_node;
 		free(current_node->data_ptr);
@@ -261,14 +263,16 @@ queue_length(queue_t queue) {
 int
 queue_delete(queue_t the_queue, void* item) {
 
+	node *current_node;
 	int found_item;
+
 	found_item = 0;
 	// can't delete from an empty queue
 	if (the_queue->length <=0 ){
 		return -1;
-	} 
+	}
 
-	node *current_node = the_queue->head;
+	current_node = the_queue->head;
 	// first check the head:
 	if (current_node->data_ptr == item) {
 		found_item = 1;

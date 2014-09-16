@@ -1,0 +1,42 @@
+PortOS Educational Operating System
+===================================
+
+This is the PortOS user-level threading library project.  Instructions for
+completing the project can be found on the CS4411 course website.
+
+Compiling
+=========
+
+To compile an application with the library, you can type "make application".
+This will compile the file "application.c" as well as the PortOS library, and
+produce an executable "application".
+
+You can edit the "Makefile" file to change what programs are compiled by default
+and also what programs are compiled when you type "make all".
+
+Source Code Overview
+====================
+
+This release contains three groups of files:
+
+1. low level system primitives
+    - defs.h
+    - start.c and end.c
+    - interrupts.*
+    - machine_primitives.*
+    - random.*
+
+2. the threading library itself
+    - minithread.*
+    - queue.*
+    - synch.*
+
+3. sample applications
+    - buffer.c
+    - sieve.c
+    - test*.c
+
+You should not need to edit the system primitives, though you may want to read
+the header files!
+
+

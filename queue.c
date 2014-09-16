@@ -57,6 +57,10 @@ queue_t queue_new() {
  */
 int 
 queue_prepend(queue_t queue, void* item) {
+
+	// create a new node to hold the item
+	node *new_node;
+
 	// If this is the first node, all we need to do is set the "dummy"
 	// node's data pointer:
 	if ((queue->length) == 0) {
@@ -67,8 +71,7 @@ queue_prepend(queue_t queue, void* item) {
 		return -1;
 	}
 
-    	// create a new node to hold the item
-    	node *new_node = (node *)malloc(sizeof(node));
+	new_node = (node *)malloc(sizeof(node));
 	new_node->data_ptr = item;
 	// this node is going to be the head, so it will be left of
 	// the old head
@@ -95,6 +98,11 @@ queue_prepend(queue_t queue, void* item) {
  */
 int
 queue_append(queue_t queue, void* item) {
+
+	// create a new node to hold the item
+	node *new_node;
+	new_node = (node *)malloc(sizeof(node));
+
 	// If this is the first node, all we need to do is set the "dummy"
 	// node's data pointer:
 	if ((queue->length) == 0) {
@@ -105,9 +113,7 @@ queue_append(queue_t queue, void* item) {
 		return -1;
 	}
 
-	// create a new node to hold the item
-	node *new_node = (node *)malloc(sizeof(node));
-        new_node->data_ptr = item;
+    new_node->data_ptr = item;
 	// this node is going to be the tail, so it will be right of
 	// the old tail
 	new_node->left_node = queue->tail;
@@ -146,8 +152,9 @@ queue_dequeue(queue_t queue, void** item) {
 
 	// If the length is now 0, then we need to set up a new dummy node:
 	if (queue->length == 0) {
+		node *new_node;
 		free(queue->head);
-		node *new_node = (node *)malloc(sizeof(node));
+		new_node = (node *)malloc(sizeof(node));
 		new_node->data_ptr = NULL;
 		new_node->left_node = NULL;
 		new_node->right_node = NULL;
@@ -169,7 +176,8 @@ queue_dequeue(queue_t queue, void** item) {
 	}
 
 	// Otherwise, we just set the node right of the head to be the new head
-	node *new_head = queue->head->right_node;
+	node *new_head;
+	new_head = queue->head->right_node;
 	new_head->left_node = NULL;
 	new_head->is_head = 0;
 	free(queue->head);
@@ -219,7 +227,8 @@ queue_free (queue_t queue) {
 		return 0;
 	}
 
-	node *current_node = queue->head;
+	node *current_node; 
+	current_node = queue->head;
 	node *next_node;
 	while (!current_node->is_tail) {
 		next_node = current_node->right_node;
@@ -249,13 +258,15 @@ queue_length(queue_t queue) {
  */
 int
 queue_delete(queue_t the_queue, void* item) {
+
+	int found_item;
+	found_item = 0;
 	// can't delete from an empty queue
 	if (the_queue->length <=0 ){
 		return -1;
 	} 
-	
+
 	node *current_node = the_queue->head;
-	int found_item = 0;
 	// first check the head:
 	if (current_node->data_ptr == item) {
 		found_item = 1;

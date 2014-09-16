@@ -7,11 +7,11 @@
 #include <stdio.h>
 
 // The queue is backed by a doubly-linked list. Appending adds to the tail
-// and prepending adds to the head. Dequeuing removes from the head.	 
+// and prepending adds to the head. Dequeuing removes from the head.
 
-// These nodes make up the doubly-linked list. We define the head of the 
-// list to be on the left and the tail on the right. These directional 
-// definitions have no real meaning, but if NodeA is "left" of NodeB, 
+// These nodes make up the doubly-linked list. We define the head of the
+// list to be on the left and the tail on the right. These directional
+// definitions have no real meaning, but if NodeA is "left" of NodeB,
 // then we know that NodeA is closer to the head.
 typedef struct node {
 	void *data_ptr; 		// pointer to the data this node stores
@@ -44,7 +44,7 @@ queue_t queue_new() {
 	// this node becomes both the head and tail of our empty queue
 	new_queue->head = first_node;
 	new_queue->tail = first_node;
-	// though there is one node, it is empty; it's a dummy node and 
+	// though there is one node, it is empty; it's a dummy node and
 	// should not count towards the length
 	new_queue->length = 0;
 
@@ -299,14 +299,14 @@ queue_delete(queue_t the_queue, void* item) {
 		return 0;
 	}
 	while(!found_item && !current_node->is_tail) {
-		current_node = current_node->right_node;				
+		current_node = current_node->right_node;
 		if (current_node->data_ptr == item) {
 			found_item = 1;
 			if (current_node->is_tail) {
 				the_queue->tail = current_node->left_node;
 				the_queue->tail->is_tail = 1;
 				the_queue->tail->right_node = NULL;
-			} else {	
+			} else {
 				// connect the current node's neighbors together
 				(current_node->left_node)->right_node = current_node->right_node;
 				(current_node->right_node)->left_node = current_node->left_node;

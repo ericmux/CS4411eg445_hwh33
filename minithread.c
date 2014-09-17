@@ -23,6 +23,19 @@
  * that you feel they must have.
  */
 
+typedef struct minithread {
+	int pid;
+	stack_pointer_t sp;
+	stack_pointer_t stackbase;
+	stack_pointer_t stacktop;
+} minithread;
+
+int* cleanup_proc(arg_t arg){}
+
+queue_t thread_queue;
+
+static int id_counter = 0;
+
 
 /* minithread functions */
 
@@ -33,7 +46,19 @@ minithread_fork(proc_t proc, arg_t arg) {
 
 minithread_t
 minithread_create(proc_t proc, arg_t arg) {
-    return (minithread_t)0;
+	minithread_t thread = (minithread_t) malloc(sizeof(minithread));
+	thread->pid = id_counter++;
+
+	minithread_allocate_stack(&(thread->stackbase), &(thread->stacktop));
+	minithread_initialize_stack(&(thread->stacktop), 
+								proc,
+								arg,
+								cleanup_proc,
+								NULL);
+
+	thread->sp = thread->stacktop;
+
+    return thread;
 }
 
 minithread_t
@@ -75,5 +100,8 @@ minithread_yield() {
 void
 minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 }
+
+
+
 
 

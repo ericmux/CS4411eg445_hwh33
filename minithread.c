@@ -30,18 +30,39 @@ typedef struct minithread {
 	stack_pointer_t stacktop;
 } minithread;
 
+/* Cleanup function pointer. */
 void cleanup_proc(arg_t arg){}
 
+//Current running thread.
+minithread_t current_thread;
+
+//Idle thread.
+minithread_t idle_thread;
+
+//Thread control queue.
 queue_t thread_queue;
 
+//Static id counter to number threads.
 static int id_counter = 0;
+
+
+int idle_loop(arg_t arg){
+	while(1){
+		minithread_yield();
+	}
+}
 
 
 /* minithread functions */
 
 minithread_t
 minithread_fork(proc_t proc, arg_t arg) {
-    return (minithread_t)0;
+
+	minithread_t forked_thread = minithread_create(proc, arg);
+
+	queue_append(thread_queue, forked_thread);
+
+    return forked_thread;
 }
 
 minithread_t
@@ -63,24 +84,45 @@ minithread_create(proc_t proc, arg_t arg) {
 
 minithread_t
 minithread_self() {
-    return (minithread_t)0;
+    return current_thread;
 }
 
 int
 minithread_id() {
-    return 0;
+    return current_thread->pid;
 }
 
 void
 minithread_stop() {
+	minithread_t next_thread;
+
+	queue_dequeue(thread_queue, &next_thread);
+
+	minithread_switch(&(current_thread->sp), &(next_thread->sp));
+	minithread_free_stack(current_thread->sp);
+
+	current_thread = next_thread;
 }
 
 void
 minithread_start(minithread_t t) {
+	/* nooo idea... */
+
 }
 
 void
 minithread_yield() {
+	minithread_t next_thread;
+
+	queue_dequeue(thread_queue, &next_thread);
+
+	if(next_thread != NULL){
+		minithread_switch(&(current_thread->sp), &(next_thread->sp));
+
+		queue_append(thread_queue, current_thread);
+
+		current_thread = next_thread;
+	}
 }
 
 /*
@@ -99,6 +141,21 @@ minithread_yield() {
  */
 void
 minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
+
+	minithread_t first_thread;
+
+	thread_queue = queue_new(); 
+
+	first_thread = minithread_create(mainproc, mainarg);
+	queue_append(thread_queue, first_thread);
+
+	idle_thread = minithread_create(&idle_loop, NULL);
+	queue_append(thread_queue, idle_thread);
+
+	queue_dequeue(thread_queue, &current_thread);
+
+	minithread_start(current_thread);
+
 }
 
 

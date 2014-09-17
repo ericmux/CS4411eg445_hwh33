@@ -30,7 +30,7 @@ typedef struct minithread {
 	stack_pointer_t stacktop;
 } minithread;
 
-int* cleanup_proc(arg_t arg){}
+int cleanup_proc(arg_t arg){}
 
 queue_t thread_queue;
 
@@ -53,7 +53,7 @@ minithread_create(proc_t proc, arg_t arg) {
 	minithread_initialize_stack(&(thread->stacktop), 
 								proc,
 								arg,
-								cleanup_proc,
+								&cleanup_proc,
 								NULL);
 
 	thread->sp = thread->stacktop;

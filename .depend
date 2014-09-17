@@ -1,0 +1,17 @@
+buffer.o: buffer.c minithread.h machineprimitives.h defs.h synch.h \
+ random.h
+end.o: end.c defs.h
+machineprimitives.o: machineprimitives.c defs.h minithread.h \
+ machineprimitives.h
+machineprimitives_x86_64.o: machineprimitives_x86_64.c defs.h \
+ interrupts.h machineprimitives.h minithread.h
+minithread.o: minithread.c minithread.h machineprimitives.h defs.h \
+ queue.h synch.h
+queue.o: queue.c queue.h
+random.o: random.c
+sieve.o: sieve.c minithread.h machineprimitives.h defs.h synch.h
+start.o: start.c defs.h
+synch.o: synch.c defs.h synch.h queue.h minithread.h machineprimitives.h
+test1.o: test1.c minithread.h machineprimitives.h defs.h
+test2.o: test2.c minithread.h machineprimitives.h defs.h
+test3.o: test3.c minithread.h machineprimitives.h defs.h synch.h

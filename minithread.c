@@ -115,6 +115,8 @@ void scheduler_switch(scheduler_t scheduler){
 	
 }
 
+static int freed_threads = 0;
+
 //Thread responsible for freeing up the zombie threads.
 int vaccum_cleaner(int *arg){
 	int clean_cycle = 100;
@@ -124,6 +126,7 @@ int vaccum_cleaner(int *arg){
 			int i;
 			for(i = 0 ; i < clean_cycle; i++);
 			minithread_free(zombie_thread);
+			printf("Threads freed: %d\n", ++freed_threads);
 		}
 		minithread_yield();
 	}

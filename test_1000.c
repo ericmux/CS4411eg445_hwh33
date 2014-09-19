@@ -10,7 +10,7 @@
 
 
 int zombie(int* arg) {
-  int hp = 500;
+  int hp = 5000;
   int i;
   printf("Zombie %d.\n", minithread_id());
   for(i = 0; i < hp ; i++);
@@ -19,7 +19,7 @@ int zombie(int* arg) {
 }
 
 int necromancer(int* arg) {
-  int num_children = 1000;
+  int num_children = 999;
   int i;
   printf("Necromancer %d spawning %d undead threads.\n", minithread_id(), num_children);
   for(i = 0; i < num_children; i++){

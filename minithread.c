@@ -35,7 +35,7 @@ typedef struct minithread {
 } minithread;
 
 //Current running thread.
-minithread_t current_thread;
+minithread_t current_thread = NULL;
 
 /*
 	Scheduler definition.
@@ -65,6 +65,11 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 	s->finished_queue = queue_new();
 }
 
+/*
+* Scheduler method that makes the context switch. It adds the current TCB to the appropriate queue,
+* depending on its state and then dequeues the next TCB, switching to it. It also busy waits for new threads
+* to become ready, releasing them from the blocked queue if necessary.
+*/
 void scheduler_switch(scheduler_t scheduler){
 
 	minithread_t thread_to_run;
@@ -72,19 +77,26 @@ void scheduler_switch(scheduler_t scheduler){
 	do{
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 		if(deq_result == 0){
-			stack_pointer_t *oldsp_ptr = &(current_thread->sp);
+			stack_pointer_t *oldsp_ptr; 
 
-			thread_to_run->state = RUNNING;
+			//Check if we're scheduling for the first time.
+			if(current_thread == NULL){
+				//Assign a dummy stack_pointer_t for the first context switch.
+				oldsp_ptr = (stack_pointer_t) malloc(sizeof(stack_pointer_t));
+			} else {
+				oldsp_ptr = &(current_thread->sp);
 
-			if(current_thread->state == FINISHED){
-				queue_append(scheduler->finished_queue, current_thread);
-			} else if(current_thread->state == WAITING){
-				queue_append(scheduler->blocked_queue, current_thread);
-			} else{
-				current_thread->state = READY;
-				queue_append(scheduler->ready_queue, current_thread);
+				if(current_thread->state == FINISHED){
+					queue_append(scheduler->finished_queue, current_thread);
+				} else if(current_thread->state == WAITING){
+					queue_append(scheduler->blocked_queue, current_thread);
+				} else{
+					current_thread->state = READY;
+					queue_append(scheduler->ready_queue, current_thread);
+				}
 			}
 
+			thread_to_run->state = RUNNING;
 			current_thread = thread_to_run;
 
 			minithread_switch(oldsp_ptr, &(current_thread->sp));

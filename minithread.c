@@ -23,7 +23,7 @@
 * that you feel they must have.
 */
 
-enum { READY, WAITING, RUNNING, FINISHED} state_t;
+typedef enum {READY, WAITING, RUNNING, FINISHED} state_t;
 
 
 typedef struct minithread {

@@ -100,6 +100,7 @@ void scheduler_switch(scheduler_t scheduler){
 			current_thread = thread_to_run;
 
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
+			return;
 		} else {
 			//Check if the first blocked thread can be made runnable again.
 			minithread_t first_blocked_thread;

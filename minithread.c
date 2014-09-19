@@ -1,12 +1,12 @@
 /*
- * minithread.c:
- *      This file provides a few function headers for the procedures that
- *      you are required to implement for the minithread assignment.
- *
- *      EXCEPT WHERE NOTED YOUR IMPLEMENTATION MUST CONFORM TO THE
- *      NAMING AND TYPING OF THESE PROCEDURES.
- *
- */
+* minithread.c:
+*      This file provides a few function headers for the procedures that
+*      you are required to implement for the minithread assignment.
+*
+*      EXCEPT WHERE NOTED YOUR IMPLEMENTATION MUST CONFORM TO THE
+*      NAMING AND TYPING OF THESE PROCEDURES.
+*
+*/
 #include <stdlib.h>
 #include <stdio.h>
 #include "minithread.h"
@@ -16,42 +16,121 @@
 #include <assert.h>
 
 /*
- * A minithread should be defined either in this file or in a private
- * header file.  Minithreads have a stack pointer with to make procedure
- * calls, a stackbase which points to the bottom of the procedure
- * call stack, the ability to be enqueueed and dequeued, and any other state
- * that you feel they must have.
- */
+* A minithread should be defined either in this file or in a private
+* header file.  Minithreads have a stack pointer with to make procedure
+* calls, a stackbase which points to the bottom of the procedure
+* call stack, the ability to be enqueueed and dequeued, and any other state
+* that you feel they must have.
+*/
+
+enum { READY, WAITING, RUNNING, FINISHED} state_t;
+
 
 typedef struct minithread {
 	int pid;
 	stack_pointer_t sp;
 	stack_pointer_t stackbase;
 	stack_pointer_t stacktop;
+	state_t state;
 } minithread;
-
-/* Cleanup function pointer. */
-void cleanup_proc(arg_t arg){}
 
 //Current running thread.
 minithread_t current_thread;
 
-//Idle thread.
-minithread_t idle_thread;
+/*
+	Scheduler definition.
+*/
+typedef struct scheduler {
+	queue_t ready_queue;
+	queue_t blocked_queue;
+	queue_t finished_queue;
+} scheduler;
+typedef struct scheduler *scheduler_t;
 
-//Thread control queue.
-queue_t thread_queue;
+scheduler_t thread_scheduler;
+
+/*
+	Scheduler API.
+
+*/
+
+void scheduler_init(scheduler_t *scheduler_ptr){
+	
+	scheduler_t s;
+
+	*scheduler_ptr = (scheduler_t) malloc(sizeof(scheduler_t));
+	s = *scheduler_ptr;
+	s->ready_queue = queue_new();
+	s->blocked_queue = queue_new();
+	s->finished_queue = queue_new();
+}
+
+void scheduler_switch(scheduler_t scheduler){
+
+	minithread_t thread_to_run;
+
+	do{
+		int deq_result = queue_dequeue(scheduler->ready_queue, &thread_to_run);
+		if(deq_result){
+			stack_pointer_t *oldsp_ptr = &(current_thread->sp);
+
+			thread_to_run->state = RUNNING;
+
+			if(current_thread->state == FINISHED){
+				queue_append(scheduler->finished_queue, current_thread);
+			} else if(current_thread->state == WAITING){
+				queue_append(scheduler->blocked_queue, current_thread);
+			} else{
+				current_thread->state = READY;
+				queue_append(scheduler->ready_queue, current_thread);
+			}
+
+			current_thread = thread_to_run;
+
+			minithread_switch(oldsp_ptr, &(current_thread->sp));
+		} else {
+			//Check if the first blocked thread can be made runnable again.
+			minithread_t first_blocked_thread;
+			if(queue_dequeue(scheduler->blocked_queue, &first_blocked_thread)){
+				if(first_blocked_thread->state == READY){
+					queue_append(scheduler->ready_queue, first_blocked_thread);
+				} else {
+					queue_prepend(scheduler->blocked_queue, first_blocked_thread);
+				}
+			}
+		}
+	} while(1);
+	
+}
+
+//Thread responsible for freeing up the zombie threads.
+int vaccum_cleaner(int *arg){
+	int clean_cycle = 100;
+	while(1){
+		minithread_t zombie_thread;
+		if(queue_dequeue(thread_scheduler->finished_queue, &zombie_thread)){
+			int i;
+			for(i = 0 ; i < clean_cycle; i++);
+			minithread_free(zombie_thread);
+		}
+		minithread_yield();
+	}
+
+}
+
+
+
+/* Cleanup function pointer. */
+int cleanup_proc(arg_t arg){
+	current_thread->state = FINISHED;
+	scheduler_switch(thread_scheduler);
+
+	//Shouldn't happen.
+	return -1;
+}
 
 //Static id counter to number threads.
 static int id_counter = 0;
-
-
-int idle_loop(arg_t arg){
-	while(1){
-		minithread_yield();
-	}
-}
-
 
 /* minithread functions */
 
@@ -59,8 +138,7 @@ minithread_t
 minithread_fork(proc_t proc, arg_t arg) {
 
 	minithread_t forked_thread = minithread_create(proc, arg);
-
-	queue_append(thread_queue, forked_thread);
+	queue_append(scheduler->ready_queue, forked_thread);
 
     return forked_thread;
 }
@@ -69,12 +147,13 @@ minithread_t
 minithread_create(proc_t proc, arg_t arg) {
 	minithread_t thread = (minithread_t) malloc(sizeof(minithread));
 	thread->pid = id_counter++;
+	thread->state = READY;
 
 	minithread_allocate_stack(&(thread->stackbase), &(thread->stacktop));
 	minithread_initialize_stack(&(thread->stacktop), 
 								proc,
 								arg,
-								(proc_t) &cleanup_proc,
+								&cleanup_proc,
 								NULL);
 
 	thread->sp = thread->stacktop;
@@ -94,35 +173,24 @@ minithread_id() {
 
 void
 minithread_stop() {
-	minithread_t next_thread;
-
-	queue_dequeue(thread_queue, &next_thread);
-
-	minithread_switch(&(current_thread->sp), &(next_thread->sp));
-	minithread_free_stack(current_thread->sp);
-
-	current_thread = next_thread;
+	current_thread->state = WAITING;
+	scheduler_switch(thread_scheduler);
 }
 
 void
 minithread_start(minithread_t t) {
-	/* nooo idea... */
-
+	if(t->state == READY  || t->state == RUNNING) return;
+	t->state = READY;
 }
 
 void
 minithread_yield() {
-	minithread_t next_thread;
+	scheduler_switch(thread_scheduler);
+}
 
-	queue_dequeue(thread_queue, &next_thread);
-
-	if(next_thread != NULL){
-		minithread_switch(&(current_thread->sp), &(next_thread->sp));
-
-		queue_append(thread_queue, current_thread);
-
-		current_thread = next_thread;
-	}
+void minithread_free(minithread_t t){
+	minithread_free_stack(t->stackbase);
+	free(t);
 }
 
 /*
@@ -142,19 +210,17 @@ minithread_yield() {
 void
 minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
-	minithread_t first_thread;
+	//Allocate the scheduler's queues.
+	scheduler_init(&thread_scheduler);
 
-	thread_queue = queue_new(); 
+	//Fork the thread containing the main function.
+	minithread_fork(mainproc, mainarg);
 
-	first_thread = minithread_create(mainproc, mainarg);
-	queue_append(thread_queue, first_thread);
+	//Fork the vaccum cleaner thread.
+	minithread_fork(&vaccum_cleaner, NULL);
 
-	idle_thread = minithread_create(&idle_loop, NULL);
-	queue_append(thread_queue, idle_thread);
-
-	queue_dequeue(thread_queue, &current_thread);
-
-	minithread_start(current_thread);
+	//Start concurrency.
+	scheduler_switch(thread_scheduler);
 
 }
 

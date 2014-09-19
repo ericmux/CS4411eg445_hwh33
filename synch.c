@@ -79,9 +79,7 @@ void semaphore_P(semaphore_t sem) {
 		// the waiting queue.
 		queue_append(sem->waiting_q, minithread_self());
 		atomic_clear(&sem->lock);
-		printf("stopping thread\n");	
 		minithread_stop();
-		printf("here\n");
 	} else {
 		atomic_clear(&sem->lock);
 	}

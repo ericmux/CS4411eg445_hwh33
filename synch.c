@@ -16,10 +16,12 @@
  * Semaphores.
  */
 typedef struct semaphore {
-    /* This is temporary so that the compiler does not error on an empty struct.
-     * You should replace this with your own struct members.
-     */
-	queue_t queue;
+	queue_t waiting_q;
+	tas_lock_t lock;
+	// the destruction lock is used to prevent two threads from trying
+	// to destroy the same semaphore
+	tas_lock_t destruction_lock;
+	int count;
 } semaphore;
 
 
@@ -29,7 +31,9 @@ typedef struct semaphore {
  */
 semaphore_t semaphore_create() {
     	semaphore_t new_semaphore = (semaphore *)malloc(sizeof(semaphore));
-	new_semaphore->queue = queue_new();
+	new_semaphore->waiting_q = queue_new();
+	atomic_clear(&new_semaphore->lock);
+	atomic_clear(&new_semaphore->destruction_lock);
 	
 	return new_semaphore;
 }
@@ -39,7 +43,10 @@ semaphore_t semaphore_create() {
  *      Deallocate a semaphore.
  */
 void semaphore_destroy(semaphore_t sem) {
-	queue_free(sem->queue);
+	while(atomic_test_and_set(&sem->destruction_lock)) {
+		return;
+	}
+	queue_free(sem->waiting_q);
 	free(sem);
 }
 
@@ -50,13 +57,11 @@ void semaphore_destroy(semaphore_t sem) {
  *      sem with an initial value cnt.
  */
 void semaphore_initialize(semaphore_t sem, int cnt) {
-	int i;
-	// The value of resource is unimportant;
-	// it simply holds a place in the queue.
-	int resource = 0; 
-	for (i = 0; i < cnt; i++) {
-		queue_append(sem->queue, &resource);
+	while (atomic_test_and_set(&(sem->lock))) {
+		minithread_yield();
 	}
+	sem->count = cnt;
+	atomic_clear(&(sem->lock));
 }
 
 
@@ -66,12 +71,18 @@ void semaphore_initialize(semaphore_t sem, int cnt) {
  *      (a thread calling semaphore_P reflects a request for a resource)
  */
 void semaphore_P(semaphore_t sem) {
-	void **unused_pointer = (void **)malloc(sizeof(int *));
-	// spin until a resource becomes available
-	while (queue_dequeue(sem->queue, unused_pointer) == -1) {
-		// TODO: need to sleep?	
+	while (atomic_test_and_set(&sem->lock)) {
+		minithread_yield();
 	}
-	free(unused_pointer);
+	if (--sem->count < 0) {
+		// Resources are not available. Thread should be added to
+		// the waiting queue.
+		queue_append(sem->waiting_q, minithread_self());
+		atomic_clear(&sem->lock);	
+		minithread_stop();
+	} else {
+		atomic_clear(&sem->lock);
+	}
 }
 
 /*
@@ -80,8 +91,15 @@ void semaphore_P(semaphore_t sem) {
  *      (a thread calling semaphore_V reflects the yield of a resource)
  */
 void semaphore_V(semaphore_t sem) {
-	// The value of resource is unimportant;
-	// it simply holds a place in the queue.
-	int resource = 0;
-	queue_append(sem->queue, &resource);
+	while (atomic_test_and_set(&(sem->lock))) {
+		minithread_yield();
+	};
+	if (++sem->count <= 0) {
+		// Threads are waiting on resources, so pop one off the
+		// queue and start it
+		minithread_t thread_to_start = (minithread_t)malloc(sizeof(minithread_t));
+		queue_dequeue(sem->waiting_q, (void **)thread_to_start);
+		atomic_clear(&sem->lock);
+		minithread_start(thread_to_start);
+	}
 }

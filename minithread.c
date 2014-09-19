@@ -136,8 +136,8 @@ static int id_counter = 0;
 
 minithread_t
 minithread_fork(proc_t proc, arg_t arg) {
-
-	minithread_t forked_thread = minithread_create(proc, arg);
+	minithread_t forked_thread; 
+	forked_thread = minithread_create(proc, arg);
 	queue_append(scheduler->ready_queue, forked_thread);
 
     return forked_thread;

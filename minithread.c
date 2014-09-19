@@ -101,16 +101,27 @@ void scheduler_switch(scheduler_t scheduler){
 
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return;
-		} else {
-			//Check if the first blocked thread can be made runnable again.
-			minithread_t first_blocked_thread;
-			if(queue_dequeue(scheduler->blocked_queue, (void **) &first_blocked_thread) == 0){
-				if(first_blocked_thread->state == READY){
-					queue_append(scheduler->ready_queue, first_blocked_thread);
-				} else {
-					queue_prepend(scheduler->blocked_queue, first_blocked_thread);
-				}
+		}
+		
+		//Check if the first blocked thread can be made runnable again.
+		minithread_t first_blocked_thread;
+		if(queue_dequeue(scheduler->blocked_queue, (void **) &first_blocked_thread) == 0){
+			if(first_blocked_thread->state == READY){
+				queue_append(scheduler->ready_queue, first_blocked_thread);
+			} else {
+				queue_prepend(scheduler->blocked_queue, first_blocked_thread);
 			}
+		}
+
+		//If the current thread isn't finished yet and has yielded, allow it to proceed.
+		if(current_thread != NULL){
+			if(current_thread->state == RUNNING) return;
+			if(current_thread->state == WAITING){
+				queue_append(scheduler->blocked_queue, current_thread);
+			}
+
+			//prompts the idle loop, the scheduler will now only busy check the ready_queue and blocked_queue for threads.
+			current_thread = NULL;
 		}
 	} while(1);
 	

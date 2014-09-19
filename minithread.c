@@ -120,7 +120,7 @@ int vaccum_cleaner(int *arg){
 	int clean_cycle = 100;
 	while(1){
 		minithread_t zombie_thread;
-		if(queue_dequeue(thread_scheduler->finished_queue, (void **) &zombie_thread)){
+		if(queue_dequeue(thread_scheduler->finished_queue, (void **) &zombie_thread) == 0){
 			int i;
 			for(i = 0 ; i < clean_cycle; i++);
 			minithread_free(zombie_thread);

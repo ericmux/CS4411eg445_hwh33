@@ -146,8 +146,7 @@ static int id_counter = 0;
 
 /* minithread functions */
 
-minithread_t
-minithread_fork(proc_t proc, arg_t arg) {
+minithread_t minithread_fork(proc_t proc, arg_t arg) {
 	minithread_t forked_thread; 
 	forked_thread = minithread_create(proc, arg);
 	queue_append(thread_scheduler->ready_queue, forked_thread);
@@ -155,8 +154,7 @@ minithread_fork(proc_t proc, arg_t arg) {
     return forked_thread;
 }
 
-minithread_t
-minithread_create(proc_t proc, arg_t arg) {
+minithread_t minithread_create(proc_t proc, arg_t arg) {
 	minithread_t thread = (minithread_t) malloc(sizeof(minithread));
 	thread->pid = id_counter++;
 	thread->state = READY;
@@ -173,30 +171,25 @@ minithread_create(proc_t proc, arg_t arg) {
     return thread;
 }
 
-minithread_t
-minithread_self() {
+minithread_t minithread_self() {
     return current_thread;
 }
 
-int
-minithread_id() {
+int minithread_id() {
     return current_thread->pid;
 }
 
-void
-minithread_stop() {
+void minithread_stop() {
 	current_thread->state = WAITING;
 	scheduler_switch(thread_scheduler);
 }
 
-void
-minithread_start(minithread_t t) {
+void minithread_start(minithread_t t) {
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;
 }
 
-void
-minithread_yield() {
+void minithread_yield() {
 	scheduler_switch(thread_scheduler);
 }
 
@@ -219,8 +212,7 @@ void minithread_free(minithread_t t){
  *       Start scheduling.
  *
  */
-void
-minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
+void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Allocate the scheduler's queues.
 	scheduler_init(&thread_scheduler);

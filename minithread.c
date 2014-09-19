@@ -75,7 +75,10 @@ void scheduler_switch(scheduler_t scheduler){
 	minithread_t thread_to_run;
 
 	do{
+		minithread_t first_blocked_thread;
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
+
+
 		if(deq_result == 0){
 			stack_pointer_t *oldsp_ptr; 
 
@@ -104,7 +107,6 @@ void scheduler_switch(scheduler_t scheduler){
 		}
 		
 		//Check if the first blocked thread can be made runnable again.
-		minithread_t first_blocked_thread;
 		if(queue_dequeue(scheduler->blocked_queue, (void **) &first_blocked_thread) == 0){
 			if(first_blocked_thread->state == READY){
 				queue_append(scheduler->ready_queue, first_blocked_thread);

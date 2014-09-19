@@ -78,8 +78,10 @@ void semaphore_P(semaphore_t sem) {
 		// Resources are not available. Thread should be added to
 		// the waiting queue.
 		queue_append(sem->waiting_q, minithread_self());
-		atomic_clear(&sem->lock);	
+		atomic_clear(&sem->lock);
+		printf("stopping thread\n");	
 		minithread_stop();
+		printf("here\n");
 	} else {
 		atomic_clear(&sem->lock);
 	}
@@ -97,8 +99,8 @@ void semaphore_V(semaphore_t sem) {
 	if (++sem->count <= 0) {
 		// Threads are waiting on resources, so pop one off the
 		// queue and start it
-		minithread_t thread_to_start = (minithread_t)malloc(sizeof(minithread_t));
-		queue_dequeue(sem->waiting_q, (void **)thread_to_start);
+		minithread_t thread_to_start;
+		queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
 		atomic_clear(&sem->lock);
 		minithread_start(thread_to_start);
 	}

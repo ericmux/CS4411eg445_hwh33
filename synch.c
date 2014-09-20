@@ -101,7 +101,7 @@ void semaphore_V(semaphore_t sem) {
 		// queue and start it
 		minithread_t thread_to_start;
 		queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
-		atomic_clear(&sem->lock);
 		minithread_start(thread_to_start);
+		atomic_clear(&sem->lock);
 	}
 }

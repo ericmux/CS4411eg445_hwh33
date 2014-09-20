@@ -92,7 +92,7 @@ void scheduler_switch(scheduler_t scheduler){
 				if(current_thread->state == FINISHED){
 					queue_append(scheduler->finished_queue, current_thread);
 				} else if(current_thread->state == WAITING){
-					queue_append(scheduler->blocked_queue, current_thread);
+					//queue_append(scheduler->blocked_queue, current_thread);
 				} else{
 					current_thread->state = READY;
 					queue_append(scheduler->ready_queue, current_thread);
@@ -204,6 +204,7 @@ void minithread_stop() {
 void minithread_start(minithread_t t) {
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;
+	queue_append(thread_scheduler->ready_queue, t);
 }
 
 void minithread_yield() {

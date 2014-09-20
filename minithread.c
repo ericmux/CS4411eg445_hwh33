@@ -42,7 +42,6 @@ minithread_t current_thread = NULL;
 */
 typedef struct scheduler {
 	queue_t ready_queue;
-	queue_t blocked_queue;
 	queue_t finished_queue;
 } scheduler;
 typedef struct scheduler *scheduler_t;
@@ -61,7 +60,6 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 	*scheduler_ptr = (scheduler_t) malloc(sizeof(scheduler_t));
 	s = *scheduler_ptr;
 	s->ready_queue = queue_new();
-	s->blocked_queue = queue_new();
 	s->finished_queue = queue_new();
 }
 
@@ -105,24 +103,12 @@ void scheduler_switch(scheduler_t scheduler){
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return;
 		}
-		
-		//Check if the first blocked thread can be made runnable again.
-		if(queue_dequeue(scheduler->blocked_queue, (void **) &first_blocked_thread) == 0){
-			if(first_blocked_thread->state == READY){
-				queue_append(scheduler->ready_queue, first_blocked_thread);
-			} else {
-				queue_prepend(scheduler->blocked_queue, first_blocked_thread);
-			}
-		}
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){
 			if(current_thread->state == RUNNING) return;
-			if(current_thread->state == WAITING){
-				queue_append(scheduler->blocked_queue, current_thread);
-			}
 
-			//prompts the idle loop, the scheduler will now only busy check the ready_queue and blocked_queue for threads.
+			//prompts the idle loop, the scheduler will now only busy check the ready_queue for threads.
 			current_thread = NULL;
 		}
 	} while(1);

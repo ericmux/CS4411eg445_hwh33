@@ -30,7 +30,7 @@ typedef struct semaphore {
  *      Allocate a new semaphore.
  */
 semaphore_t semaphore_create() {
-    	semaphore_t new_semaphore = (semaphore *)malloc(sizeof(semaphore));
+    semaphore_t new_semaphore = (semaphore *)malloc(sizeof(semaphore));
 	new_semaphore->waiting_q = queue_new();
 	atomic_clear(&new_semaphore->lock);
 	atomic_clear(&new_semaphore->destruction_lock);
@@ -101,5 +101,6 @@ void semaphore_V(semaphore_t sem) {
 		queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
 		minithread_start(thread_to_start);
 		atomic_clear(&sem->lock);
+		minithread_yield();
 	}
 }

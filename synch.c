@@ -101,6 +101,5 @@ void semaphore_V(semaphore_t sem) {
 		queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
 		minithread_start(thread_to_start);
 		atomic_clear(&sem->lock);
-		minithread_yield();
 	}
 }

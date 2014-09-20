@@ -73,7 +73,6 @@ void scheduler_switch(scheduler_t scheduler){
 	minithread_t thread_to_run;
 
 	do{
-		minithread_t first_blocked_thread;
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 
 

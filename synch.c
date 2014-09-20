@@ -102,4 +102,5 @@ void semaphore_V(semaphore_t sem) {
 		minithread_start(thread_to_start);
 		atomic_clear(&sem->lock);
 	}
+	atomic_clear(&sem->lock);
 }

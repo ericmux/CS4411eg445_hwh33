@@ -72,6 +72,7 @@ int unpack(int *arg) {
 // The "consume" function
 int purchase(int *arg) {
 	int purchased_serial_number;
+	int id = *arg;
 	int i = 0;
 
 	while(i < PRODUCTION_CAP) {
@@ -82,7 +83,7 @@ int purchase(int *arg) {
 		// from the phone buffer and printing it to stdout
 		semaphore_P(global_mutex);
 		purchased_serial_number = phone_buffer[out++];
-		printf("Phone purchased by %d. Serial number = %i\n", minithread_id() - 12, purchased_serial_number);
+		printf("Phone purchased by %d. Serial number = %i\n", id, purchased_serial_number);
 		if (out >= BUFFER_SIZE) out = 0;
 		semaphore_V(global_mutex);
 
@@ -107,7 +108,7 @@ int initialize_threads(int *arg) {
 
 	// start the customers purchasing
 	for (i = 0; i< M_CUSTOMERS; i++) {
-		minithread_fork(purchase, NULL);
+		minithread_fork(purchase, i);
 	}
 
 	return 0;

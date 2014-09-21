@@ -24,7 +24,7 @@
 #define M_CUSTOMERS 10
 #define BUFFER_SIZE 10
 
-#define PRODUCTION_CAP 100
+#define PRODUCTION_CAP 50
 
 // Semaphores to guard against concurrency issues
 semaphore_t space_sem;
@@ -82,7 +82,7 @@ int purchase(int *arg) {
 		// from the phone buffer and printing it to stdout
 		semaphore_P(global_mutex);
 		purchased_serial_number = phone_buffer[out++];
-		printf("Phone purchased by %d. Serial number = %i\n", minithread_id() - 2, purchased_serial_number);
+		printf("Phone purchased by %d. Serial number = %i\n", minithread_id() - 12, purchased_serial_number);
 		if (out >= BUFFER_SIZE) out = 0;
 		semaphore_V(global_mutex);
 

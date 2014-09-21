@@ -24,6 +24,8 @@
 #define M_CUSTOMERS 10
 #define BUFFER_SIZE 10
 
+#define PRODUCTION_CAP 100
+
 // Semaphores to guard against concurrency issues
 semaphore_t space_sem;
 semaphore_t phone_sem;
@@ -42,8 +44,9 @@ int in, out;
 // The "produce" function
 int unpack(int *arg) {
 	int new_serial_number;
+	int i = 0;
 
-	while(1) {
+	while(i < PRODUCTION_CAP) {
 	
 		semaphore_P(space_sem);
 	
@@ -59,6 +62,8 @@ int unpack(int *arg) {
 
 		minithread_yield();
 
+		i++;
+
 	}
 
 	return 0;
@@ -67,8 +72,9 @@ int unpack(int *arg) {
 // The "consume" function
 int purchase(int *arg) {
 	int purchased_serial_number;
+	int i = 0;
 
-	while(1) {
+	while(i < PRODUCTION_CAP) {
 
 		semaphore_P(phone_sem);
 
@@ -83,6 +89,8 @@ int purchase(int *arg) {
 		semaphore_V(space_sem);
 
 		minithread_yield();
+
+		i++;
 
 	}
 

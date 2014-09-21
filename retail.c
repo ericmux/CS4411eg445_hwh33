@@ -76,7 +76,7 @@ int purchase(int *arg) {
 		// from the phone buffer and printing it to stdout
 		semaphore_P(global_mutex);
 		purchased_serial_number = phone_buffer[out++];
-		printf("Phone purchased by %d. Serial number = %i\n", minithread_id(), purchased_serial_number);
+		printf("Phone purchased by %d. Serial number = %i\n", minithread_id() - 2, purchased_serial_number);
 		if (out >= BUFFER_SIZE) out = 0;
 		semaphore_V(global_mutex);
 

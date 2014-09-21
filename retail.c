@@ -108,7 +108,7 @@ int initialize_threads(int *arg) {
 
 	// start the customers purchasing
 	for (i = 0; i< M_CUSTOMERS; i++) {
-		minithread_fork(purchase, i);
+		minithread_fork(purchase, &i);
 	}
 
 	return 0;

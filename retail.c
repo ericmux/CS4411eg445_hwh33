@@ -57,6 +57,8 @@ int unpack(int *arg) {
 
 		semaphore_V(phone_sem);
 
+		minithread_yield();
+
 	}
 
 	return 0;
@@ -79,6 +81,8 @@ int purchase(int *arg) {
 		semaphore_V(global_mutex);
 
 		semaphore_V(space_sem);
+
+		minithread_yield();
 
 	}
 

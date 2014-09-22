@@ -18,6 +18,7 @@
 #include "synch.h"
 #include "minithread.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 
 #define N_EMPLOYEES 10

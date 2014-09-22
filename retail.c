@@ -25,7 +25,13 @@
 #define M_CUSTOMERS 10
 #define BUFFER_SIZE 10
 
-#define PRODUCTION_CAP 50
+
+//Testing constants
+#define PRODUCTION_CAP 			50
+#define INIT_ROUND_ROBIN 		"rr"
+#define INIT_CONSUMER_BEFORE	"cb"
+#define INIT_CONSUMER_AFTER 	"ca"
+#define INIT_RANDOM				"rand" 
 
 // Semaphores to guard against concurrency issues
 semaphore_t space_sem;
@@ -101,23 +107,63 @@ int purchase(int *arg) {
 
 int initialize_threads(int *arg) {
 	int i;
+	int k;
+	char *impl;
+	impl = (char *) arg;
 
-	// start the employees working
-	for (i = 0; i < N_EMPLOYEES; i++) {
-		minithread_fork(unpack, NULL);
+	if(strcmp(impl, INIT_CONSUMER_AFTER) || impl == NULL){
+
+		// start the employees working
+		for (i = 0; i < N_EMPLOYEES; i++) {
+			minithread_fork(unpack, NULL);
+		}
+
+		// start the customers purchasing
+		for (i = 0; i< M_CUSTOMERS; i++) {
+			int *p = (int *) malloc(sizeof(int));
+			*p = i;
+			minithread_fork(purchase, p);
+		}
+
+	} else if(strcmp(impl, INIT_CONSUMER_BEFORE)){
+
+		// start the customers purchasing
+		for (i = 0; i< M_CUSTOMERS; i++) {
+			int *p = (int *) malloc(sizeof(int));
+			*p = i;
+			minithread_fork(purchase, p);
+		}
+
+		// start the employees working
+		for (i = 0; i < N_EMPLOYEES; i++) {
+			minithread_fork(unpack, NULL);
+		}
+
+	} else if(strcmp(impl, INIT_ROUND_ROBIN)){
+
+		//round robin
+		for(k = 0, i = 0; k < N_EMPLOYEES + M_CUSTOMERS; k++){
+			if(k%2 == 0){
+				int *p = (int *) malloc(sizeof(int));
+				*p = i;
+				minithread_fork(purchase, p);
+				i++;		
+			} else {
+				minithread_fork(unpack, NULL);
+			}
+		}
+
+	} else if(strcmp(impl, INIT_RANDOM)){
+		//random init
 	}
 
-	// start the customers purchasing
-	for (i = 0; i< M_CUSTOMERS; i++) {
-		int *p = (int *) malloc(sizeof(int));
-		*p = i;
-		minithread_fork(purchase, p);
-	}
+
+
 
 	return 0;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 	space_sem = semaphore_create();
 	phone_sem = semaphore_create();
 	global_mutex = semaphore_create();
@@ -130,7 +176,14 @@ int main() {
 	in = out = 0;
 
 	printf("Initializing system...\n");
-	minithread_system_initialize(initialize_threads, NULL);
+	if(argc == 1){
+		minithread_system_initialize(initialize_threads, NULL);
+	}
+	else if(argc == 2){
+		minithread_system_initialize(initialize_threads, (int *) argv[1]);
+	} else {
+		printf("Too many args.");
+	}
 
 	// Should not be reachable
 	return -1;

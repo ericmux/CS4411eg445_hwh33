@@ -131,7 +131,6 @@ int vaccum_cleaner(int *arg){
 			int i;
 			for(i = 0 ; i < clean_cycle; i++);
 			minithread_free(zombie_thread);
-			printf("Threads freed: %d\n", ++freed_threads);
 		}
 		minithread_yield();
 	}

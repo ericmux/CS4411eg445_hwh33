@@ -74,23 +74,17 @@ int unpack(int *arg) {
 int purchase(int *arg) {
 	int purchased_serial_number;
 
-	//while(1) {
+	semaphore_P(phone_sem);
 
-		semaphore_P(phone_sem);
+	// "purchase" a phone by retrieving its serial number
+	// from the phone buffer and printing it to stdout
+	semaphore_P(global_mutex);
+	purchased_serial_number = phone_buffer[out++];
+	printf("Phone purchased by %d. Serial number = %i\n", minithread_id(), purchased_serial_number);
+	if (out >= BUFFER_SIZE) out = 0;
+	semaphore_V(global_mutex);
 
-		// "purchase" a phone by retrieving its serial number
-		// from the phone buffer and printing it to stdout
-		semaphore_P(global_mutex);
-		purchased_serial_number = phone_buffer[out++];
-		printf("Phone purchased by %d. Serial number = %i\n", minithread_id(), purchased_serial_number);
-		if (out >= BUFFER_SIZE) out = 0;
-		semaphore_V(global_mutex);
-
-		semaphore_V(space_sem);
-
-	//	minithread_yield();
-
-	//}
+	semaphore_V(space_sem);
 
 	return 0;
 }

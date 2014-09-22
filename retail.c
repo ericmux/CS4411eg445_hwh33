@@ -117,7 +117,7 @@ int initialize_threads(int *arg) {
 		strcpy(impl, INIT_CONSUMER_AFTER);
 	}
 
-	if(strcmp(impl, INIT_CONSUMER_AFTER)){
+	if(strcmp(impl, INIT_CONSUMER_AFTER) == 0){
 
 		// start the employees working
 		for (i = 0; i < N_EMPLOYEES; i++) {
@@ -131,7 +131,7 @@ int initialize_threads(int *arg) {
 			minithread_fork(purchase, p);
 		}
 
-	} else if(strcmp(impl, INIT_CONSUMER_BEFORE)){
+	} else if(strcmp(impl, INIT_CONSUMER_BEFORE) == 0){
 
 		// start the customers purchasing
 		for (i = 0; i< M_CUSTOMERS; i++) {
@@ -145,7 +145,7 @@ int initialize_threads(int *arg) {
 			minithread_fork(unpack, NULL);
 		}
 
-	} else if(strcmp(impl, INIT_ROUND_ROBIN)){
+	} else if(strcmp(impl, INIT_ROUND_ROBIN) == 0){
 
 		//round robin
 		for(k = 0, i = 0; k < N_EMPLOYEES + M_CUSTOMERS; k++){
@@ -159,7 +159,7 @@ int initialize_threads(int *arg) {
 			}
 		}
 
-	} else if(strcmp(impl, INIT_RANDOM)){
+	} else if(strcmp(impl, INIT_RANDOM) == 0){
 		//random init
 	}
 

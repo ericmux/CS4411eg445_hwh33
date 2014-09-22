@@ -32,7 +32,8 @@
 #define INIT_ROUND_ROBIN 		"rr"
 #define INIT_CONSUMER_BEFORE	"cb"
 #define INIT_CONSUMER_AFTER 	"ca"
-#define INIT_RANDOM				"ra" 
+#define INIT_RANDOM				"ra"
+#define INIT_SKIP_LINE_TEST		"sk" 
 
 // Semaphores to guard against concurrency issues
 semaphore_t space_sem;
@@ -159,8 +160,19 @@ int initialize_threads(int *arg) {
 			}
 		}
 
-	} else if(strcmp(impl, INIT_RANDOM) == 0){
-		//random init
+	} else if(strcmp(impl, INIT_SKIP_LINE_TEST) == 0){
+
+		for (i = 0; i< M_CUSTOMERS; i++) {
+			int *p = (int *) malloc(sizeof(int));
+			*p = i;
+			minithread_fork(purchase, p);
+
+			if(i == 0){
+				minithread_fork(unpack, NULL);
+				minithread_fork(unpack, NULL);
+			}
+		}
+
 	}
 
 

@@ -32,7 +32,7 @@
 #define INIT_ROUND_ROBIN 		"rr"
 #define INIT_CONSUMER_BEFORE	"cb"
 #define INIT_CONSUMER_AFTER 	"ca"
-#define INIT_RANDOM				"rand" 
+#define INIT_RANDOM				"ra" 
 
 // Semaphores to guard against concurrency issues
 semaphore_t space_sem;
@@ -185,7 +185,8 @@ int main(int argc, char *argv[]) {
 		minithread_system_initialize(initialize_threads, NULL);
 	}
 	else if(argc == 2){
-		char * p;
+		char * p = (char *) malloc(3*sizeof(char));
+		p[2] = '\0';
 		strcpy(p, argv[1]);
 
 		minithread_system_initialize(initialize_threads, (int *) p);

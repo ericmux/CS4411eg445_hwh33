@@ -113,6 +113,7 @@ int initialize_threads(int *arg) {
 	impl = (char *) arg;
 
 	if(impl == NULL){
+		impl = (char *) malloc(3*sizeof(char));
 		strcpy(impl, INIT_CONSUMER_AFTER);
 	}
 

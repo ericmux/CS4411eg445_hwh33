@@ -76,14 +76,6 @@ extern void minithread_start(minithread_t t);
  */
 extern void minithread_yield();
 
-
-/*
- * minithread_free()
- *  Frees the resources associated to t (stack and TCB). 
- *  ONLY THE CLEANER THREAD SHOULD CALL THIS FOR NOW! -- erimux
- */
-extern void minithread_free(minithread_t t);
-
 /*
  * minithread_system_initialize(proc_t mainproc, arg_t mainarg)
  *  Initialize the system to run the first minithread at

@@ -114,6 +114,12 @@ void scheduler_switch(scheduler_t scheduler){
 	
 }
 
+/*
+ * minithread_free()
+ *  Frees the resources associated to t (stack and TCB). 
+ */
+void minithread_free(minithread_t t);
+
 static int freed_threads = 0;
 
 //Thread responsible for freeing up the zombie threads.
@@ -131,7 +137,6 @@ int vaccum_cleaner(int *arg){
 	}
 
 }
-
 
 
 /* Cleanup function pointer. */

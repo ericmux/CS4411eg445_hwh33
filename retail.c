@@ -19,6 +19,7 @@
 #include "minithread.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define N_EMPLOYEES 10
 #define M_CUSTOMERS 10000
@@ -80,7 +81,7 @@ int purchase(int *arg) {
 	// from the phone buffer and printing it to stdout
 	semaphore_P(global_mutex);
 	purchased_serial_number = phone_buffer[out++];
-	printf("Phone purchased by %d. Serial number = %i\n", minithread_id(), purchased_serial_number);
+	printf("Phone purchased by customer %d. Serial number = %i\n", *arg, purchased_serial_number);
 	if (out >= BUFFER_SIZE) out = 0;
 	semaphore_V(global_mutex);
 
@@ -99,7 +100,9 @@ int initialize_threads(int *arg) {
 
 	// start the customers purchasing
 	for (i = 0; i< M_CUSTOMERS; i++) {
-		minithread_fork(purchase, NULL);
+		int *customer_id = (int *)malloc(sizeof(int));
+		*customer_id = i;
+		minithread_fork(purchase, customer_id);
 	}
 
 	return 0;

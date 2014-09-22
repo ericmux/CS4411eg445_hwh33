@@ -21,7 +21,7 @@
 #include <stdio.h>
 
 #define N_EMPLOYEES 10
-#define M_CUSTOMERS 10
+#define M_CUSTOMERS 10000
 #define BUFFER_SIZE 10
 
 // Semaphores to guard against concurrency issues
@@ -57,6 +57,12 @@ int unpack(int *arg) {
 
 		semaphore_V(phone_sem);
 
+		// if more phones have been unpacked than there are
+		// customers, then the employee can stop working	
+		if (new_serial_number >= M_CUSTOMERS) {
+			return 0;	
+		}
+
 		minithread_yield();
 
 	}
@@ -68,7 +74,7 @@ int unpack(int *arg) {
 int purchase(int *arg) {
 	int purchased_serial_number;
 
-	while(1) {
+	//while(1) {
 
 		semaphore_P(phone_sem);
 
@@ -82,9 +88,9 @@ int purchase(int *arg) {
 
 		semaphore_V(space_sem);
 
-		minithread_yield();
+	//	minithread_yield();
 
-	}
+	//}
 
 	return 0;
 }

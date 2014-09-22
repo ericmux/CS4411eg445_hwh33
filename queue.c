@@ -200,10 +200,10 @@ queue_iterate(queue_t queue, func_t f, void* item) {
 
 	// apply f to the head, then iterate until the tail is reached
 	current_node = queue->head;
-	f(current_node, item);		// TODO: see if this is correct
+	f(current_node->data_ptr, item);		// TODO: see if this is correct
 	while (!current_node->is_tail) {
 		current_node = current_node->right_node;
-		f(current_node, item);	// TODO: this too
+		f(current_node->data_ptr, item);	// TODO: this too
 	}
 
 	return 0;
@@ -231,11 +231,9 @@ queue_free (queue_t queue) {
 	current_node = queue->head;
 	while (!current_node->is_tail) {
 		next_node = current_node->right_node;
-		free(current_node->data_ptr);
 		free(current_node);
 		current_node = next_node;
 	}
-	free(current_node->data_ptr);
 	free(current_node);
 	free(queue);
 

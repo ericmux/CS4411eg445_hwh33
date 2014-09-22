@@ -162,7 +162,7 @@ int initialize_threads(int *arg) {
 
 	} else if(strcmp(impl, INIT_SKIP_LINE_TEST) == 0){
 
-		for (i = 0; i< M_CUSTOMERS; i++) {
+		for (i = 0; i < M_CUSTOMERS; i++) {
 			int *p = (int *) malloc(sizeof(int));
 			*p = i;
 			minithread_fork(purchase, p);

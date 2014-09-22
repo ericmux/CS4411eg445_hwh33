@@ -87,6 +87,8 @@ int purchase(int *arg) {
 
 	semaphore_V(space_sem);
 
+	free(arg);
+
 	return 0;
 }
 

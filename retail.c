@@ -112,7 +112,11 @@ int initialize_threads(int *arg) {
 	char *impl;
 	impl = (char *) arg;
 
-	if(strcmp(impl, INIT_CONSUMER_AFTER) || impl == NULL){
+	if(impl == NULL){
+		strpcy(impl, INIT_CONSUMER_AFTER);
+	}
+
+	if(strcmp(impl, INIT_CONSUMER_AFTER)){
 
 		// start the employees working
 		for (i = 0; i < N_EMPLOYEES; i++) {
@@ -181,7 +185,10 @@ int main(int argc, char *argv[]) {
 		minithread_system_initialize(initialize_threads, NULL);
 	}
 	else if(argc == 2){
-		minithread_system_initialize(initialize_threads, (int *) argv[1]);
+		char * p;
+		strcpy(p, argv[1]);
+
+		minithread_system_initialize(initialize_threads, (int *) p);
 	} else {
 		printf("Too many args.");
 	}

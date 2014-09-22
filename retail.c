@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define N_EMPLOYEES 10
 #define M_CUSTOMERS 10

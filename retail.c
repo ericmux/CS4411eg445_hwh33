@@ -113,7 +113,7 @@ int initialize_threads(int *arg) {
 	impl = (char *) arg;
 
 	if(impl == NULL){
-		strpcy(impl, INIT_CONSUMER_AFTER);
+		strcpy(impl, INIT_CONSUMER_AFTER);
 	}
 
 	if(strcmp(impl, INIT_CONSUMER_AFTER)){

@@ -11,12 +11,20 @@
 long *current_tick_ptr;
 int clock_period = MINITHREAD_CLOCK_PERIOD; 
 
-//Priority queue for alarms.
-queue_t alarm_queue;
+// nodes in the doubly-linked list
+typedef struct node {
+    alarm_t alarm;
+    node *next_node;
+    node *previous_node;
+}
 
-//Second buffer queue to store thread which are registered to wake up earlier.
-queue_t buffer_queue;
-
+// The alarm list stores the alarms. We only need to track
+// the head.
+// INVARIANT: each alarm is set to go off at some point AFTER
+// the alarm before it (essentially, the list is ordered by
+// the alarm's scheudled times to go off, where the head is the
+// next scheduled alarm)
+node alarm_list_head;
 
 typedef struct alarm {
 	long 			trigger_tick;
@@ -26,21 +34,33 @@ typedef struct alarm {
 } alarm;
 typedef alarm *alarm_t;
 
-
 /* see alarm.h */
 alarm_id
 register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
 	alarm_t p_alarm;
+    node current_node;
+    node new_alarm_node;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
-        // TODO: I think delay and clock_period need to be converted to floats
     new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period) + 1;
     new_alarm->handler = alarm;
     new_alarm->arg = arg;
     new_alarm->executed = 0;
 
-    //Find rightful position in the priority queue.
+    // Create a node for new_alarm
+    new_alarm_node = (node) malloc(sizeof(node));
+    new_alarm_node->alarm = new_alarm;
+
+    //Find the alarm's position in the list
+    current_node = alarm_list_head;
+    while (current_node != NULL) {
+        if (current_node->alarm->trigger_tick >= new_alarm->trigger_tick) {
+            break;
+        }
+    }
+    // Now we want to insert a node for new_alarm before
+    
 
     //Remove all the alarms which will trigger earlier.
     while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
@@ -102,9 +122,9 @@ void execute_alarm(alarm_id alarm){
 
 void initialize_alarm_system(int period, long *tick_pointer){
 	clock_period = period;
-	current_tick_ptr = tick_pointer;
-	alarm_queue = queue_new();
-	buffer_queue = queue_new();
+	current_tick_ptr = tick_pointer;	
+    // we don't have any alarms, so our head is null
+    alarm_list_head = NULL
 }
 
 

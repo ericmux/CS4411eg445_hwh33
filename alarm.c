@@ -32,9 +32,13 @@ alarm_id
 register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
 	alarm_t p_alarm;
+	int ticks = (delay / clock_period);
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
-    new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period) + 1;
+    new_alarm->trigger_tick = *current_tick_ptr + ticks;
+
+    if(delay % clock_period) new_alarm->trigger_tick += 1;
+
     new_alarm->handler = alarm;
     new_alarm->arg = arg;
     new_alarm->executed = 0;
@@ -69,7 +73,7 @@ deregister_alarm(alarm_id alarm)
 	if(a == NULL) return 0;
 
     if(a->executed){
-    	free(a);
+    	//free(a);
     	return 1;
     }
 

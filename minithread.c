@@ -255,6 +255,7 @@ clock_handler(void* arg)
 }
 
 void print_al(void *arg){
+	printf("This is alarming.");
 }
 
 /*
@@ -286,6 +287,9 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	initialize_alarm_system(MINITHREAD_CLOCK_PERIOD, &current_tick);
 
 	register_alarm(3000, print_al, &current_tick);
+	register_alarm(6000, print_al, &current_tick);
+	register_alarm(9000, print_al, &current_tick);
+	register_alarm(12000, print_al, &current_tick);
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);

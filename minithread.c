@@ -79,7 +79,7 @@ void scheduler_switch(scheduler_t scheduler){
 
 	do{
 		//Scheduler cannot be interrupted while it's trying to decide.
-		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		//interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 
@@ -110,7 +110,7 @@ void scheduler_switch(scheduler_t scheduler){
 		}
 
 		//At this point we know we won't switch this iteration, so restore interrupt level.
-		set_interrupt_level(old_level);
+		//set_interrupt_level(old_level);
 
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
@@ -298,8 +298,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 
 	//Start concurrency.
-	//scheduler_switch(thread_scheduler);
-	while(1);
+	scheduler_switch(thread_scheduler);
 }
 
 /*

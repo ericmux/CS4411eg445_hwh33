@@ -43,7 +43,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     new_alarm->arg = arg;
     new_alarm->executed = 0;
 
-   	printf("%p", new_alarm);
+   	printf("%d\n", new_alarm->trigger_tick);
 	fflush(stdout);
 
     //Find rightful position in the priority queue.

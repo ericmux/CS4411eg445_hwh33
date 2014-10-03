@@ -13,10 +13,12 @@
 #include "minithread.h"
 #include "queue.h"
 #include "synch.h"
+#include "alarm.h"
 
 #include <assert.h>
 
-#define  MINITHREAD_CLOCK_PERIOD 100
+static long current_tick = 0;
+
 
 /*
 * A minithread should be defined either in this file or in a private
@@ -267,6 +269,9 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Fork the vaccum cleaner thread.
 	minithread_fork(&vaccum_cleaner, NULL);
+
+	//Initialize alarm system for allowing threads to sleep.
+	initialize_alarm_system(MINITHREAD_CLOCK_PERIOD, &current_tick);
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);

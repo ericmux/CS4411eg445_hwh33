@@ -13,6 +13,8 @@
 
 #include "machineprimitives.h"
 
+ #define MINITHREAD_CLOCK_PERIOD 100
+
 
 /*
  * struct minithread:

@@ -13,8 +13,12 @@
 #include "minithread.h"
 #include "queue.h"
 #include "synch.h"
+#include "alarm.h"
 
 #include <assert.h>
+
+static long current_tick = 0;
+
 
 /*
 * A minithread should be defined either in this file or in a private
@@ -74,6 +78,9 @@ void scheduler_switch(scheduler_t scheduler){
 	minithread_t thread_to_run;
 
 	do{
+		//Scheduler cannot be interrupted while it's trying to decide.
+		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 
 
@@ -89,9 +96,7 @@ void scheduler_switch(scheduler_t scheduler){
 
 				if(current_thread->state == FINISHED){
 					queue_append(scheduler->finished_queue, current_thread);
-				} else if(current_thread->state == WAITING){
-					//queue_append(scheduler->blocked_queue, current_thread);
-				} else{
+				} else if(current_thread->state == RUNNING || current_thread->state == READY){
 					current_thread->state = READY;
 					queue_append(scheduler->ready_queue, current_thread);
 				}
@@ -103,6 +108,10 @@ void scheduler_switch(scheduler_t scheduler){
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return;
 		}
+
+		//At this point we know we won't switch this iteration, so restore interrupt level.
+		set_interrupt_level(old_level);
+
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){
@@ -123,15 +132,15 @@ void minithread_free(minithread_t t);
 
 //Thread responsible for freeing up the zombie threads.
 int vaccum_cleaner(int *arg){
-	int clean_cycle = 100;
 	while(1){
 		minithread_t zombie_thread;
+		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+
 		if(queue_dequeue(thread_scheduler->finished_queue, (void **) &zombie_thread) == 0){
-			int i;
-			for(i = 0 ; i < clean_cycle; i++);
 			minithread_free(zombie_thread);
 		}
 		minithread_yield();
+		set_interrupt_level(old_level);
 	}
 
 }
@@ -139,10 +148,12 @@ int vaccum_cleaner(int *arg){
 
 /* Cleanup function pointer. */
 int cleanup_proc(arg_t arg){
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);	
 	current_thread->state = FINISHED;
 	scheduler_switch(thread_scheduler);
 
 	//Shouldn't happen.
+	set_interrupt_level(old_level);
 	return -1;
 }
 
@@ -152,14 +163,21 @@ static int id_counter = 0;
 /* minithread functions */
 
 minithread_t minithread_fork(proc_t proc, arg_t arg) {
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+
 	minithread_t forked_thread; 
 	forked_thread = minithread_create(proc, arg);
 	queue_append(thread_scheduler->ready_queue, forked_thread);
 
+
+	set_interrupt_level(old_level);
     return forked_thread;
 }
 
 minithread_t minithread_create(proc_t proc, arg_t arg) {
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+
+
 	minithread_t thread = (minithread_t) malloc(sizeof(minithread));
 	thread->pid = id_counter++;
 	thread->state = READY;
@@ -173,6 +191,7 @@ minithread_t minithread_create(proc_t proc, arg_t arg) {
 
 	thread->sp = thread->stacktop;
 
+	set_interrupt_level(old_level);
     return thread;
 }
 
@@ -185,14 +204,21 @@ int minithread_id() {
 }
 
 void minithread_stop() {
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	current_thread->state = WAITING;
 	scheduler_switch(thread_scheduler);
+	set_interrupt_level(old_level);
 }
 
 void minithread_start(minithread_t t) {
+	interrupt_level_t old_level;
+
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;
+
+	old_level = set_interrupt_level(DISABLED);
 	queue_append(thread_scheduler->ready_queue, t);
+	set_interrupt_level(old_level);
 }
 
 void minithread_yield() {
@@ -200,8 +226,12 @@ void minithread_yield() {
 }
 
 void minithread_free(minithread_t t){
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+
 	minithread_free_stack(t->stackbase);
 	free(t);
+
+	set_interrupt_level(old_level);
 }
 
 /*
@@ -212,7 +242,15 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	alarm_id alarm = peek_alarm();
+	if(alarm != NULL){
+		execute_alarm(alarm);
+		deregister_alarm(alarm);
+	}
 
+	scheduler_switch(thread_scheduler);
+	set_interrupt_level(old_level);
 }
 
 /*
@@ -239,6 +277,12 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Fork the vaccum cleaner thread.
 	minithread_fork(&vaccum_cleaner, NULL);
+
+	//Initialize alarm system for allowing threads to sleep.
+	initialize_alarm_system(MINITHREAD_CLOCK_PERIOD, &current_tick);
+
+	//Initialize clock system for preemption.
+	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

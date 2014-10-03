@@ -10,7 +10,7 @@ typedef struct multilevel_queue {
 	// is the queue at level i. When the array is full,  
 	queue_t *queue_array;
 	int number_of_levels;
-}
+};
 
 /*
  * Returns an empty multilevel queue with number_of_levels levels. On error should return NULL.

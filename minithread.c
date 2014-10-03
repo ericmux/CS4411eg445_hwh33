@@ -89,9 +89,7 @@ void scheduler_switch(scheduler_t scheduler){
 
 				if(current_thread->state == FINISHED){
 					queue_append(scheduler->finished_queue, current_thread);
-				} else if(current_thread->state == WAITING){
-					//queue_append(scheduler->blocked_queue, current_thread);
-				} else{
+				} else if(current_thread->state == RUNNING || current_thread->state == READY){
 					current_thread->state = READY;
 					queue_append(scheduler->ready_queue, current_thread);
 				}
@@ -212,7 +210,7 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
-
+	printf("I'm counting! =D");
 }
 
 /*
@@ -239,6 +237,9 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Fork the vaccum cleaner thread.
 	minithread_fork(&vaccum_cleaner, NULL);
+
+	//Initialize clock system for preemption.
+	minithread_clock_init(2000, clock_handler);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

@@ -5,13 +5,29 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+typedef struct multilevel_queue {
+	// Each element of queue_array is a queue. The ith-element
+	// is the queue at level i. When the array is full,  
+	queue_t *queue_array;
+	int number_of_levels;
+}
+
 /*
  * Returns an empty multilevel queue with number_of_levels levels. On error should return NULL.
+ * A value < 1 on number_of_levels is treated as an error (and thus returns NULL).
  */
 multilevel_queue_t multilevel_queue_new(int number_of_levels)
 {
+	multilevel_queue_t new_multilevel_queue;
+	queue_t *new_queue_array;
 
-	return NULL;
+	if (number_of_levels < 1) return NULL;
+	
+	new_multilevel_queue = (multilevel_queue *)malloc(sizeof(multilevel_queue));
+	new_queue_array = (queue_t *)malloc(sizeof(queue_t) * number_of_levels);
+	new_multilevel_queue->queue_array = new_queue_array;
+	new_multilevel_q->number_of_levels = number_of_levels;
+	return new_multilevel_q;
 }
 
 /*
@@ -19,8 +35,9 @@ multilevel_queue_t multilevel_queue_new(int number_of_levels)
  */
 int multilevel_queue_enqueue(multilevel_queue_t queue, int level, void* item)
 {
+	if (queue == NULL || level < 0 || level > queue->number_of_levels - 1) return -1;
 
-	return -1;
+	return queue_append(queue->queue_array[level], item);
 }
 
 /*
@@ -31,8 +48,25 @@ int multilevel_queue_enqueue(multilevel_queue_t queue, int level, void* item)
  */
 int multilevel_queue_dequeue(multilevel_queue_t queue, int level, void** item)
 {
+	int found_item;
+	int current_level;
 
-	return -1;
+	if (queue == NULL || level < 0 || level > queue->number_of_levels - 1) return -1;
+
+	found_item = 0;
+	current_level = 0;
+	*item = NULL;
+	while (!found_item && current_level < queue->number_of_levels) {
+		// queue_dequeue returns -1 on error and 0 on success. So found_item
+		// will be 0 (false) if the item was not found and 1 (true) if it was.
+		found_item = 1 + queue_dequeue(queue->queue_array[current_level], item);
+		current_level++;
+	}
+
+	// If anything was found, then item was set in the loop. Otherwise, it's still NULL.
+	// found_item is 1 (true) if we found an item and 0 (false) if we did not. So
+	// found_item - 1 will be 0 on success and -1 on error.
+	return found_item - 1;
 }
 
 /* 
@@ -41,6 +75,24 @@ int multilevel_queue_dequeue(multilevel_queue_t queue, int level, void** item)
  */
 int multilevel_queue_free(multilevel_queue_t queue)
 {
+	int i;
+	int error_occurred;
+	int exit_code;
 
-	return -1;
+	if (queue == NULL) return -1;
+
+	error_occurred = 0;
+	for (i = 0; i < queue->number_of_levels; i++) {
+		exit_code = queue_free(queue->queue_array[i]);
+		if (exit_code == -1) error_occurred = 1;
+	}
+	free(queue);
+
+	// error_occurred is a boolean, so 1 indicates an error and 0 indicates a
+	// clean execution. error_occurred * -1 will thus return -1 on error and 0
+	// on success
+	return error_occurred * -1;		
 }
+
+
+

@@ -59,6 +59,8 @@ int
 queue_prepend(queue_t queue, void* item) {
 	node *new_node;
 
+	if(queue == NULL) return -1;
+	
 	// If this is the first node, all we need to do is set the "dummy"
 	// node's data pointer:
 	if ((queue->length) == 0) {
@@ -98,6 +100,8 @@ queue_prepend(queue_t queue, void* item) {
 int
 queue_append(queue_t queue, void* item) {
 	node *new_node;
+
+	if(queue == NULL) return -1;
 
 	// If this is the first node, all we need to do is set the "dummy"
 	// node's data pointer:
@@ -139,6 +143,8 @@ int
 queue_dequeue(queue_t queue, void** item) {
     	node *new_head;
 	
+	if(queue == NULL) return -1;
+
 	// first check if the queue is empty
     	if ((queue->length) <= 0) {
 		*item = NULL;
@@ -191,7 +197,9 @@ queue_dequeue(queue_t queue, void** item) {
  */
 int
 queue_iterate(queue_t queue, func_t f, void* item) {
-    	node *current_node;
+	node *current_node;
+
+    	if(queue == NULL) return -1;
 
 	// we cannot iterate over an empty queue
     	if (queue->length <= 0) {
@@ -217,6 +225,8 @@ queue_free (queue_t queue) {
 	// TODO: can I use queue_iterate here somehow?
 	node *current_node;
 	node *next_node;
+
+	if(queue == NULL) return -1;
 	
 	if (queue->length < 0) {
 		return -1;
@@ -254,22 +264,24 @@ queue_length(queue_t queue) {
  * Return -1 on error. ** HEADER SAYS JUST FIRST INSTANCE
  */
 int
-queue_delete(queue_t the_queue, void* item) {
+queue_delete(queue_t queue, void* item) {
 	node *current_node;
 	int found_item;
+	
+	if (queue == NULL) return -1;
 
 	// can't delete from an empty queue
-	if (the_queue->length <=0 ){
+	if (queue->length <=0 ){
 		return -1;
 	} 
 	
-	current_node = the_queue->head;
+	current_node = queue->head;
 	found_item = 0;
 	// first check the head:
 	if (current_node->data_ptr == item) {
 		found_item = 1;
 		// the current node's right node is the new head
-		if (the_queue->length == 1) {
+		if (queue->length == 1) {
 			// If this is the case, then we are deleting the
 			// last node and need to create a new "dummy" node
 			node *new_node = (node *)malloc(sizeof(node));
@@ -278,16 +290,16 @@ queue_delete(queue_t the_queue, void* item) {
 			new_node->is_tail = 1;
 			new_node->left_node = NULL;
 			new_node->right_node = NULL;
-			the_queue->head = new_node;
-			the_queue->tail = new_node;
+			queue->head = new_node;
+			queue->tail = new_node;
 		}
 		else {
-			the_queue->head = current_node->right_node;
-			the_queue->head->is_head = 1;
-			the_queue->head->left_node = NULL;
+			queue->head = current_node->right_node;
+			queue->head->is_head = 1;
+			queue->head->left_node = NULL;
 		}
 		free(current_node);
-		the_queue->length--;
+		queue->length--;
 		return 0;
 	}
 	while(!found_item && !current_node->is_tail) {
@@ -295,16 +307,16 @@ queue_delete(queue_t the_queue, void* item) {
 		if (current_node->data_ptr == item) {
 			found_item = 1;
 			if (current_node->is_tail) {
-				the_queue->tail = current_node->left_node;
-				the_queue->tail->is_tail = 1;
-				the_queue->tail->right_node = NULL;
+				queue->tail = current_node->left_node;
+				queue->tail->is_tail = 1;
+				queue->tail->right_node = NULL;
 			} else {	
 				// connect the current node's neighbors together
 				(current_node->left_node)->right_node = current_node->right_node;
 				(current_node->right_node)->left_node = current_node->left_node;
 			}
 			free(current_node);
-			the_queue->length--;
+			queue->length--;
 			return 0;
 		}		
 	}

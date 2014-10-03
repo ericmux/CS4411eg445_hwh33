@@ -6,6 +6,7 @@
 #include "synch.h"
 #include "queue.h"
 #include "minithread.h"
+#include "interrupts.h"
 
 /*
  *      You must implement the procedures and types defined in this interface.
@@ -43,11 +44,18 @@ semaphore_t semaphore_create() {
  *      Deallocate a semaphore.
  */
 void semaphore_destroy(semaphore_t sem) {
+	// First thing we do is disable interrupts to prevent the OS from
+	// context switch while a thread is holding a semaphore lock. We
+	// will re-enable at the end of this function.
+	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
+
 	while(atomic_test_and_set(&sem->destruction_lock)) {
 		return;
 	}
 	queue_free(sem->waiting_q);
 	free(sem);
+
+	set_interrupt_level(old_interrupt_level);
 }
 
 
@@ -57,11 +65,18 @@ void semaphore_destroy(semaphore_t sem) {
  *      sem with an initial value cnt.
  */
 void semaphore_initialize(semaphore_t sem, int cnt) {
+	// First thing we do is disable interrupts to prevent the OS from
+	// context switch while a thread is holding a semaphore lock. We
+	// will re-enable at the end of this function.
+	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
+
 	while (atomic_test_and_set(&(sem->lock))) {
 		minithread_yield();
 	}
 	sem->count = cnt;
 	atomic_clear(&(sem->lock));
+
+	set_interrupt_level(old_interrupt_level);
 }
 
 
@@ -71,6 +86,11 @@ void semaphore_initialize(semaphore_t sem, int cnt) {
  *      (a thread calling semaphore_P reflects a request for a resource)
  */
 void semaphore_P(semaphore_t sem) {
+	// First thing we do is disable interrupts to prevent the OS from
+	// context switch while a thread is holding a semaphore lock. We
+	// will re-enable at the end of this function.
+	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);	
+
 	while (atomic_test_and_set(&sem->lock)) {
 		minithread_yield();
 	}
@@ -83,6 +103,8 @@ void semaphore_P(semaphore_t sem) {
 	} else {
 		atomic_clear(&sem->lock);
 	}
+
+	set_interrupt_level(old_interrupt_level);
 }
 
 /*
@@ -91,6 +113,12 @@ void semaphore_P(semaphore_t sem) {
  *      (a thread calling semaphore_V reflects the yield of a resource)
  */
 void semaphore_V(semaphore_t sem) {
+	// First thing we do is disable interrupts to prevent the OS from
+	// context switch while a thread is holding a semaphore lock. We
+	// will re-enable at the end of this function.
+	// TODO: is this necessary?...
+	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
+
 	while (atomic_test_and_set(&(sem->lock))) {
 		minithread_yield();
 	};
@@ -103,4 +131,6 @@ void semaphore_V(semaphore_t sem) {
 		atomic_clear(&sem->lock);
 	}
 	atomic_clear(&sem->lock);
+
+	set_interrupt_level(old_interrupt_level);
 }

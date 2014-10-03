@@ -62,7 +62,7 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 	
 	scheduler_t s;
 
-	*scheduler_ptr = (scheduler_t) malloc(sizeof(scheduler_t));
+	*scheduler_ptr = (scheduler_t) malloc(sizeof(struct scheduler));
 	s = *scheduler_ptr;
 	s->ready_queue = queue_new();
 	s->finished_queue = queue_new();

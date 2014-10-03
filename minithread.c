@@ -139,7 +139,6 @@ int vaccum_cleaner(int *arg){
 		if(queue_dequeue(thread_scheduler->finished_queue, (void **) &zombie_thread) == 0){
 			minithread_free(zombie_thread);
 		}
-		minithread_yield();
 		set_interrupt_level(old_level);
 	}
 
@@ -210,7 +209,7 @@ void minithread_stop() {
 }
 
 void minithread_start(minithread_t t) {
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	interrupt_level_t old_level i= set_interrupt_level(DISABLED);
 
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;

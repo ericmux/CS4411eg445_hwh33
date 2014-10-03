@@ -138,6 +138,7 @@ int vaccum_cleaner(int *arg){
 			minithread_free(zombie_thread);
 		}
 		minithread_yield();
+		set_interrupt_level(old_level);
 	}
 
 }
@@ -150,6 +151,7 @@ int cleanup_proc(arg_t arg){
 	scheduler_switch(thread_scheduler);
 
 	//Shouldn't happen.
+	set_interrupt_level(old_level);
 	return -1;
 }
 
@@ -203,6 +205,7 @@ void minithread_stop() {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	current_thread->state = WAITING;
 	scheduler_switch(thread_scheduler);
+	set_interrupt_level(old_level);
 }
 
 void minithread_start(minithread_t t) {

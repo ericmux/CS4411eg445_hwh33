@@ -239,7 +239,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_fork(&vaccum_cleaner, NULL);
 
 	//Initialize clock system for preemption.
-	minithread_clock_init(5000, clock_handler);
+	minithread_clock_init(50000, clock_handler);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

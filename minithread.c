@@ -163,11 +163,12 @@ static int id_counter = 0;
 /* minithread functions */
 
 minithread_t minithread_fork(proc_t proc, arg_t arg) {
+	interrupt_level_t old_level;
 
 	minithread_t forked_thread; 
 	forked_thread = minithread_create(proc, arg);
 
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 	queue_append(thread_scheduler->ready_queue, forked_thread);
 	set_interrupt_level(old_level);
 

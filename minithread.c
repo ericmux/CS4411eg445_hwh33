@@ -256,6 +256,7 @@ clock_handler(void* arg)
 
 void print_al(void *arg){
 	printf("This is alarming.");
+	fflush(stdout);
 }
 
 /*

@@ -72,6 +72,9 @@ deregister_alarm(alarm_id alarm)
 
 	if(a == NULL) return 0;
 
+	printf("%d", alarm);
+	fflush(stdout);
+
     if(a->executed){
     	//free(a);
     	return 1;

@@ -16,6 +16,8 @@
 
 #include <assert.h>
 
+#define  MINITHREAD_CLOCK_PERIOD 100
+
 /*
 * A minithread should be defined either in this file or in a private
 * header file.  Minithreads have a stack pointer with to make procedure
@@ -210,7 +212,7 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
-	printf("I'm counting every 5 secs.");
+
 }
 
 /*
@@ -239,7 +241,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_fork(&vaccum_cleaner, NULL);
 
 	//Initialize clock system for preemption.
-	minithread_clock_init(50000, clock_handler);
+	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

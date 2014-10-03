@@ -210,8 +210,7 @@ void minithread_stop() {
 }
 
 void minithread_start(minithread_t t) {
-	interrupt_level_t old_level 
-	old_level = set_interrupt_level(DISABLED);
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;

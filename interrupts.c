@@ -96,7 +96,7 @@ interrupt_level_t set_interrupt_level(interrupt_level_t newlevel) {
  * chances of an overrun.
  */
 void
-minithread_clock_init(interrupt_handler_t clock_handler){
+minithread_clock_init(int period, interrupt_handler_t clock_handler){
     timer_t timerid;
     struct sigevent sev;
     struct itimerspec its;
@@ -118,7 +118,8 @@ minithread_clock_init(interrupt_handler_t clock_handler){
         abort();
     }
 
-    printf("SIGRTMAX = %d\n",SIGRTMAX);
+    if(DEBUG)
+        printf("SIGRTMAX = %d\n",SIGRTMAX);
 
     /* Establish handler for timer signal */
     sa.sa_handler = (void*)handle_interrupt;
@@ -138,8 +139,8 @@ minithread_clock_init(interrupt_handler_t clock_handler){
         errExit("timer_create");
 
     /* Start the timer */
-    its.it_value.tv_sec = (PERIOD) / 1000000000;
-    its.it_value.tv_nsec = (PERIOD) % 1000000000;
+    its.it_value.tv_sec = (period) / 1000000000;
+    its.it_value.tv_nsec = (period) % 1000000000;
     its.it_interval.tv_sec = its.it_value.tv_sec;
     its.it_interval.tv_nsec = its.it_value.tv_nsec;
 

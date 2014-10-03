@@ -1,0 +1,385 @@
+diff -rupN ./alarm.c ../../2/release/alarm.c
+--- ./alarm.c	1969-12-31 19:00:00.000000000 -0500
++++ ../../2/release/alarm.c	2014-09-23 23:22:13.161245668 -0400
+@@ -0,0 +1,24 @@
++#include <stdio.h>
++
++#include "interrupts.h"
++#include "alarm.h"
++#include "minithread.h"
++#include "queue.h"
++
++/* see alarm.h */
++alarm_id
++register_alarm(int delay, alarm_handler_t alarm, void *arg)
++{
++    return NULL;
++}
++
++/* see alarm.h */
++int
++deregister_alarm(alarm_id alarm)
++{
++    return 1;
++}
++
++/*
++** vim: ts=4 sw=4 et cindent
++*/
+diff -rupN ./alarm.h ../../2/release/alarm.h
+--- ./alarm.h	1969-12-31 19:00:00.000000000 -0500
++++ ../../2/release/alarm.h	2014-09-23 23:20:28.201247898 -0400
+@@ -0,0 +1,27 @@
++#ifndef __ALARM_H__
++#define __ALARM_H__ 1
++
++/*
++ * This is the alarm interface. You should implement the functions for these
++ * prototypes, though you may have to modify some other files to do so.
++ */
++
++
++/* An alarm_handler_t is a function that will run within the interrupt handler.
++ * It must not block, and it must not perform I/O or any other long-running
++ * computations.
++ */
++typedef void (*alarm_handler_t)(void*);
++typedef void *alarm_id;
++
++/* register an alarm to go off in "delay" milliseconds.  Returns a handle to
++ * the alarm.
++ */
++alarm_id register_alarm(int delay, alarm_handler_t func, void *arg);
++
++/* unregister an alarm.  Returns 0 if the alarm had not been executed, 1
++ * otherwise.
++ */
++int deregister_alarm(alarm_id id);
++
++#endif
+diff -rupN ./interrupts.c ../../2/release/interrupts.c
+--- ./interrupts.c	2014-09-22 20:46:52.728356535 -0400
++++ ../../2/release/interrupts.c	2014-09-23 23:09:23.601262016 -0400
+@@ -96,7 +96,7 @@ interrupt_level_t set_interrupt_level(in
+  * chances of an overrun.
+  */
+ void
+-minithread_clock_init(interrupt_handler_t clock_handler){
++minithread_clock_init(int period, interrupt_handler_t clock_handler){
+     timer_t timerid;
+     struct sigevent sev;
+     struct itimerspec its;
+@@ -118,7 +118,8 @@ minithread_clock_init(interrupt_handler_
+         abort();
+     }
+ 
+-    printf("SIGRTMAX = %d\n",SIGRTMAX);
++    if(DEBUG)
++        printf("SIGRTMAX = %d\n",SIGRTMAX);
+ 
+     /* Establish handler for timer signal */
+     sa.sa_handler = (void*)handle_interrupt;
+@@ -138,8 +139,8 @@ minithread_clock_init(interrupt_handler_
+         errExit("timer_create");
+ 
+     /* Start the timer */
+-    its.it_value.tv_sec = (PERIOD) / 1000000000;
+-    its.it_value.tv_nsec = (PERIOD) % 1000000000;
++    its.it_value.tv_sec = (period) / 1000000000;
++    its.it_value.tv_nsec = (period) % 1000000000;
+     its.it_interval.tv_sec = its.it_value.tv_sec;
+     its.it_interval.tv_nsec = its.it_value.tv_nsec;
+ 
+diff -rupN ./interrupts.h ../../2/release/interrupts.h
+--- ./interrupts.h	2014-09-22 20:46:52.728356535 -0400
++++ ../../2/release/interrupts.h	2014-09-23 23:09:23.285262023 -0400
+@@ -9,6 +9,13 @@
+  * Calling minithreads_clock_init will start the clock device and
+  * enable interrupts.
+  *
++ * Interrupts are disabled when running code that is not part of the
++ * minithreads package (e.g. printf or gettimeofday), or if they are explicitly
++ * disabled (see set_interrupt_level below).  Any interrupts that occur while
++ * interrupts are disabled will be dropped.  Thus if you want to reliably
++ * receive interrupts, you must avoid spending a large portion of time with
++ * interrupts disabled.
++ *
+  * YOU SHOULD NOT [NEED TO] MODIFY THIS FILE.
+  */
+ 
+@@ -17,34 +24,8 @@
+ 
+ #include "defs.h"
+ 
+-/*
+- * a global variable to maintain time.
+- */
+-extern long ticks;
+-
+-/*
+- * period is the frequency of the clock tick.
+- */
+-#define MICROSECOND 1000
+-#define MILLISECOND (1000*MICROSECOND)
+-#define SECOND (1000*MILLISECOND)
+-#define PERIOD (50*MILLISECOND)
+-
+-/*
+- * Virtual processor interrupt level.
+- * Are interrupts enabled? A new interrupt will only be taken when interrupts
+- * are enabled.
+- */
+-typedef int interrupt_level_t;
+-extern interrupt_level_t interrupt_level;
+-
+-#define DISABLED 0
+-#define ENABLED 1
+-
+-
+-typedef void(*interrupt_handler_t)(void*);
+-/*
+- * Set the interrupt level to newlevel, return the old interrupt level
++/* set_interrupt_level(interrupt_level_t level)
++ *      Set the interrupt level to newlevel, return the old interrupt level
+  *
+  * You should generally make changes to the interrupt level in a set/restore
+  * pair. Be careful about restoring the interrupt level. Your
+@@ -70,19 +51,34 @@ typedef void(*interrupt_handler_t)(void*
+  * to minithread_switch: the minithread switch code resets the interrupt
+  * level to ENABLED itself.
+  *
+- * Note that you should minimize the amount of time interrupts are disabled
+- * in order to reduce the impact on the real-time performance of your system.
++ * Interrupts that occur while interrupts are disabled are dropped, so you
++ * should minimize the amount of time interrupts are disabled in order to
++ * reduce the number of dropped interrupts.
+  */
+ 
++typedef int interrupt_level_t;
++extern interrupt_level_t interrupt_level;
++
++#define DISABLED 0
++#define ENABLED 1
++
+ extern interrupt_level_t set_interrupt_level(interrupt_level_t newlevel);
++
++
+ /*
+- * minithread_clock_init installs your clock interrupt service routine
+- * h.  h will be called every PERIOD microseconds (defined above).
+- * interrupts are disabled after minithread_clock_init finishes.
+- * After you enable interrupts then your handler will be called
+- * automatically on every clock tick.
++ * minithread_clock_init(h,period)
++ *     installs a clock interrupt service routine h.  h will be called every
++ *     [period] nanoseconds.  interrupts are disabled after
++ *     minithread_clock_init finishes.  After you enable interrupts then your
++ *     handler will be called automatically on every clock tick.
+  */
+-extern void minithread_clock_init(interrupt_handler_t h);
++#define NANOSECOND  1
++#define MICROSECOND (1000*NANOSECOND)
++#define MILLISECOND (1000*MICROSECOND)
++#define SECOND      (1000*MILLISECOND)
++
++typedef void(*interrupt_handler_t)(void*);
++extern void minithread_clock_init(int period, interrupt_handler_t h);
+ 
+ #endif /* __INTERRUPTS_H__ */
+ 
+diff -rupN ./Makefile ../../2/release/Makefile
+--- ./Makefile	2014-09-22 20:46:52.728356535 -0400
++++ ../../2/release/Makefile	2014-09-23 23:14:39.541255305 -0400
+@@ -32,11 +32,12 @@ OBJ =                              \
+     machineprimitives_x86_64.o     \
+     machineprimitives_x86_64_asm.o \
+     random.o                       \
++    alarm.o                        \
+     queue.o                        \
+     synch.o
+ 
+ %: %.o start.o end.o $(OBJ) $(SYSTEMOBJ)
+-	$(CC) $(LIB) start.o $(OBJ) end.o $(LFLAGS) -o $@ $<
++	$(CC) $(LIB) -o $@ start.o $(filter-out start.o end.o $(SYSTEMOBJ), $^) end.o $(SYSTEMOBJ) $(LFLAGS)
+ 
+ %.o: %.c
+ 	$(CC) $(CFLAGS) -c $<
+diff -rupN ./minithread.c ../../2/release/minithread.c
+--- ./minithread.c	2014-09-22 20:46:52.728356535 -0400
++++ ../../2/release/minithread.c	2014-09-23 23:12:07.025258545 -0400
+@@ -9,6 +9,7 @@
+  */
+ #include <stdlib.h>
+ #include <stdio.h>
++#include "interrupts.h"
+ #include "minithread.h"
+ #include "queue.h"
+ #include "synch.h"
+@@ -59,6 +60,17 @@ minithread_yield() {
+ }
+ 
+ /*
++ * This is the clock interrupt handling routine.
++ * You have to call minithread_clock_init with this
++ * function as parameter in minithread_system_initialize
++ */
++void 
++clock_handler(void* arg)
++{
++
++}
++
++/*
+  * Initialization.
+  *
+  *      minithread_system_initialize:
+@@ -76,4 +88,12 @@ void
+ minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
+ }
+ 
++/*
++ * sleep with timeout in milliseconds
++ */
++void 
++minithread_sleep_with_timeout(int delay)
++{
++
++}
+ 
+diff -rupN ./minithread.h ../../2/release/minithread.h
+--- ./minithread.h	2014-09-22 20:46:52.732354550 -0400
++++ ../../2/release/minithread.h	2014-09-23 23:39:19.145223872 -0400
+@@ -85,20 +85,10 @@ extern void minithread_yield();
+  */
+ extern void minithread_system_initialize(proc_t mainproc, arg_t mainarg);
+ 
+-/*
+- * You do not need to implement the following procedure for part 1 of
+- * the assignment.  It is required for the preemptive version of the
+- * threads package a la part 2. */
+-
+-/*
+- * minithread_unlock_and_stop(tas_lock_t* lock)
+- *  Atomically release the specified test-and-set lock and
+- *  block the calling thread.
+- */
+-extern void minithread_unlock_and_stop(tas_lock_t* lock);
+ 
+ /*
+- * sleep with timeout in microseconds
++ * minithread_sleep_with_timeout(int delay)
++ *      Put the current thread to sleep for [delay] milliseconds
+  */
+ extern void minithread_sleep_with_timeout(int delay);
+ 
+diff -rupN ./multilevel_queue.c ../../2/release/multilevel_queue.c
+--- ./multilevel_queue.c	1969-12-31 19:00:00.000000000 -0500
++++ ../../2/release/multilevel_queue.c	2014-09-22 20:47:06.121656398 -0400
+@@ -0,0 +1,46 @@
++/*
++ * Multilevel queue manipulation functions  
++ */
++#include "multilevel_queue.h"
++#include <stdlib.h>
++#include <stdio.h>
++
++/*
++ * Returns an empty multilevel queue with number_of_levels levels. On error should return NULL.
++ */
++multilevel_queue_t multilevel_queue_new(int number_of_levels)
++{
++
++	return NULL;
++}
++
++/*
++ * Appends an void* to the multilevel queue at the specified level. Return 0 (success) or -1 (failure).
++ */
++int multilevel_queue_enqueue(multilevel_queue_t queue, int level, void* item)
++{
++
++	return -1;
++}
++
++/*
++ * Dequeue and return the first void* from the multilevel queue starting at the specified level. 
++ * Levels wrap around so as long as there is something in the multilevel queue an item should be returned.
++ * Return the level that the item was located on and that item if the multilevel queue is nonempty,
++ * or -1 (failure) and NULL if queue is empty.
++ */
++int multilevel_queue_dequeue(multilevel_queue_t queue, int level, void** item)
++{
++
++	return -1;
++}
++
++/* 
++ * Free the queue and return 0 (success) or -1 (failure). Do not free the queue nodes; this is
++ * the responsibility of the programmer.
++ */
++int multilevel_queue_free(multilevel_queue_t queue)
++{
++
++	return -1;
++}
+diff -rupN ./multilevel_queue.h ../../2/release/multilevel_queue.h
+--- ./multilevel_queue.h	1969-12-31 19:00:00.000000000 -0500
++++ ../../2/release/multilevel_queue.h	2014-09-22 20:47:06.121656398 -0400
+@@ -0,0 +1,40 @@
++/*
++ * Multilevel queue manipulation functions  
++ */
++#ifndef __MULTILEVEL_QUEUE_H__
++#define __MULTILEVEL_QUEUE_H__
++
++#include "queue.h"
++
++/*
++ * multilevel_queue_t is a pointer to an internally maintained data structure.
++ * Clients of this package do not need to know how the queues are
++ * represented. They see and manipulate only multilevel_queue_t's. 
++ */
++typedef struct multilevel_queue* multilevel_queue_t;
++
++/*
++ * Returns an empty multilevel queue with number_of_levels levels. On error should return NULL.
++ */
++extern multilevel_queue_t multilevel_queue_new(int number_of_levels);
++
++/*
++ * Appends an void* to the multilevel queue at the specified level. Return 0 (success) or -1 (failure).
++ */
++extern int multilevel_queue_enqueue(multilevel_queue_t queue, int level, void* item);
++
++/*
++ * Dequeue and return the first void* from the multilevel queue starting at the specified level. 
++ * Levels wrap around so as long as there is something in the multilevel queue an item should be returned.
++ * Return the level that the item was located on and that item if the multilevel queue is nonempty,
++ * or -1 (failure) and NULL if queue is empty.
++ */
++extern int multilevel_queue_dequeue(multilevel_queue_t queue, int level, void** item);
++
++/* 
++ * Free the queue and return 0 (success) or -1 (failure). Do not free the queue nodes; this is
++ * the responsibility of the programmer.
++ */
++extern int multilevel_queue_free(multilevel_queue_t queue);
++
++#endif /*__MULTILEVEL_QUEUE_H__*/
+diff -rupN ./README ../../2/release/README
+--- ./README	2014-09-22 22:05:31.129100553 -0400
++++ ../../2/release/README	2014-09-23 23:25:26.085241569 -0400
+@@ -27,9 +27,11 @@ This release contains three groups of fi
+     - random.*
+ 
+ 2. the threading library itself
+-    - minithread.*
++    - minithread.*       <-- updated in project 2!
+     - queue.*
+-    - synch.*
++    - multilevel_queue.* <-- new in project 2!
++    - synch.*            <-- you will need to edit in project 2!
++    - alarm.*            <-- new in project 2!
+ 
+ 3. sample applications
+     - buffer.c

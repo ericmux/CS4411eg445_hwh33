@@ -9,6 +9,13 @@
  * Calling minithreads_clock_init will start the clock device and
  * enable interrupts.
  *
+ * Interrupts are disabled when running code that is not part of the
+ * minithreads package (e.g. printf or gettimeofday), or if they are explicitly
+ * disabled (see set_interrupt_level below).  Any interrupts that occur while
+ * interrupts are disabled will be dropped.  Thus if you want to reliably
+ * receive interrupts, you must avoid spending a large portion of time with
+ * interrupts disabled.
+ *
  * YOU SHOULD NOT [NEED TO] MODIFY THIS FILE.
  */
 
@@ -17,34 +24,8 @@
 
 #include "defs.h"
 
-/*
- * a global variable to maintain time.
- */
-extern long ticks;
-
-/*
- * period is the frequency of the clock tick.
- */
-#define MICROSECOND 1000
-#define MILLISECOND (1000*MICROSECOND)
-#define SECOND (1000*MILLISECOND)
-#define PERIOD (50*MILLISECOND)
-
-/*
- * Virtual processor interrupt level.
- * Are interrupts enabled? A new interrupt will only be taken when interrupts
- * are enabled.
- */
-typedef int interrupt_level_t;
-extern interrupt_level_t interrupt_level;
-
-#define DISABLED 0
-#define ENABLED 1
-
-
-typedef void(*interrupt_handler_t)(void*);
-/*
- * Set the interrupt level to newlevel, return the old interrupt level
+/* set_interrupt_level(interrupt_level_t level)
+ *      Set the interrupt level to newlevel, return the old interrupt level
  *
  * You should generally make changes to the interrupt level in a set/restore
  * pair. Be careful about restoring the interrupt level. Your
@@ -70,19 +51,34 @@ typedef void(*interrupt_handler_t)(void*);
  * to minithread_switch: the minithread switch code resets the interrupt
  * level to ENABLED itself.
  *
- * Note that you should minimize the amount of time interrupts are disabled
- * in order to reduce the impact on the real-time performance of your system.
+ * Interrupts that occur while interrupts are disabled are dropped, so you
+ * should minimize the amount of time interrupts are disabled in order to
+ * reduce the number of dropped interrupts.
  */
 
+typedef int interrupt_level_t;
+extern interrupt_level_t interrupt_level;
+
+#define DISABLED 0
+#define ENABLED 1
+
 extern interrupt_level_t set_interrupt_level(interrupt_level_t newlevel);
+
+
 /*
- * minithread_clock_init installs your clock interrupt service routine
- * h.  h will be called every PERIOD microseconds (defined above).
- * interrupts are disabled after minithread_clock_init finishes.
- * After you enable interrupts then your handler will be called
- * automatically on every clock tick.
+ * minithread_clock_init(h,period)
+ *     installs a clock interrupt service routine h.  h will be called every
+ *     [period] nanoseconds.  interrupts are disabled after
+ *     minithread_clock_init finishes.  After you enable interrupts then your
+ *     handler will be called automatically on every clock tick.
  */
-extern void minithread_clock_init(interrupt_handler_t h);
+#define NANOSECOND  1
+#define MICROSECOND (1000*NANOSECOND)
+#define MILLISECOND (1000*MICROSECOND)
+#define SECOND      (1000*MILLISECOND)
+
+typedef void(*interrupt_handler_t)(void*);
+extern void minithread_clock_init(int period, interrupt_handler_t h);
 
 #endif /* __INTERRUPTS_H__ */
 

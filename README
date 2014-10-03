@@ -27,9 +27,11 @@ This release contains three groups of files:
     - random.*
 
 2. the threading library itself
-    - minithread.*
+    - minithread.*       <-- updated in project 2!
     - queue.*
-    - synch.*
+    - multilevel_queue.* <-- new in project 2!
+    - synch.*            <-- you will need to edit in project 2!
+    - alarm.*            <-- new in project 2!
 
 3. sample applications
     - buffer.c

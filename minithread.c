@@ -291,6 +291,8 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 	set_interrupt_level(ENABLED);
 
+	while(1);
+
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);
 }

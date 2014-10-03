@@ -34,7 +34,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 	alarm_t p_alarm;
 	int ticks = (delay / clock_period);
 
-    alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
+    alarm_t new_alarm = (alarm_t) malloc(sizeof(struct alarm));
     new_alarm->trigger_tick = *current_tick_ptr + ticks;
 
     if(delay % clock_period) new_alarm->trigger_tick += 1;

@@ -31,11 +31,11 @@ typedef alarm *alarm_t;
 alarm_id
 register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
-	alarm_t *alarm_ptr = NULL;
+	alarm_t p_alarm;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
         // TODO: I think delay and clock_period need to be converted to floats
-    new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period);
+    new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period) + 1;
     new_alarm->handler = alarm;
     new_alarm->arg = arg;
     new_alarm->executed = 0;
@@ -43,20 +43,18 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     //Find rightful position in the priority queue.
 
     //Remove all the alarms which will trigger earlier.
-    while(queue_dequeue(alarm_queue, (void **) alarm_ptr) == 0){
-    	alarm_t v = *alarm_ptr;
-    	queue_prepend(buffer_queue, v);
+    while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
+    	queue_prepend(buffer_queue, p_alarm);
 
-    	if(new_alarm->trigger_tick <= v->trigger_tick) break;
+    	if(new_alarm->trigger_tick <= p_alarm->trigger_tick) break;
     }
 
     //Add this new alarm to the queue.
     queue_prepend(alarm_queue, new_alarm);
 
     //Rebuild the rest of the queue.
-    while(queue_dequeue(buffer_queue, (void **) alarm_ptr) == 0){
-    	alarm_t v = *alarm_ptr;
-    	queue_prepend(alarm_queue, v);
+    while(queue_dequeue(buffer_queue, (void **) &p_alarm) == 0){
+    	queue_prepend(alarm_queue, p_alarm);
     }
 
 
@@ -82,9 +80,16 @@ deregister_alarm(alarm_id alarm)
     return 0;
 }
 
-alarm_id peek_alarm(){
+alarm_id pop_alarm(){
 	alarm_t best_alarm;
-	queue_dequeue(alarm_queue, (void **) &best_alarm);
+	
+	if(queue_dequeue(alarm_queue, (void **) &best_alarm) == 0){
+		if(best_alarm->trigger_tick > *current_tick_ptr){
+			queue_prepend(alarm_queue, best_alarm);
+			best_alarm = NULL;
+		}
+	}
+
 	return best_alarm;
 }
 

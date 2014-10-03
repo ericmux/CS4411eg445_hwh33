@@ -28,9 +28,9 @@ alarm_id register_alarm(int delay, alarm_handler_t func, void *arg);
 int deregister_alarm(alarm_id id);
 
 
-/* Peeks the alarm queue to check if the earliest alarm can be run. 
+/* Pops the alarm queue to check if the earliest alarm can be run. 
  */
-alarm_id peek_alarm();
+alarm_id pop_alarm();
 
 /* Executes the alarm's handler.
  */

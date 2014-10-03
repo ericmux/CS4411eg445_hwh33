@@ -243,10 +243,9 @@ void
 clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-	alarm_t alarm = peek_alarm();
+	alarm_id alarm = peek_alarm();
 	if(alarm != NULL){
-		alarm->handler(alarm->arg);
-		alarm->executed = 1;
+		execute_alarm(alarm);
 		deregister_alarm(alarm);
 	}
 

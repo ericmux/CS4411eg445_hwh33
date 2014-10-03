@@ -18,12 +18,13 @@ queue_t alarm_queue;
 queue_t buffer_queue;
 
 
-struct alarm {
+typedef struct alarm {
 	long 			trigger_tick;
 	alarm_handler_t handler;
 	void* 			arg;
 	int 			executed;
-};
+} *alarm_t;
+
 
 /* see alarm.h */
 alarm_id
@@ -83,6 +84,12 @@ alarm_id peek_alarm(){
 	alarm_t best_alarm;
 	queue_dequeue(alarm_queue, (void **) &best_alarm);
 	return best_alarm;
+}
+
+void execute_alarm(alarm_id alarm){
+	alarm_t *a = alarm;
+	a->handler(a->arg);
+	a->executed = 1;
 }
 
 

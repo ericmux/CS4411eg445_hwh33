@@ -17,8 +17,6 @@ typedef void (*alarm_handler_t)(void*);
 typedef void *alarm_id;
 
 
-typedef struct alarm *alarm_t;
-
 /* register an alarm to go off in "delay" milliseconds.  Returns a handle to
  * the alarm.
  */
@@ -33,6 +31,10 @@ int deregister_alarm(alarm_id id);
 /* Peeks the alarm queue to check if the earliest alarm can be run. 
  */
 alarm_id peek_alarm();
+
+/* Executes the alarm's handler.
+ */
+void execute_alarm(alarm_id alarm);
 
 /* Allows the alarms implementation to know the clock_period and the current time.
  */

@@ -11,14 +11,18 @@
 
 int
 thread1(int* arg) {
-  printf("I'm the 1st thread!\n");
+  while(1){
+  	printf("I'm the 1st thread!\n");
+  }
 
   return 0;
 }
 
 int
 thread2(int* arg) {
-  printf("I'm the 2nd thread!\n");
+  while(1){
+  	printf("I'm the 2nd thread!\n");
+  }
 
   return 0;
 }

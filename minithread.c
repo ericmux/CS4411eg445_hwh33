@@ -210,12 +210,12 @@ void minithread_stop() {
 }
 
 void minithread_start(minithread_t t) {
-	interrupt_level_t old_level;
+	interrupt_level_t old_level 
+	old_level = set_interrupt_level(DISABLED);
 
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;
 
-	old_level = set_interrupt_level(DISABLED);
 	queue_append(thread_scheduler->ready_queue, t);
 	set_interrupt_level(old_level);
 }
@@ -290,8 +290,6 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 	set_interrupt_level(ENABLED);
-
-	while(1);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

@@ -79,7 +79,7 @@ void scheduler_switch(scheduler_t scheduler){
 
 	do{
 		//Scheduler cannot be interrupted while it's trying to decide.
-		//interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 
@@ -110,7 +110,7 @@ void scheduler_switch(scheduler_t scheduler){
 		}
 
 		//At this point we know we won't switch this iteration, so restore interrupt level.
-		//set_interrupt_level(old_level);
+		set_interrupt_level(old_level);
 
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
@@ -163,20 +163,19 @@ static int id_counter = 0;
 /* minithread functions */
 
 minithread_t minithread_fork(proc_t proc, arg_t arg) {
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 	minithread_t forked_thread; 
 	forked_thread = minithread_create(proc, arg);
+
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	queue_append(thread_scheduler->ready_queue, forked_thread);
-
-
 	set_interrupt_level(old_level);
+
+
     return forked_thread;
 }
 
 minithread_t minithread_create(proc_t proc, arg_t arg) {
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-
 
 	minithread_t thread = (minithread_t) malloc(sizeof(minithread));
 	thread->pid = id_counter++;
@@ -191,7 +190,6 @@ minithread_t minithread_create(proc_t proc, arg_t arg) {
 
 	thread->sp = thread->stacktop;
 
-	set_interrupt_level(old_level);
     return thread;
 }
 
@@ -226,12 +224,8 @@ void minithread_yield() {
 }
 
 void minithread_free(minithread_t t){
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-
 	minithread_free_stack(t->stackbase);
 	free(t);
-
-	set_interrupt_level(old_level);
 }
 
 /*
@@ -242,18 +236,18 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
-	// interrupt_level_t old_level = set_interrupt_level(DISABLED);
-	// alarm_id alarm = pop_alarm();
-	// if(alarm != NULL){
-	// 	execute_alarm(alarm);
-	// 	deregister_alarm(alarm);
-	// }
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	alarm_id alarm = pop_alarm();
+	if(alarm != NULL){
+		execute_alarm(alarm);
+		deregister_alarm(alarm);
+	}
 	current_tick++;
 	printf("%lu\n", current_tick);
 	fflush(stdout);
 
-	// scheduler_switch(thread_scheduler);
-	// set_interrupt_level(old_level);
+	scheduler_switch(thread_scheduler);
+	set_interrupt_level(old_level);
 }
 
 void print_al(void *arg){

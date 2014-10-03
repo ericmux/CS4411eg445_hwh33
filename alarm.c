@@ -33,7 +33,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
 	alarm_t *alarm_ptr = NULL;
 
-    alarm_t new_alarm = (alarm_t) malloc(sizeof(struct alarm_t));
+    alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
     new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period);
     new_alarm->handler = alarm;
     new_alarm->arg = arg;
@@ -88,7 +88,7 @@ alarm_id peek_alarm(){
 }
 
 void execute_alarm(alarm_id alarm){
-	alarm_t *a = alarm;
+	alarm_t a = alarm;
 	a->handler(a->arg);
 	a->executed = 1;
 }

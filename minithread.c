@@ -242,7 +242,16 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	alarm_t alarm = peek_alarm();
+	if(alarm != NULL){
+		alarm->handler(alarm->arg);
+		alarm->executed = 1;
+		deregister_alarm(alarm);
+	}
+
 	scheduler_switch(thread_scheduler);
+	set_interrupt_level(old_level);
 }
 
 /*

@@ -178,7 +178,7 @@ minithread_t minithread_create(proc_t proc, arg_t arg) {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 
-	minithread_t thread = (minithread_t) malloc(sizeof(minithread));
+	minithread_t thread = (minithread_t) malloc(sizeof(struct minithread));
 	thread->pid = id_counter++;
 	thread->state = READY;
 

@@ -289,6 +289,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
+	set_interrupt_level(ENABLED);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

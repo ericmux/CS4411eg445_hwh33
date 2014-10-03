@@ -16,6 +16,9 @@
 typedef void (*alarm_handler_t)(void*);
 typedef void *alarm_id;
 
+
+typedef struct alarm *alarm_t;
+
 /* register an alarm to go off in "delay" milliseconds.  Returns a handle to
  * the alarm.
  */

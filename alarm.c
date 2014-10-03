@@ -18,12 +18,12 @@ queue_t alarm_queue;
 queue_t buffer_queue;
 
 
-typedef struct alarm_t {
+struct alarm {
 	long 			trigger_tick;
 	alarm_handler_t handler;
 	void* 			arg;
 	int 			executed;
-} *alarm_t;
+};
 
 /* see alarm.h */
 alarm_id

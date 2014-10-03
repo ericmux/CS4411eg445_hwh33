@@ -45,7 +45,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
     	queue_prepend(buffer_queue, p_alarm);
 
-    	if(new_alarm->trigger_tick <= v->trigger_tick) break;
+    	if(new_alarm->trigger_tick <= p_alarm->trigger_tick) break;
     }
 
     //Add this new alarm to the queue.

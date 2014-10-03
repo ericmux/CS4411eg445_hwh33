@@ -34,7 +34,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 	alarm_t *alarm_ptr = NULL;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
-    new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period);
+    new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period) + 1;
     new_alarm->handler = alarm;
     new_alarm->arg = arg;
     new_alarm->executed = 0;
@@ -81,9 +81,16 @@ deregister_alarm(alarm_id alarm)
     return 0;
 }
 
-alarm_id peek_alarm(){
+alarm_id pop_alarm(){
 	alarm_t best_alarm;
-	queue_dequeue(alarm_queue, (void **) &best_alarm);
+	
+	if(queue_dequeue(alarm_queue, (void **) &best_alarm) == 0){
+		if(best_alarm->trigger_tick > *current_tick_ptr){
+			queue_prepend(alarm_queue, best_alarm);
+			best_alarm = NULL;
+		}
+	}
+
 	return best_alarm;
 }
 

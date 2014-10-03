@@ -243,14 +243,19 @@ void
 clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-	alarm_id alarm = peek_alarm();
+	alarm_id alarm = pop_alarm();
 	if(alarm != NULL){
 		execute_alarm(alarm);
 		deregister_alarm(alarm);
 	}
+	current_tick++;
 
 	scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);
+}
+
+void print_al(void *arg){
+	printf("alarm triggered.");
 }
 
 /*
@@ -280,6 +285,8 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Initialize alarm system for allowing threads to sleep.
 	initialize_alarm_system(MINITHREAD_CLOCK_PERIOD, &current_tick);
+
+	register_alarm(3000, print_al, NULL);
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);

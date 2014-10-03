@@ -13,7 +13,8 @@
 
 #include "machineprimitives.h"
 
- #define MINITHREAD_CLOCK_PERIOD 100
+#define ONE_MILISECOND			1000000
+#define MINITHREAD_CLOCK_PERIOD 100*ONE_MILISECOND
 
 
 /*

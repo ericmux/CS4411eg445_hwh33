@@ -31,7 +31,7 @@ typedef alarm *alarm_t;
 alarm_id
 register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
-	alarm_t *alarm_ptr = NULL;
+	alarm_t p_alarm;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
     new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period) + 1;
@@ -42,9 +42,8 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     //Find rightful position in the priority queue.
 
     //Remove all the alarms which will trigger earlier.
-    while(queue_dequeue(alarm_queue, (void **) alarm_ptr) == 0){
-    	alarm_t v = *alarm_ptr;
-    	queue_prepend(buffer_queue, v);
+    while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
+    	queue_prepend(buffer_queue, p_alarm);
 
     	if(new_alarm->trigger_tick <= v->trigger_tick) break;
     }
@@ -53,9 +52,8 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     queue_prepend(alarm_queue, new_alarm);
 
     //Rebuild the rest of the queue.
-    while(queue_dequeue(buffer_queue, (void **) alarm_ptr) == 0){
-    	alarm_t v = *alarm_ptr;
-    	queue_prepend(alarm_queue, v);
+    while(queue_dequeue(buffer_queue, (void **) &p_alarm) == 0){
+    	queue_prepend(alarm_queue, p_alarm);
     }
 
 

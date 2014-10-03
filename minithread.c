@@ -252,7 +252,7 @@ clock_handler(void* arg)
 	printf("%lu", current_tick);
 	fflush(stdout);
 
-	scheduler_switch(thread_scheduler);
+	//scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);
 }
 

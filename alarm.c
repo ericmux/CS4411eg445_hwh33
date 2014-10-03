@@ -8,7 +8,7 @@
 
 
 //Private time reference for the alarms.
-long *current_tick_pointer;
+long *current_tick_ptr;
 int clock_period = MINITHREAD_CLOCK_PERIOD; 
 
 //Priority queue for alarms.
@@ -31,11 +31,11 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
 	alarm_t *alarm_ptr;
 
-    alarm_t alarm = (alarm_t) malloc(sizeof(struct alarm_t));
-    alarm->trigger_tick = *current_tick_pointer + (delay / clock_period);
-    alarm->handler = alarm;
-    alarm->arg = arg;
-    alarm->executed = false;
+    alarm_t new_alarm = (alarm_t) malloc(sizeof(struct alarm_t));
+    new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period);
+    new_alarm->handler = alarm;
+    new_alarm->arg = arg;
+    new_alarm->executed = 0;
 
     //Find rightful position in the priority queue.
 
@@ -44,11 +44,11 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     	alarm_t v = *alarm_ptr;
     	queue_prepend(buffer_queue, v);
 
-    	if(alarm->trigger_tick <= v->trigger_tick) break;
+    	if(new_alarm->trigger_tick <= v->trigger_tick) break;
     }
 
     //Add this new alarm to the queue.
-    queue_prepend(alarm_queue, alarm);
+    queue_prepend(alarm_queue, new_alarm);
 
     //Rebuild the rest of the queue.
     while(queue_dequeue(buffer_queue, (void **) alarm_ptr) == 0){
@@ -57,7 +57,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     }
 
 
-    return (alarm_id) alarm;
+    return (alarm_id) new_alarm;
 }
 
 /* see alarm.h */
@@ -84,7 +84,7 @@ alarm_id peek_alarm(){
 
 void initialize_alarm_system(int period, long *tick_pointer){
 	clock_period = period;
-	current_tick = tick_pointer;
+	current_tick_ptr = tick_pointer;
 	alarm_queue = queue_new();
 	buffer_queue = queue_new();
 }

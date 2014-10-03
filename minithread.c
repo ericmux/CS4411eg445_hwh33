@@ -244,8 +244,6 @@ clock_handler(void* arg)
 		deregister_alarm(alarm);
 	}
 	current_tick++;
-	printf("%lu\n", current_tick);
-	fflush(stdout);
 
 	scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);

@@ -23,7 +23,8 @@ typedef struct alarm {
 	alarm_handler_t handler;
 	void* 			arg;
 	int 			executed;
-} *alarm_t;
+} alarm;
+typedef alarm *alarm_t;
 
 
 /* see alarm.h */

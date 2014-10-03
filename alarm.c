@@ -110,7 +110,7 @@ void execute_alarm(alarm_id alarm){
 
 
 void initialize_alarm_system(int period, long *tick_pointer){
-	clock_period = period;
+	clock_period = period/ONE_MILLISECOND;
 	current_tick_ptr = tick_pointer;
 	alarm_queue = queue_new();
 	buffer_queue = queue_new();

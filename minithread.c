@@ -285,7 +285,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	//Initialize alarm system for allowing threads to sleep.
 	initialize_alarm_system(MINITHREAD_CLOCK_PERIOD, &current_tick);
 
-	register_alarm(3000, print_al, NULL);
+	register_alarm(3000, print_al, &current_tick);
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);

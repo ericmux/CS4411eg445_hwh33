@@ -250,6 +250,7 @@ clock_handler(void* arg)
 	// }
 	current_tick++;
 	printf("%lu\n", current_tick);
+	fflush(stdout);
 
 	// scheduler_switch(thread_scheduler);
 	// set_interrupt_level(old_level);
@@ -297,7 +298,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 
 	//Start concurrency.
-	scheduler_switch(thread_scheduler);
+	//scheduler_switch(thread_scheduler);
 
 }
 

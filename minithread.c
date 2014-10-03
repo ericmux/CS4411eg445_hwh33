@@ -210,7 +210,7 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
-	printf("I'm counting! =D");
+	printf("I'm counting every 5 secs.");
 }
 
 /*
@@ -239,7 +239,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_fork(&vaccum_cleaner, NULL);
 
 	//Initialize clock system for preemption.
-	minithread_clock_init(2000, clock_handler);
+	minithread_clock_init(5000, clock_handler);
 
 	//Start concurrency.
 	scheduler_switch(thread_scheduler);

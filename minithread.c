@@ -299,7 +299,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Start concurrency.
 	//scheduler_switch(thread_scheduler);
-
+	while(1);
 }
 
 /*

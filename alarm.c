@@ -34,6 +34,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 	alarm_t *alarm_ptr = NULL;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
+        // TODO: I think delay and clock_period need to be converted to floats
     new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period);
     new_alarm->handler = alarm;
     new_alarm->arg = arg;

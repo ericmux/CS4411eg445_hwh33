@@ -242,6 +242,9 @@ void minithread_free(minithread_t t){
 void 
 clock_handler(void* arg)
 {
+	// TODO: shouldn't we check to make sure that (a) these alarms
+	// are actually supposed to go off on this tick and (b) we are
+	// setting off ALL of the alarms which are supposed to go off?
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	alarm_id alarm = peek_alarm();
 	if(alarm != NULL){

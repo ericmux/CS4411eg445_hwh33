@@ -243,7 +243,7 @@ void
 clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-	alarm_id alarm = pop_alarm();
+	//alarm_id alarm = pop_alarm();
 	// if(alarm != NULL){
 	// 	execute_alarm(alarm);
 	// 	deregister_alarm(alarm);

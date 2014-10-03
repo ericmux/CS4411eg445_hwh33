@@ -244,11 +244,12 @@ clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	alarm_id alarm = pop_alarm();
-	if(alarm != NULL){
-		execute_alarm(alarm);
-		deregister_alarm(alarm);
-	}
+	// if(alarm != NULL){
+	// 	execute_alarm(alarm);
+	// 	deregister_alarm(alarm);
+	// }
 	current_tick++;
+	printf("%lu", &current_tick);
 
 	scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);

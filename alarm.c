@@ -79,7 +79,7 @@ deregister_alarm(alarm_id alarm)
 	fflush(stdout);
 
     if(a->executed){
-    	//free(a);
+    	free(a);
     	return 1;
     }
 

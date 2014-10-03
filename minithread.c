@@ -209,10 +209,12 @@ void minithread_stop() {
 }
 
 void minithread_start(minithread_t t) {
+	interrupt_level_t old_level;
+
 	if(t->state == READY  || t->state == RUNNING) return;
 	t->state = READY;
 
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 	queue_append(thread_scheduler->ready_queue, t);
 	set_interrupt_level(old_level);
 }

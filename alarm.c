@@ -29,7 +29,7 @@ typedef struct alarm_t {
 alarm_id
 register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
-	alarm_t *alarm_ptr;
+	alarm_t *alarm_ptr = NULL;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(struct alarm_t));
     new_alarm->trigger_tick = *current_tick_ptr + (delay / clock_period);

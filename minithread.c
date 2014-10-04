@@ -92,14 +92,14 @@ void scheduler_switch(scheduler_t scheduler){
 
 	do{
 		interrupt_level_t old_level;
+		int deq_result;
 
 		semaphore_P(thread_arrived_sema);
 
 		//Scheduler cannot be interrupted while it's trying to decide.
 		old_level = set_interrupt_level(DISABLED);
 
-		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
-
+		deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 
 		if(deq_result == 0){
 			stack_pointer_t *oldsp_ptr; 

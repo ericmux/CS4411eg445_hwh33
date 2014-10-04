@@ -147,11 +147,12 @@ void minithread_free(minithread_t t);
 //Thread responsible for freeing up the zombie threads.
 int vaccum_cleaner(int *arg){
 	while(1){
+		interrupt_level_t old_level;
 		minithread_t zombie_thread;
 
 		semaphore_P(cleanup_sema);
 
-		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		old_level = set_interrupt_level(DISABLED);
 
 		if(queue_dequeue(thread_scheduler->finished_queue, (void **) &zombie_thread) == 0){
 			minithread_free(zombie_thread);

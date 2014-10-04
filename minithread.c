@@ -91,6 +91,7 @@ void scheduler_switch(scheduler_t scheduler){
 	minithread_t thread_to_run;
 
 	do{
+
 		//Scheduler cannot be interrupted while it's trying to decide.
 		interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
@@ -265,9 +266,9 @@ clock_handler(void* arg)
 		deregister_alarm(alarm);
 	}
 	current_tick++;
+	set_interrupt_level(old_level);
 
 	scheduler_switch(thread_scheduler);
-	set_interrupt_level(old_level);
 }
 
 void print_al(void *arg){

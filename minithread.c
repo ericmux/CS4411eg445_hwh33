@@ -91,6 +91,7 @@ void scheduler_switch(scheduler_t scheduler){
 	minithread_t thread_to_run;
 
 	do{
+		semaphore_P(thread_arrived_sema);
 
 		//Scheduler cannot be interrupted while it's trying to decide.
 		interrupt_level_t old_level = set_interrupt_level(DISABLED);
@@ -113,6 +114,7 @@ void scheduler_switch(scheduler_t scheduler){
 				} else if(current_thread->state == RUNNING || current_thread->state == READY){
 					current_thread->state = READY;
 					queue_append(scheduler->ready_queue, current_thread);
+					semaphore_V(thread_arrived_sema);
 				}
 			}
 
@@ -192,6 +194,7 @@ minithread_t minithread_fork(proc_t proc, arg_t arg) {
 
 	old_level = set_interrupt_level(DISABLED);
 	queue_append(thread_scheduler->ready_queue, forked_thread);
+	semaphore_V(thread_arrived_sema);
 	set_interrupt_level(old_level);
 
 
@@ -239,6 +242,7 @@ void minithread_start(minithread_t t) {
 	t->state = READY;
 
 	queue_append(thread_scheduler->ready_queue, t);
+	semaphore_V(thread_arrived_sema);
 	set_interrupt_level(old_level);
 }
 

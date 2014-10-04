@@ -18,12 +18,23 @@ sleepsort(int* arg) {
   return 0;
 }
 
+int
+thread1(int* arg) {
+  while(1){
+    int i = 0;
+    for(; i < 10000; i++);
+  }
+
+  return 0;
+}
+
 int initialize_threads(int *arg) {
 
   int i;
   for(i = 0; i < 10; i++){
 	   minithread_fork(sleepsort, &a[i]);
    }
+   minithread_fork(thread1, NULL);
 
    printf("Threads forked!");
 

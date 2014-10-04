@@ -89,6 +89,7 @@ void semaphore_P(semaphore_t sem) {
 		// Resources are not available. Thread should be added to
 		// the waiting queue.
 		queue_append(sem->waiting_q, minithread_self());
+		set_interrupt_level(old_interrupt_level);
 		minithread_stop();
 	}
 
@@ -112,7 +113,9 @@ void semaphore_V(semaphore_t sem) {
 		// queue and start it
 		minithread_t thread_to_start;
 		queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
+		set_interrupt_level(old_interrupt_level);
 		minithread_start(thread_to_start);
+		old_interrupt_level = set_interrupt_level(DISABLED);
 	}
 
 	set_interrupt_level(old_interrupt_level);

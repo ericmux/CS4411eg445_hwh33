@@ -264,13 +264,15 @@ clock_handler(void* arg)
 		deregister_alarm(alarm);
 	}
 	current_tick++;
+	printf("%lu\n", current_tick);
+	fflush(stdout);
 
 	scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);
 }
 
 void print_al(void *arg){
-	printf("This is alarming.");
+	printf("This is alarming.\n");
 	fflush(stdout);
 }
 

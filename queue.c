@@ -33,9 +33,19 @@ typedef struct queue {
  * Return an empty queue.
  */
 queue_t queue_new() {
-	queue_t new_queue = (queue *)malloc(sizeof(queue));
+	queue_t new_queue;
+	node *first_node;
+
+	new_queue = (queue *)malloc(sizeof(queue));
+	
 	// initialize the first (empty) node:
-	node *first_node = (node *)malloc(sizeof(node));
+	first_node = (node *)malloc(sizeof(node));
+
+	if (new_queue == NULL || first_node == NULL) {
+		printf("Error occured in malloc in initializing a queue");
+		return NULL;
+	}
+	
 	first_node->data_ptr = NULL;
 	first_node->left_node = NULL;
 	first_node->right_node = NULL;
@@ -73,6 +83,11 @@ queue_prepend(queue_t queue, void* item) {
 
     	// create a new node to hold the item
     	new_node = (node *)malloc(sizeof(node));
+	if (new_node == NULL) {
+		printf("Failed to malloc new node in queue_prepend");
+		return -1;
+	}	
+
 	new_node->data_ptr = item;
 	// this node is going to be the head, so it will be left of
 	// the old head
@@ -115,6 +130,11 @@ queue_append(queue_t queue, void* item) {
 
 	// create a new node to hold the item
 	new_node = (node *)malloc(sizeof(node));
+	if (new_node == NULL) {
+		printf("Failed to malloc a new node in queue_append");
+		return -1;
+	}	
+
         new_node->data_ptr = item;
 	// this node is going to be the tail, so it will be right of
 	// the old tail
@@ -159,6 +179,11 @@ queue_dequeue(queue_t queue, void** item) {
 	// If the length is now 0, then we need to set up a new dummy node:
 	if (queue->length == 0) {
 		node *new_node = (node *)malloc(sizeof(node));
+		if (new_node == NULL) {
+			printf("Failed to malloc new node in queue_dequeue");
+			return -1;
+		}
+
 		free(queue->head);
 		new_node->data_ptr = NULL;
 		new_node->left_node = NULL;
@@ -285,6 +310,11 @@ queue_delete(queue_t queue, void* item) {
 			// If this is the case, then we are deleting the
 			// last node and need to create a new "dummy" node
 			node *new_node = (node *)malloc(sizeof(node));
+			if (new_node == NULL) {
+				printf("Failed to malloc new node in queue_delete");
+				return -1;
+			}
+
 			new_node->data_ptr = NULL;
 			new_node->is_head = 1;
 			new_node->is_tail = 1;

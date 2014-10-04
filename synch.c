@@ -18,7 +18,6 @@
  */
 typedef struct semaphore {
 	queue_t waiting_q;
-	tas_lock_t lock;
 	// the destruction lock is used to prevent two threads from trying
 	// to destroy the same semaphore
 	tas_lock_t destruction_lock;
@@ -33,7 +32,6 @@ typedef struct semaphore {
 semaphore_t semaphore_create() {
     semaphore_t new_semaphore = (semaphore *)malloc(sizeof(semaphore));
 	new_semaphore->waiting_q = queue_new();
-	atomic_clear(&new_semaphore->lock);
 	atomic_clear(&new_semaphore->destruction_lock);
 	
 	return new_semaphore;
@@ -70,11 +68,7 @@ void semaphore_initialize(semaphore_t sem, int cnt) {
 	// will re-enable at the end of this function.
 	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
 
-	while (atomic_test_and_set(&(sem->lock))) {
-		minithread_yield();
-	}
 	sem->count = cnt;
-	atomic_clear(&(sem->lock));
 
 	set_interrupt_level(old_interrupt_level);
 }
@@ -95,7 +89,6 @@ void semaphore_P(semaphore_t sem) {
 		// Resources are not available. Thread should be added to
 		// the waiting queue.
 		queue_append(sem->waiting_q, minithread_self());
-		atomic_clear(&sem->lock);
 		minithread_stop();
 	}
 

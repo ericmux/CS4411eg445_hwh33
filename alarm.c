@@ -34,7 +34,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 	alarm_t p_alarm;
 	int ticks = (delay / clock_period);
 
-    alarm_t new_alarm = (alarm_t) malloc(sizeof(alarm));
+    alarm_t new_alarm = (alarm_t) malloc(sizeof(struct alarm));
     new_alarm->trigger_tick = *current_tick_ptr + ticks;
 
     if(delay % clock_period) new_alarm->trigger_tick += 1;
@@ -42,9 +42,6 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     new_alarm->handler = alarm;
     new_alarm->arg = arg;
     new_alarm->executed = 0;
-
-   	printf("%p", new_alarm);
-	fflush(stdout);
 
     //Find rightful position in the priority queue.
 
@@ -74,9 +71,6 @@ deregister_alarm(alarm_id alarm)
 	alarm_t a = (alarm_t) alarm;
 
 	if(a == NULL) return 0;
-
-	printf("%p", alarm);
-	fflush(stdout);
 
     if(a->executed){
     	free(a);
@@ -110,7 +104,7 @@ void execute_alarm(alarm_id alarm){
 
 
 void initialize_alarm_system(int period, long *tick_pointer){
-	clock_period = period;
+	clock_period = period/MILLISECOND;
 	current_tick_ptr = tick_pointer;
 	alarm_queue = queue_new();
 	buffer_queue = queue_new();

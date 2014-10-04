@@ -12,7 +12,10 @@
 int
 thread1(int* arg) {
   while(1){
-  	printf("I'm the 1st thread!\n");
+  	int i = 0;
+    //printf("I'm the 1st thread!\n");
+    for(; i < 10000; i++);
+
   }
 
   return 0;
@@ -21,7 +24,9 @@ thread1(int* arg) {
 int
 thread2(int* arg) {
   while(1){
-  	printf("I'm the 2nd thread!\n");
+    int i = 0;
+  	//printf("I'm the 2nd thread!\n");
+    for(; i < 10000; i++);
   }
 
   return 0;

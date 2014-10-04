@@ -48,6 +48,7 @@ void semaphore_destroy(semaphore_t sem) {
 	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
 
 	while(atomic_test_and_set(&sem->destruction_lock)) {
+		set_interrupt_level(old_interrupt_level);
 		return;
 	}
 	queue_free(sem->waiting_q);

@@ -91,17 +91,12 @@ void semaphore_P(semaphore_t sem) {
 	// will re-enable at the end of this function.
 	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);	
 
-	while (atomic_test_and_set(&sem->lock)) {
-		minithread_yield();
-	}
 	if (--sem->count < 0) {
 		// Resources are not available. Thread should be added to
 		// the waiting queue.
 		queue_append(sem->waiting_q, minithread_self());
 		atomic_clear(&sem->lock);
 		minithread_stop();
-	} else {
-		atomic_clear(&sem->lock);
 	}
 
 	set_interrupt_level(old_interrupt_level);
@@ -119,18 +114,13 @@ void semaphore_V(semaphore_t sem) {
 	// TODO: is this necessary?...
 	interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
 
-	while (atomic_test_and_set(&(sem->lock))) {
-		minithread_yield();
-	};
 	if (++sem->count <= 0) {
 		// Threads are waiting on resources, so pop one off the
 		// queue and start it
 		minithread_t thread_to_start;
 		queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
 		minithread_start(thread_to_start);
-		atomic_clear(&sem->lock);
 	}
-	atomic_clear(&sem->lock);
 
 	set_interrupt_level(old_interrupt_level);
 }

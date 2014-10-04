@@ -42,6 +42,13 @@ typedef struct minithread {
 //Current running thread.
 minithread_t current_thread = NULL;
 
+//Semaphore for cleaning up only when needed.
+semaphore_t cleanup_sema = NULL;
+
+//Semaphore for thread scheduling.
+semaphore_t thread_arrived_sema = NULL;
+
+
 /*
 	Scheduler definition.
 */
@@ -66,6 +73,12 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 	s = *scheduler_ptr;
 	s->ready_queue = queue_new();
 	s->finished_queue = queue_new();
+
+	cleanup_sema 		= semaphore_create();
+	semaphore_initialize(cleanup_sema, 0);
+
+	thread_arrived_sema = semaphore_create();
+	semaphore_initialize(thread_arrived_sema, 0);
 }
 
 /*
@@ -130,10 +143,14 @@ void scheduler_switch(scheduler_t scheduler){
  */
 void minithread_free(minithread_t t);
 
+
 //Thread responsible for freeing up the zombie threads.
 int vaccum_cleaner(int *arg){
 	while(1){
 		minithread_t zombie_thread;
+
+		semaphore_P(cleanup_sema);
+
 		interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 		if(queue_dequeue(thread_scheduler->finished_queue, (void **) &zombie_thread) == 0){
@@ -149,6 +166,10 @@ int vaccum_cleaner(int *arg){
 int cleanup_proc(arg_t arg){
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);	
 	current_thread->state = FINISHED;
+
+	//Tell the vaccum_cleaner there is a thread ready to be cleaned up.
+	semaphore_V(cleanup_sema);
+
 	scheduler_switch(thread_scheduler);
 
 	//Shouldn't happen.

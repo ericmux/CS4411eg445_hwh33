@@ -323,7 +323,6 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 void wrapper_minithread_start(void *arg){
 	minithread_t t = (minithread_t) arg;
 	minithread_start(t);
-	return NULL;
 }
 
 

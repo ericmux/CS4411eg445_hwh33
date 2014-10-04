@@ -25,6 +25,8 @@ int initialize_threads(int *arg) {
 	   minithread_fork(sleepsort, &a[i]);
    }
 
+   printf("Threads forked!");
+
 	return 0;
 }
 

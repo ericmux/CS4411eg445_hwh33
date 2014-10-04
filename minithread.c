@@ -226,8 +226,9 @@ int minithread_id() {
 void minithread_stop() {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	current_thread->state = WAITING;
-	scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);
+
+	scheduler_switch(thread_scheduler);
 }
 
 void minithread_start(minithread_t t) {

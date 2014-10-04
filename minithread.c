@@ -264,8 +264,6 @@ clock_handler(void* arg)
 		deregister_alarm(alarm);
 	}
 	current_tick++;
-	printf("%lu\n", current_tick);
-	fflush(stdout);
 
 	scheduler_switch(thread_scheduler);
 	set_interrupt_level(old_level);
@@ -323,7 +321,10 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 void 
 minithread_sleep_with_timeout(int delay)
 {
-
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	register_alarm(delay, minithread_start, current_thread);
+	minithread_stop();
+	set_interrupt_level(old_level);
 }
 
 

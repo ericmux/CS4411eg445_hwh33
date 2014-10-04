@@ -91,10 +91,12 @@ void scheduler_switch(scheduler_t scheduler){
 	minithread_t thread_to_run;
 
 	do{
+		interrupt_level_t old_level;
+
 		semaphore_P(thread_arrived_sema);
 
 		//Scheduler cannot be interrupted while it's trying to decide.
-		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		old_level = set_interrupt_level(DISABLED);
 
 		int deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
 

@@ -318,11 +318,20 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 /*
  * sleep with timeout in milliseconds
  */
+
+//A wrapper for minithread_start. 
+void *wrapper_minithread_start(void *arg){
+	minithread_t t = (minithread_t) arg;
+	minithread_start(t);
+	return NULL;
+}
+
+
 void 
 minithread_sleep_with_timeout(int delay)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-	register_alarm(delay, minithread_start, current_thread);
+	register_alarm(delay, wrapper_minithread_start, current_thread);
 	minithread_stop();
 	set_interrupt_level(old_level);
 }

@@ -13,7 +13,7 @@ static int a[10] = {7,4,9,0,1,3,2,5,6,8};
 
 int
 sleepsort(int* arg) {
-  minithread_sleep_with_timout(1000*(*arg));
+  minithread_sleep_with_timeout(1000*(*arg));
   printf("%d\n", *arg);
   return 0;
 }

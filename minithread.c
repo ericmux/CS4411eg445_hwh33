@@ -134,7 +134,6 @@ void scheduler_switch(scheduler_t scheduler){
 
 			//prompts the idle loop, the scheduler will now only busy check the ready_queue for threads.
 			current_thread = NULL;
-			set_interrupt_level(ENABLED);
 		}
 	} while(1);
 	
@@ -274,11 +273,6 @@ clock_handler(void* arg)
 	scheduler_switch(thread_scheduler);
 }
 
-void print_al(void *arg){
-	printf("This is alarming.\n");
-	fflush(stdout);
-}
-
 /*
  * Initialization.
  *
@@ -306,11 +300,6 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Initialize alarm system for allowing threads to sleep.
 	initialize_alarm_system(MINITHREAD_CLOCK_PERIOD, &current_tick);
-
-	register_alarm(1000, print_al, &current_tick);
-	register_alarm(2000, print_al, &current_tick);
-	register_alarm(3000, print_al, &current_tick);
-	register_alarm(4000, print_al, &current_tick);
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);

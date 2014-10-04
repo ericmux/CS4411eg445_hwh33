@@ -173,10 +173,11 @@ int cleanup_proc(arg_t arg){
 	//Tell the vaccum_cleaner there is a thread ready to be cleaned up.
 	semaphore_V(cleanup_sema);
 
+	set_interrupt_level(old_level);
+
 	scheduler_switch(thread_scheduler);
 
 	//Shouldn't happen.
-	set_interrupt_level(old_level);
 	return -1;
 }
 

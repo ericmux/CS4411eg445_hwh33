@@ -335,8 +335,8 @@ minithread_sleep_with_timeout(int delay)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	register_alarm(delay, wrapper_minithread_start, current_thread);
-	minithread_stop();
 	set_interrupt_level(old_level);
+	minithread_stop();
 }
 
 

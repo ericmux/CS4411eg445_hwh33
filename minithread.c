@@ -125,8 +125,7 @@ void scheduler_switch(scheduler_t scheduler){
 		}
 
 		//At this point we know we won't switch this iteration, so restore interrupt level.
-		set_interrupt_level(old_level);
-
+		//set_interrupt_level(old_level); // XXX: moved to below following if bracket
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){
@@ -135,6 +134,9 @@ void scheduler_switch(scheduler_t scheduler){
 			//prompts the idle loop, the scheduler will now only busy check the ready_queue for threads.
 			current_thread = NULL;
 		}
+
+		set_interrupt_level(old_level);
+
 	} while(1);
 	
 }
@@ -219,11 +221,17 @@ minithread_t minithread_create(proc_t proc, arg_t arg) {
 }
 
 minithread_t minithread_self() {
+    //XXX: not sure if disabling interrupts is necessary
+    interrupt_level_t old_level = set_interrupt_level(DISABLED);
     return current_thread;
+    set_interrupt_level(old_level);
 }
 
 int minithread_id() {
+    //XXX: not sure if disabling interrupts is necessary
+    interrupt_level_t old_level = set_interrupt_level(DISABLED);
     return current_thread->pid;
+    set_interrupt_level(old_level);
 }
 
 void minithread_stop() {
@@ -237,7 +245,10 @@ void minithread_stop() {
 void minithread_start(minithread_t t) {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
-	if(t->state == READY  || t->state == RUNNING) return;
+	if(t->state == READY  || t->state == RUNNING) {
+            set_interrupt_level(old_level); //XXX: added this, not sure if necessary
+            return;
+        }
 	t->state = READY;
 
 	queue_append(thread_scheduler->ready_queue, t);

@@ -38,10 +38,14 @@ semaphore_t semaphore_create() {
  *      Deallocate a semaphore.
  */
 void semaphore_destroy(semaphore_t sem) {
+    interrupt_level_t old_interrupt_level;
+
+    if (sem == NULL) return;
+
     // First thing we do is disable interrupts to prevent the OS from
     // context switch while a thread is holding a semaphore lock. We
     // will re-enable at the end of this function.
-    interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
+    old_interrupt_level = set_interrupt_level(DISABLED);
 
     queue_free(sem->waiting_q);
     free(sem);

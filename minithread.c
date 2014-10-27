@@ -81,6 +81,51 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 	semaphore_initialize(thread_arrived_sema, 0);
 }
 
+
+/*
+* Try to context switch only once, return 1 (success) if it found a valid TCB to switch to, otherwise 0 (failure).
+*/
+int scheduler_switch_try_once(scheduler_t scheduler){
+	minithread_t thread_to_run;	
+
+	interrupt_level_t old_level;
+	int deq_result;
+
+	//Scheduler cannot be interrupted while it's trying to decide.
+	old_level = set_interrupt_level(DISABLED);
+
+	deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
+
+	if(deq_result == 0){
+		stack_pointer_t *oldsp_ptr; 
+
+		//Check if we're scheduling for the first time.
+		if(current_thread == NULL){
+			//Assign a dummy stack_pointer_t for the first context switch.
+			oldsp_ptr = (stack_pointer_t) malloc(sizeof(stack_pointer_t));
+		} else {
+			oldsp_ptr = &(current_thread->sp);
+
+			if(current_thread->state == FINISHED){
+				queue_append(scheduler->finished_queue, current_thread);
+			} else if(current_thread->state == RUNNING || current_thread->state == READY){
+				current_thread->state = READY;
+				queue_append(scheduler->ready_queue, current_thread);
+			}
+		}
+
+		thread_to_run->state = RUNNING;
+		current_thread = thread_to_run;
+
+		minithread_switch(oldsp_ptr, &(current_thread->sp));
+		return 1;
+	}
+
+	set_interrupt_level(old_level);
+	return 0;
+}
+
+
 /*
 * Scheduler method that makes the context switch. It adds the current TCB to the appropriate queue,
 * depending on its state and then dequeues the next TCB, switching to it. It also busy waits for new threads
@@ -92,37 +137,13 @@ void scheduler_switch(scheduler_t scheduler){
 
 	do{
 		interrupt_level_t old_level;
-		int deq_result;
+		int switch_result;
 
 		//Scheduler cannot be interrupted while it's trying to decide.
 		old_level = set_interrupt_level(DISABLED);
 
-		deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
-
-		if(deq_result == 0){
-			stack_pointer_t *oldsp_ptr; 
-
-			//Check if we're scheduling for the first time.
-			if(current_thread == NULL){
-				//Assign a dummy stack_pointer_t for the first context switch.
-				oldsp_ptr = (stack_pointer_t) malloc(sizeof(stack_pointer_t));
-			} else {
-				oldsp_ptr = &(current_thread->sp);
-
-				if(current_thread->state == FINISHED){
-					queue_append(scheduler->finished_queue, current_thread);
-				} else if(current_thread->state == RUNNING || current_thread->state == READY){
-					current_thread->state = READY;
-					queue_append(scheduler->ready_queue, current_thread);
-				}
-			}
-
-			thread_to_run->state = RUNNING;
-			current_thread = thread_to_run;
-
-			minithread_switch(oldsp_ptr, &(current_thread->sp));
-			return;
-		}
+		switch_result = scheduler_switch_try_once(scheduler);
+		if(switch_result) return;
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){
@@ -283,7 +304,7 @@ clock_handler(void* arg)
 	current_tick++;
 	set_interrupt_level(old_level);
 
-	scheduler_switch(thread_scheduler);
+	scheduler_switch_try_once(thread_scheduler);
 }
 
 /*

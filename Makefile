@@ -10,7 +10,7 @@ default: all
 #    necessary PortOS code.
 #
 # this would be a good place to add your tests
-all: test1 test2 test3 test_1000 buffer sieve retail itest1 isleepsort
+all: test1 test2 test3 test_1000 buffer sieve retail itest1 isleepsort ialarm
 
 # running "make clean" will remove all files ignored by git.  To ignore more
 # files, you should add them to the file .gitignore

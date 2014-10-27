@@ -333,13 +333,19 @@ void wrapper_minithread_start(void *arg){
 	minithread_start(t);
 }
 
+void semaphore_V_wrapper(void *semaphore_ptr) {
+        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
+        semaphore_V(semaphore);
+}
 
 void 
 minithread_sleep_with_timeout(int delay)
 {
-	semaphore_t sleep_sema = semaphore_initialize(0);
+	semaphore_t sleep_sema = semaphore_create();
 
-	register_alarm(delay, semaphore_V, sleep_sema);
+        semaphore_initialize(sleep_sema, 0);
+
+	register_alarm(delay, semaphore_V_wrapper, sleep_sema);
 	semaphore_P(sleep_sema);
 
 	semaphore_destroy(sleep_sema);

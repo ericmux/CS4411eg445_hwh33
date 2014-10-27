@@ -7,12 +7,14 @@
 #include "hashtable.h"
 
 // XXX: is changing this to a typedef okay?
-typedef struct miniport
+struct miniport
 {
     int unbound_port_number;
     int bound_port_number;  // -1 indicates no port
     struct network_address_t destination_address; //XXX: this isn't right..
-}miniport; 
+}; 
+typedef struct miniport *miniport_t;
+
 
 // The port numbers assigned to new ports.
 int current_bound_port_number;

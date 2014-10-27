@@ -98,7 +98,6 @@ void semaphore_V(semaphore_t sem) {
     // First thing we do is disable interrupts to prevent the OS from
     // context switch while a thread is holding a semaphore lock. We
     // will re-enable at the end of this function.
-    // TODO: is this necessary?...
     interrupt_level_t old_interrupt_level = set_interrupt_level(DISABLED);
 
     if (++sem->count <= 0) {
@@ -106,9 +105,7 @@ void semaphore_V(semaphore_t sem) {
         // queue and start it
         minithread_t thread_to_start;
         queue_dequeue(sem->waiting_q, (void **)&thread_to_start);
-        set_interrupt_level(old_interrupt_level);
         minithread_start(thread_to_start);
-        old_interrupt_level = set_interrupt_level(DISABLED);
     }
 
     set_interrupt_level(old_interrupt_level);

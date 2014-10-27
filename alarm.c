@@ -83,9 +83,7 @@ deregister_alarm(alarm_id alarm)
     	return 1;
     }
 
-    //TO DO: deal with alarm removal from alarm_queue.
-
-
+    
     return 0;
 }
 

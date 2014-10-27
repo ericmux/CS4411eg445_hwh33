@@ -12,6 +12,7 @@ long *current_tick_ptr;
 int clock_period = MINITHREAD_CLOCK_PERIOD; 
 
 //Priority queue for alarms.
+//Modification of this queue must be protected by disabling interrupts.
 queue_t alarm_queue;
 
 //Second buffer queue to store thread which are registered to wake up earlier.
@@ -33,6 +34,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 {
 	alarm_t p_alarm;
 	int ticks = (delay / clock_period);
+    interrupt_level_t old_level;
 
     alarm_t new_alarm = (alarm_t) malloc(sizeof(struct alarm));
     new_alarm->trigger_tick = *current_tick_ptr + ticks;
@@ -46,6 +48,9 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     //Find rightful position in the priority queue.
 
     //Remove all the alarms which will trigger earlier.
+    //First we disable interrupts as we will be modifying the alarm queue
+    old_level = set_interrupt_level(DISABLED);
+
     while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
     	queue_prepend(buffer_queue, p_alarm);
 
@@ -60,6 +65,7 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
     	queue_prepend(alarm_queue, p_alarm);
     }
 
+    set_interrupt_level(old_level);
 
     return (alarm_id) new_alarm;
 }
@@ -85,13 +91,19 @@ deregister_alarm(alarm_id alarm)
 
 alarm_id pop_alarm(){
 	alarm_t best_alarm;
-	
+    interrupt_level_t old_level;
+
+    //Disable interrupts to protect the alarm queue.
+	old_level = set_interrupt_level(DISABLED);
+
 	if(queue_dequeue(alarm_queue, (void **) &best_alarm) == 0){
 		if(best_alarm->trigger_tick > *current_tick_ptr){
 			queue_prepend(alarm_queue, best_alarm);
 			best_alarm = NULL;
 		}
 	}
+
+    set_interrupt_level(old_level);
 
 	return best_alarm;
 }

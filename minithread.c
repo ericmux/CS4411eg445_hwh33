@@ -120,12 +120,13 @@ void scheduler_switch(scheduler_t scheduler){
 			thread_to_run->state = RUNNING;
 			current_thread = thread_to_run;
 
+                        set_interrupt_level(old_level); //XXX: added this. I think we need to re-enable before context switch
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return;
 		}
 
 		//At this point we know we won't switch this iteration, so restore interrupt level.
-		//set_interrupt_level(old_level); // XXX: moved to below following if bracket
+		set_interrupt_level(old_level); // XXX: moved to below following if bracket
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){
@@ -135,7 +136,7 @@ void scheduler_switch(scheduler_t scheduler){
 			current_thread = NULL;
 		}
 
-		set_interrupt_level(old_level);
+		//set_interrupt_level(old_level);
 
 	} while(1);
 	
@@ -274,6 +275,7 @@ clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	alarm_id alarm = pop_alarm();
+        //printf("clock_handler called\n");
 	if(alarm != NULL){
 		execute_alarm(alarm);
 		deregister_alarm(alarm);

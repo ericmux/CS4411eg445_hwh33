@@ -222,17 +222,19 @@ minithread_t minithread_create(proc_t proc, arg_t arg) {
 }
 
 minithread_t minithread_self() {
-    //XXX: not sure if disabling interrupts is necessary
+    minithread_t self;
     interrupt_level_t old_level = set_interrupt_level(DISABLED);
-    return current_thread;
+    self = current_thread;
     set_interrupt_level(old_level);
+    return self;
 }
 
 int minithread_id() {
-    //XXX: not sure if disabling interrupts is necessary
+    int pid;
     interrupt_level_t old_level = set_interrupt_level(DISABLED);
-    return current_thread->pid;
+    pid = current_thread->pid;
     set_interrupt_level(old_level);
+    return pid;
 }
 
 void minithread_stop() {
@@ -275,7 +277,6 @@ clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	alarm_id alarm = pop_alarm();
-        //printf("clock_handler called\n");
 	if(alarm != NULL){
 		execute_alarm(alarm);
 		deregister_alarm(alarm);

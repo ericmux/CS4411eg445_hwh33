@@ -152,9 +152,6 @@ void scheduler_switch(scheduler_t scheduler){
 				set_interrupt_level(old_level);
 				return;
 			}
-
-			//prompts the idle loop, the scheduler will now only busy check the ready_queue for threads.
-			//current_thread = NULL;
 		}
 
 		set_interrupt_level(old_level);

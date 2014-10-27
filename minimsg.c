@@ -47,7 +47,7 @@ miniport_create_unbound(int port_number)
     new_miniport->unbound_port_number = port_number;
     // We are just setting this port up for listening, so the following are NULL.
     new_miniport->bound_port_number = -1;
-    new_miniport->destination_address = NULL;
+    //new_miniport->destination_address = NULL;
 
     return new_miniport;
 }
@@ -75,7 +75,7 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
 
     // Set up our destination address and port number.
     new_miniport->unbound_port_number = remote_unbound_port_number;
-    new_miniport->destination_address = addr;
+    //new_miniport->destination_address = addr;
     // Set the bound port to use for sending.
     new_miniport->bound_port_number = current_bound_port_number;
 

@@ -120,23 +120,22 @@ void scheduler_switch(scheduler_t scheduler){
 			thread_to_run->state = RUNNING;
 			current_thread = thread_to_run;
 
-                        set_interrupt_level(old_level); //XXX: added this. I think we need to re-enable before context switch
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return;
 		}
 
-		//At this point we know we won't switch this iteration, so restore interrupt level.
-		set_interrupt_level(old_level); // XXX: moved to below following if bracket
-
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){
-			if(current_thread->state == RUNNING) return;
+			if(current_thread->state == RUNNING){
+				set_interrupt_level(old_level);
+				return;
+			}
 
 			//prompts the idle loop, the scheduler will now only busy check the ready_queue for threads.
 			current_thread = NULL;
 		}
 
-		//set_interrupt_level(old_level);
+		set_interrupt_level(old_level);
 
 	} while(1);
 	

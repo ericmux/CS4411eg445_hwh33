@@ -132,9 +132,7 @@ int scheduler_switch_try_once(scheduler_t scheduler){
 * to become ready, releasing them from the blocked queue if necessary.
 */
 void scheduler_switch(scheduler_t scheduler){
-
-	minithread_t thread_to_run;
-
+	
 	do{
 		interrupt_level_t old_level;
 		int switch_result;

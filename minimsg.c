@@ -9,33 +9,45 @@
 #include "interrupts.h"  //TODO: protect shared data by disabling interrupts
 #include "network.h" 
 #include "synch.h"
+#include "queue.h"
 
 typedef enum {BOUND, UNBOUND} port_classification;
+
+typedef struct mailbox {
+    semaphore_t available_messages_sema;
+    queue_t received_messages;
+} mailbox;
+
+typedef struct destination_data {
+    network_address_t destination_address;
+    int destination_port;
+} destination_data;
 
 typedef struct miniport
 {
     port_classification port_type;
-    unsigned int bound_port_number; // 0 indicates no bound port
-    unsigned int unbound_port_number;
     union {
-        // bound ports need a destination address
-        network_address_t destination_address;
-        // while unbound ports only need a blocking semaphore
-        semaphore_t available_messages_sema;
+        // bound ports need destination data
+        destination_data *destination_data;
+        // while unbound ports need a mailbox
+        mailbox *mailbox;
     } port_data;
-}miniport; 
+} miniport; 
 
 // The port numbers assigned to new ports.
 int current_bound_port_number;
 
-// If a port number is in unavailable_bound_ports, then
+// The port tables map port numbers to miniport_t's.
+// If a port number is in bound_ports_table, then
 // it is currently being used.
-// NOTE: access to  this table must be protected from
+// NOTE: access to these tables must be protected from
 // interrupts!
-hashtable_t unavailable_bound_ports;
+hashtable_t bound_ports_table;
+hashtable_t unbound_ports_table;
 
 // A helper function to get the next available bound port number.
 // Returns -1 if no bound ports are available. XXX: possibly change
+// TODO: diable interrupts here, right?
 int get_next_bound_pn() {
     // We count the number of loops to ensure that we don't check for the 
     // same port number twice.
@@ -44,7 +56,7 @@ int get_next_bound_pn() {
     int num_ports = 65535 - 32767;
     int num_loops = 0;
     while (num_loops < num_ports
-           && hashtable_key_exists(unavailable_bound_ports, current_bound_port_number))
+           && hashtable_key_exists(bound_ports_table, current_bound_port_number))
     {
         current_bound_port_number++;
         if (current_bound_port_number > 65535) {
@@ -57,6 +69,23 @@ int get_next_bound_pn() {
     if (num_loops >= num_ports) return -1; // no ports were available
     
     return current_bound_port_number; 
+}
+
+// Pack a mini_header and return the mini_header_t
+// Protocol is assumed to be PROTOCOL_MINIDATAGRAM.
+// All port numbers are assumed to be valid.
+mini_header_t pack_header(network_address_t source_address, int source_port,
+                          network_address_t dest_address, int dest_port)
+{
+    miniheader_t new_header = (miniheader_t)malloc(sizeof(miniheader));
+
+    new_header->protocol = PROTOCOL_MINIDATAGRAM;
+    new_header->source_address = pack_address(source_address);
+    new_header->source_port = pack_unsigned_int((unsigned int) source_port);
+    new_header->destination_address = pack_address(dest_address);
+    new_header->destination_port = pack_unsigned_int((unsigned int) dest_port);
+
+    return new_header;
 }
 
 /* performs any required initialization of the minimsg layer.
@@ -79,20 +108,37 @@ miniport_t
 miniport_create_unbound(int port_number)
 {
     miniport_t new_miniport;
+    mailbox *new_mailbox;
     semaphore_t new_available_messages_sema;
+    queue_t new_received_messages_q;
 
-    new_miniport = (miniport_t) malloc(sizeof(miniport));
-
-    // Port numbers outside of this range are invalid.
+    // Check for a bad port_number. Port numbers outside of this range are invalid.
     if (port_number < 0 || port_number > 32767) return NULL;
 
+    // Check if a miniport at this port number has already been created. If so,
+    // return that miniport. hashtable_get returns 0 on success and stores the
+    // pointer found in the table at the address of the 3rd argument.
+    if (hashtable_get(unbound_port_table, port_number, &new_miniport) == 0) {
+        return new_miniport; // it's not actually new
+    }
+
+    // If we're here, then we need to create a new miniport.
+    // First thing we do is set up the new miniport's mailbox.
     new_available_messages_sema = semaphore_create();
     semaphore_initialize(new_available_messages_sema, 0);
+    new_received_messages_q = queue_create();
+    
+    new_mailbox = (mailbox *)malloc(sizeof(mailbox));
+    mailbox->available_messages_sema = new_available_messages_sema;
+    mailbox->received_messages_q = new_received_messages_q;
 
+    // Now we initialize the new miniport.
+    new_miniport = (miniport_t) malloc(sizeof(miniport));
     new_miniport->port_type = UNBOUND;
-    new_miniport->bound_port_number = 0;
-    new_miniport->unbound_port_number = port_number;
-    new_miniport->port_data.available_messages_sema = new_available_messages_sema; 
+    new_miniport->port_data.mailbox = new_mailbox; 
+
+    // Before we return, we store the new miniport in the unbound port table.
+    unbound_port_table = hashtable_put(unbound_port_table, port_number, miniport_t); 
 
     return new_miniport;
 }
@@ -109,18 +155,31 @@ miniport_t
 miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
 {
     miniport_t new_miniport;
+    destination_data *new_destination_data;
+    int bound_port_number;
 
+    // Check for NULL input or a bad remote_unbound_port_number.
+    if (addr == NULL 
+        || remote_unbound_port_number < 0 || remote_unbound_port_number > 32767) {
+        return NULL;
+    }
+
+    // The first thing we do is set up the port's destination data.
+    new_destination_data = (destination data *)malloc(sizeof(destination data));
+    network_address_copy(addr, new_destination_data->destination_address);
+    destination_data->destination_port = remote_unbound_port_number;
+
+    // Now we initialize the new miniport.
     new_miniport = (miniport_t)malloc(sizeof(miniport));
-    
-    new_miniport->port_type = BOUND;
-    new_miniport->bound_port_number = get_next_bound_pn();
-    new_miniport->unbound_port_number = remote_unbound_port_number;
-    network_address_copy(addr, miniport->port_data.destination_address);
+    new_miniport->port_type = BOUND
+    new_miniport->port_data.destination_data = new_destination_data;
 
-    // Make the bound port number unavailable to other miniports.
-    unavailable_bound_ports = hashtable_put(unavailable_bound_ports, current_bound_port_number);
+    // Before we return, we get a bound port number and put the port in the bound port table.
+    // This also makes the port number unavailable to other miniports.
+    bound_port_number = get_next_bound_pn();
+    bound_port_table = hashtable_put(bound_port_table, bound_port_number);
 
-    return 0;
+    return new_miniport;
 }
 
 /* Destroys a miniport and frees up its resources. If the miniport was in use at
@@ -129,13 +188,16 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
 void
 miniport_destroy(miniport_t miniport)
 {
-    if (miniport->port_type == BOUND) {
-        // If this was a bound port, make its bound port number available.
-        hashtable_remove(unavailable_bound_ports, miniport->bound_port_number);
-        // XXX: what do to about miniport->data.destination_address?
+    // Check for NULL input.
+    if (miniport == NULL) return;
+
+    if (miniport->port_type == UNBOUND) {
+        semaphore_destore(miniport->port_data.mailbox->available_messages_sema);
+        queue_free(miniport->port_data.mailbox->received_messages_q);
+        // TODO: remove from unbound ports table, but check for others using pn - not dire but should be done    
     } else {
-        // If this was an unbound port, free its semaphore.
-        semaphore_destroy(miniport->port_data.available_messages_sema);
+        // XXX: what to do about destination address?
+        // TODO: remove from bound ports table - this is important!!
     }  
 
     free(miniport);
@@ -153,6 +215,29 @@ miniport_destroy(miniport_t miniport)
 int
 minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg_t msg, int len)
 {
+    char *msg_header;
+
+    // Check for NULL inputs.
+    if (local_unbound_port == NULL || local_bound_port == NULL || msg == NULL) {
+        return 0;
+    }
+
+    // If any of the input arguments are incorrect, the message does not get sent.
+    if (local_unbound_port->port_type != UNBOUND 
+        || local_bound_port->port_type != BOUND
+        || len > MAX_NETWORK_PACKET_SIZE) {
+        return 0;
+    }
+
+    // Pack our header using data from the local bound port.
+    // TODO: somehow need to get PN from local_unbound_port for source port
+    // TODO: use network_get_my_address to get source address
+    // XXX: this casting seems weird...
+    msg_header = (char *)pack_header(,
+                                     , 
+                                     local_bound_port->port_data.destination_data->destination_address,
+                                     local_bound_port->port_data.destination_data->destination_port);
+
     return 0;
 }
 

@@ -1,409 +1,409 @@
-// /*
-//  * network.c:
-//  *      This module paints the unix socket interface a pretty color.
-//  */
+/*
+ * network.c:
+ *      This module paints the unix socket interface a pretty color.
+ */
 
-// #include <string.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <sys/socket.h>
-// #include <netdb.h>
-// #include <arpa/inet.h>
-// #include <pthread.h>
-// #include <signal.h>
-// #include <unistd.h>
-// #include <ctype.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <signal.h>
+#include <unistd.h>
+#include <ctype.h>
 
-// #include "defs.h"
-// #include "network.h"
-// #include "interrupts_private.h"
-// #include "minithread.h"
-// #include "random.h"
+#include "defs.h"
+#include "network.h"
+#include "interrupts_private.h"
+#include "minithread.h"
+#include "random.h"
 
-// #define BCAST_ENABLED 0
-// #define BCAST_USE_TOPOLOGY_FILE 0
-// #define BCAST_ADDRESS "192.168.1.255"
-// #define BCAST_LOOPBACK 0
-// #define BCAST_TOPOLOGY_FILE "topology.txt"
+#define BCAST_ENABLED 0
+#define BCAST_USE_TOPOLOGY_FILE 0
+#define BCAST_ADDRESS "192.168.1.255"
+#define BCAST_LOOPBACK 0
+#define BCAST_TOPOLOGY_FILE "topology.txt"
 
-// #define BCAST_MAX_LINE_LEN 128
-// #define BCAST_MAX_ENTRIES 64
-// #define BCAST_MAX_NAME_LEN 64
+#define BCAST_MAX_LINE_LEN 128
+#define BCAST_MAX_ENTRIES 64
+#define BCAST_MAX_NAME_LEN 64
 
-// #define MINIMSG_PORT 8086
+#define MINIMSG_PORT 8086
 
-// #define NETWORK_INTERRUPT_TYPE 2
+#define NETWORK_INTERRUPT_TYPE 2
 
-// /*******************************************************************************
-// *  Private types and functions                                                 *
-// *******************************************************************************/
+/*******************************************************************************
+*  Private types and functions                                                 *
+*******************************************************************************/
 
-// typedef struct {
-//   char name[BCAST_MAX_NAME_LEN];
-//   network_address_t addr;
-//   int links[BCAST_MAX_ENTRIES];
-//   int n_links;
-// } bcast_entry_t;
+typedef struct {
+  char name[BCAST_MAX_NAME_LEN];
+  network_address_t addr;
+  int links[BCAST_MAX_ENTRIES];
+  int n_links;
+} bcast_entry_t;
 
-// typedef struct {
-//   int n_entries;
-//   bcast_entry_t entries[BCAST_MAX_ENTRIES];
-//   int me;
-// } bcast_t;
-
-
-// bcast_t topology;
-
-// short my_udp_port = MINIMSG_PORT;
-// short other_udp_port = MINIMSG_PORT;
-
-// double loss_rate = 0.0;
-// double duplication_rate = 0.0;
-// int synthetic_network = 0;
+typedef struct {
+  int n_entries;
+  bcast_entry_t entries[BCAST_MAX_ENTRIES];
+  int me;
+} bcast_t;
 
 
-// struct address_info {
-//   int sock;
-//   struct sockaddr_in sin;
-//   char pkt[MAX_NETWORK_PKT_SIZE];
-// };
+bcast_t topology;
 
-// struct address_info if_info;
-// static network_address_t broadcast_addr = { 0 };
+short my_udp_port = MINIMSG_PORT;
+short other_udp_port = MINIMSG_PORT;
 
-// /* forward definition */
-// void start_network_poll(interrupt_handler_t, int*);
-// void network_address_to_sockaddr(network_address_t addr, struct sockaddr_in* sin);
-// void sockaddr_to_network_address(struct sockaddr_in* sin, network_address_t addr);
+double loss_rate = 0.0;
+double duplication_rate = 0.0;
+int synthetic_network = 0;
 
-// /* zero the address, so as to make it invalid */
-// void network_address_blankify(network_address_t addr) {
-//    addr[0]=addr[1]=0;
-// }
 
-// /** Copy address "original" to address "copy". */
-// void
-// network_address_copy(network_address_t original, network_address_t copy) {
-//   copy[0] = original[0];
-//   copy[1] = original[1];
-// }
+struct address_info {
+  int sock;
+  struct sockaddr_in sin;
+  char pkt[MAX_NETWORK_PKT_SIZE];
+};
 
-// /* Compare addresses. Return 1 if same, 0 if different. */
-// int
-// network_address_same(network_address_t a, network_address_t b) {
-//   return (a[0] == b[0] && a[1] == b[1]);
-// }
+struct address_info if_info;
+static network_address_t broadcast_addr = { 0 };
 
-// void
-// network_printaddr(network_address_t addr) {
-//   char name[40];
-//   network_format_address(addr, name, 40);
-//   printf("%s", name);
-// }
+/* forward definition */
+void start_network_poll(interrupt_handler_t, int*);
+void network_address_to_sockaddr(network_address_t addr, struct sockaddr_in* sin);
+void sockaddr_to_network_address(struct sockaddr_in* sin, network_address_t addr);
 
-// static int
-// send_pkt(network_address_t dest_address, 
-//          int hdr_len, char* hdr, 
-//          int data_len, char* data) {
-//   int cc;
-//   struct sockaddr_in sin;
-//   char* bufp;
-//   int sz, pktlen;
-  
-//   pktlen = hdr_len + data_len;
-  
-//   /* sanity checks */
-//   if (hdr_len < 0 || data_len < 0 || pktlen > MAX_NETWORK_PKT_SIZE)
-//     return 0;
-  
-//   /*
-//    * Pull up the headers and data and stuff them into the output
-//    * packet with the
-//    * field sizes embedded.
-//    */
-  
-//   bufp = if_info.pkt;
-  
-//   sz = hdr_len;
-//   memcpy(bufp, hdr, sz);
-//   bufp += sz;
-  
-//   sz = data_len;
-//   memcpy(bufp, data, sz);
-//   bufp += sz;
-  
-//   network_address_to_sockaddr(dest_address, &sin);
-//   cc = sendto(if_info.sock,
-//               if_info.pkt,
-//               pktlen,
-//               0,
-//               (struct sockaddr *) &sin,
-//               sizeof(sin));
-  
-//   return cc;
-// }
+/* zero the address, so as to make it invalid */
+void network_address_blankify(network_address_t addr) {
+   addr[0]=addr[1]=0;
+}
 
-// int 
-// network_send_pkt(network_address_t dest_address, int hdr_len, 
-//                  char* hdr, int data_len, char* data) {
+/** Copy address "original" to address "copy". */
+void
+network_address_copy(network_address_t original, network_address_t copy) {
+  copy[0] = original[0];
+  copy[1] = original[1];
+}
 
-//   if (synthetic_network) {
-//     if(genrand() < loss_rate)
-//       return (hdr_len+data_len);
+/* Compare addresses. Return 1 if same, 0 if different. */
+int
+network_address_same(network_address_t a, network_address_t b) {
+  return (a[0] == b[0] && a[1] == b[1]);
+}
 
-//     if(genrand() < duplication_rate)
-//       send_pkt(dest_address, hdr_len, hdr, data_len, data);
-//   }
+void
+network_printaddr(network_address_t addr) {
+  char name[40];
+  network_format_address(addr, name, 40);
+  printf("%s", name);
+}
 
-//   return send_pkt(dest_address, hdr_len, hdr, data_len, data);
-// }
+static int
+send_pkt(network_address_t dest_address, 
+         int hdr_len, char* hdr, 
+         int data_len, char* data) {
+  int cc;
+  struct sockaddr_in sin;
+  char* bufp;
+  int sz, pktlen;
 
-// void
-// network_get_my_address(network_address_t my_address) {
-//   char hostname[64];
-//   assert(gethostname(hostname, 64) == 0);
-//   network_translate_hostname(hostname, my_address);
-//   my_address[1] = htons(my_udp_port);
-// }
+  pktlen = hdr_len + data_len;
 
-// int
-// network_translate_hostname(char* hostname, network_address_t address) {
-//   struct hostent* host;
-//   unsigned int iaddr;
-//   //printf("resolving name %s\n",hostname);
-//   if(isalpha(hostname[0])) {
-//           host = gethostbyname(hostname);
-//           if (host == NULL)
-//                 return -1;
-//           else {
-//                 address[0] = *((int *) host->h_addr);
-//                 address[1] = htons(other_udp_port);
-//                 //printf("address[0] = %x",address[0]);
-//                 //printf("address[1] = %x",address[1]);
-//                 return 0;
-//           }
-//   }
-//   else {
-//           iaddr = inet_addr(hostname);
-//           //printf("iaddr = %x\n",iaddr);
-//           address[0] = iaddr;
-//           address[1] = htons(other_udp_port);
-//           return 0;
-//    }  
-// }
+  /* sanity checks */
+  if (hdr_len < 0 || data_len < 0 || pktlen > MAX_NETWORK_PKT_SIZE)
+    return 0;
 
-// int 
-// network_compare_network_addresses(network_address_t addr1,
-//                                   network_address_t addr2){
-//   return (addr1[0]==addr2[0] && addr1[1]==addr2[1]);
-// }
+  /*
+   * Pull up the headers and data and stuff them into the output
+   * packet with the
+   * field sizes embedded.
+   */
 
-// void
-// sockaddr_to_network_address(struct sockaddr_in* sin, network_address_t addr) {
-//   addr[0] = sin->sin_addr.s_addr;
-//   addr[1] = sin->sin_port;
-// }
+  bufp = if_info.pkt;
 
-// void
-// network_address_to_sockaddr(network_address_t addr, struct sockaddr_in* sin) {
-//   memset(sin, 0, sizeof(*sin));
-//   sin->sin_addr.s_addr = addr[0];
-//   sin->sin_port = (short)addr[1];
-//   sin->sin_family = SOCK_DGRAM;
-// }
+  sz = hdr_len;
+  memcpy(bufp, hdr, sz);
+  bufp += sz;
 
-// int 
-// network_format_address(network_address_t address, char* string, int length) {
-//   struct in_addr ipaddr;
-//   char* textaddr;
-//   int addrlen;
-  
-//   ipaddr.s_addr = address[0];
-//   textaddr = inet_ntoa(ipaddr);
-//   addrlen = strlen(textaddr);
+  sz = data_len;
+  memcpy(bufp, data, sz);
+  bufp += sz;
 
-//   if (length >= addrlen + 5) {
-//     strcpy(string, textaddr);
-//     string[addrlen] = ':';
-//     sprintf(string+addrlen+1, "%d", ntohs((short) address[1]));
-//     return 0;
-//   }
-//   else 
-//     return -1;
-// }
+  network_address_to_sockaddr(dest_address, &sin);
+  cc = sendto(if_info.sock,
+              if_info.pkt,
+              pktlen,
+              0,
+              (struct sockaddr *) &sin,
+              sizeof(sin));
 
-// void
-// network_udp_ports(short myportnum, short otherportnum) {
-//   my_udp_port = myportnum;
-//   other_udp_port = otherportnum;
-// }
+  return cc;
+}
 
-// void
-// network_synthetic_params(double loss, double duplication) {
-//   synthetic_network = 1;        
-//   loss_rate = loss;
-//   duplication_rate = duplication;
-// }
+int 
+network_send_pkt(network_address_t dest_address, int hdr_len, 
+                 char* hdr, int data_len, char* data) {
 
-// void
-// bcast_initialize(char* configfile, bcast_t* bcast) {
-//   FILE* config = fopen(configfile, "r");
-//   char line[BCAST_MAX_LINE_LEN];
-//   int i = 0;
-//   char* rv;
-//   network_address_t my_addr;
-//   unsigned int my_ip_addr;
+  if (synthetic_network) {
+    if(genrand() < loss_rate)
+      return (hdr_len+data_len);
 
-//   network_get_my_address(my_addr);
-//   my_ip_addr = my_addr[0];
+    if(genrand() < duplication_rate)
+      send_pkt(dest_address, hdr_len, hdr, data_len, data);
+  }
 
-//   while ((rv = fgets(line, BCAST_MAX_LINE_LEN, config)) != NULL) {
-//     if (line[0] == '\r' || line[0] == '\n')
-//       break;
-//         line[strlen(line)-1] = '\0';
-//     strcpy(bcast->entries[i].name, line);
-//     bcast->entries[i].n_links = 0;
-//     if (network_translate_hostname(line, bcast->entries[i].addr) != 0) {
-//       kprintf("Error: could not resolve hostname %s.\n", line);
-//       AbortOnCondition(1,"Crashing.");
-//     }
-//     if (bcast->entries[i].addr[0] == my_ip_addr)
-//       bcast->me = i;
-//     i++;
-//   }
+  return send_pkt(dest_address, hdr_len, hdr, data_len, data);
+}
 
-//   bcast->n_entries = i;
-  
+void
+network_get_my_address(network_address_t my_address) {
+  char hostname[64];
+  assert(gethostname(hostname, 64) == 0);
+  network_translate_hostname(hostname, my_address);
+  my_address[1] = htons(my_udp_port);
+}
 
-//   if (rv != NULL)
-//     for (i=0; i<bcast->n_entries; i++) {
-//       int j;
-//       AbortOnCondition(fgets(line, BCAST_MAX_LINE_LEN, config) == NULL,
-//                        "Error: incomplete adjacency matrix.");
+int
+network_translate_hostname(char* hostname, network_address_t address) {
+  struct hostent* host;
+  unsigned int iaddr;
+  //printf("resolving name %s\n",hostname);
+  if(isalpha(hostname[0])) {
+          host = gethostbyname(hostname);
+          if (host == NULL)
+                return -1;
+          else {
+                address[0] = *((int *) host->h_addr);
+                address[1] = htons(other_udp_port);
+                //printf("address[0] = %x",address[0]);
+                //printf("address[1] = %x",address[1]);
+                return 0;
+          }
+  }
+  else {
+          iaddr = inet_addr(hostname);
+          //printf("iaddr = %x\n",iaddr);
+          address[0] = iaddr;
+          address[1] = htons(other_udp_port);
+          return 0;
+   }  
+}
 
-//       for (j=0; j<bcast->n_entries; j++)
-//         if (i == j)
-//           ; /* avoid self-links */
-//         else if (line[j] != '.') {
-//           bcast->entries[i].links[bcast->entries[i].n_links] = j;
-//           bcast->entries[i].n_links++;
-//         }         
-//     }
+int 
+network_compare_network_addresses(network_address_t addr1,
+                                  network_address_t addr2){
+  return (addr1[0]==addr2[0] && addr1[1]==addr2[1]);
+}
 
-//   fclose(config);
-// }
+void
+sockaddr_to_network_address(struct sockaddr_in* sin, network_address_t addr) {
+  addr[0] = sin->sin_addr.s_addr;
+  addr[1] = sin->sin_port;
+}
 
-// int
-// hostname_to_entry(bcast_t* bcast, char* hostname) {
-//   network_address_t addr;
-//   unsigned int ipaddr;
-//   int entry = -1;
-//   int i;
+void
+network_address_to_sockaddr(network_address_t addr, struct sockaddr_in* sin) {
+  memset(sin, 0, sizeof(*sin));
+  sin->sin_addr.s_addr = addr[0];
+  sin->sin_port = (short)addr[1];
+  sin->sin_family = SOCK_DGRAM;
+}
 
-//   if (hostname == NULL)
-//     return bcast->me;
+int 
+network_format_address(network_address_t address, char* string, int length) {
+  struct in_addr ipaddr;
+  char* textaddr;
+  int addrlen;
 
-//   if (network_translate_hostname(hostname, addr) != 0) {
-//     kprintf("Error: could not resolve host name.\n");
-//       AbortOnCondition(1,"Crashing.");
-//   }
+  ipaddr.s_addr = address[0];
+  textaddr = inet_ntoa(ipaddr);
+  addrlen = strlen(textaddr);
 
-//   ipaddr = addr[0];
+  if (length >= addrlen + 5) {
+    strcpy(string, textaddr);
+    string[addrlen] = ':';
+    sprintf(string+addrlen+1, "%d", ntohs((short) address[1]));
+    return 0;
+  }
+  else 
+    return -1;
+}
 
-//   for (i=0; i<bcast->n_entries; i++)
-//     if (ipaddr == bcast->entries[i].addr[0])
-//       entry = i;
+void
+network_udp_ports(short myportnum, short otherportnum) {
+  my_udp_port = myportnum;
+  other_udp_port = otherportnum;
+}
 
-//   AbortOnCondition(entry == -1,
-//                    "Error: host name not in broadcast table.");
+void
+network_synthetic_params(double loss, double duplication) {
+  synthetic_network = 1;        
+  loss_rate = loss;
+  duplication_rate = duplication;
+}
 
-//   return entry;
-// }
+void
+bcast_initialize(char* configfile, bcast_t* bcast) {
+  FILE* config = fopen(configfile, "r");
+  char line[BCAST_MAX_LINE_LEN];
+  int i = 0;
+  char* rv;
+  network_address_t my_addr;
+  unsigned int my_ip_addr;
 
-// void
-// bcast_add_link(bcast_t* bcast, char* src, char* dest) {
-//   int srcnum, destnum;
-//   int i;
+  network_get_my_address(my_addr);
+  my_ip_addr = my_addr[0];
 
-//   srcnum = hostname_to_entry(bcast, src);
-//   destnum = hostname_to_entry(bcast, dest);
+  while ((rv = fgets(line, BCAST_MAX_LINE_LEN, config)) != NULL) {
+    if (line[0] == '\r' || line[0] == '\n')
+      break;
+        line[strlen(line)-1] = '\0';
+    strcpy(bcast->entries[i].name, line);
+    bcast->entries[i].n_links = 0;
+    if (network_translate_hostname(line, bcast->entries[i].addr) != 0) {
+      kprintf("Error: could not resolve hostname %s.\n", line);
+      AbortOnCondition(1,"Crashing.");
+    }
+    if (bcast->entries[i].addr[0] == my_ip_addr)
+      bcast->me = i;
+    i++;
+  }
 
-//   for (i=0; i<bcast->entries[srcnum].n_links; i++)
-//     if (bcast->entries[srcnum].links[i] == destnum)
-//       return;
+  bcast->n_entries = i;
 
-//   bcast->entries[srcnum].links[bcast->entries[srcnum].n_links++] = destnum;
-// }
 
-// void
-// bcast_remove_link(bcast_t* bcast, char* src, char* dest) {
-//   int srcnum, destnum;
-//   int i;
+  if (rv != NULL)
+    for (i=0; i<bcast->n_entries; i++) {
+      int j;
+      AbortOnCondition(fgets(line, BCAST_MAX_LINE_LEN, config) == NULL,
+                       "Error: incomplete adjacency matrix.");
 
-//   srcnum = hostname_to_entry(bcast, src);
-//   destnum = hostname_to_entry(bcast, dest);
+      for (j=0; j<bcast->n_entries; j++)
+        if (i == j)
+          ; /* avoid self-links */
+        else if (line[j] != '.') {
+          bcast->entries[i].links[bcast->entries[i].n_links] = j;
+          bcast->entries[i].n_links++;
+        }         
+    }
 
-//   for (i=0; i<bcast->entries[srcnum].n_links; i++)
-//     if (bcast->entries[srcnum].links[i] == destnum) {
-//       if (i < bcast->entries[srcnum].n_links-1) {
-//         bcast->entries[srcnum].links[i] = 
-//           bcast->entries[srcnum].links[--bcast->entries[srcnum].n_links];
-//         break;
-//       }
-//       else
-//         bcast->entries[srcnum].n_links--;
-//     }  
-// }
+  fclose(config);
+}
 
-// int
-// network_bcast_pkt(int hdr_len, char* hdr, int data_len, char* data) {
-//   int i;
-//   int me;
+int
+hostname_to_entry(bcast_t* bcast, char* hostname) {
+  network_address_t addr;
+  unsigned int ipaddr;
+  int entry = -1;
+  int i;
 
-//   AbortOnCondition(!BCAST_ENABLED,
-//                    "Error: network broadcast not enabled.");
-  
-//   if (BCAST_USE_TOPOLOGY_FILE){
+  if (hostname == NULL)
+    return bcast->me;
 
-//     me = topology.me;
-    
-//     for (i=0; i<topology.entries[me].n_links; i++) {
-//       int dest = topology.entries[me].links[i];
-      
-//       if (synthetic_network) {
-//         if(genrand() < loss_rate)
-//           continue;
-        
-//         if(genrand() < duplication_rate)
-//           send_pkt(topology.entries[dest].addr, hdr_len, hdr, data_len, data);
-//       }
-      
-//       if (send_pkt(topology.entries[dest].addr, 
-//                    hdr_len, hdr, data_len, data) != hdr_len + data_len)
-//         return -1;
-//     }
+  if (network_translate_hostname(hostname, addr) != 0) {
+    kprintf("Error: could not resolve host name.\n");
+      AbortOnCondition(1,"Crashing.");
+  }
 
-//     if (BCAST_LOOPBACK) {
-//       if (send_pkt(topology.entries[me].addr, 
-//                    hdr_len, hdr, data_len, data) != hdr_len + data_len)
-//         return -1;
-//     }
-  
-//   } else { /* real broadcast */
+  ipaddr = addr[0];
 
-//     /* send the packet using the private network broadcast address */
-//     if (send_pkt(broadcast_addr, 
-//                  hdr_len, hdr, data_len, data) != hdr_len + data_len)
-//       return -1;
+  for (i=0; i<bcast->n_entries; i++)
+    if (ipaddr == bcast->entries[i].addr[0])
+      entry = i;
 
-//   }
-//   return hdr_len+data_len;
-// }
+  AbortOnCondition(entry == -1,
+                   "Error: host name not in broadcast table.");
 
-// void
-// network_add_bcast_link(char* src, char* dest) {
-//   bcast_add_link(&topology, src, dest);
-// }
+  return entry;
+}
+
+void
+bcast_add_link(bcast_t* bcast, char* src, char* dest) {
+  int srcnum, destnum;
+  int i;
+
+  srcnum = hostname_to_entry(bcast, src);
+  destnum = hostname_to_entry(bcast, dest);
+
+  for (i=0; i<bcast->entries[srcnum].n_links; i++)
+    if (bcast->entries[srcnum].links[i] == destnum)
+      return;
+
+  bcast->entries[srcnum].links[bcast->entries[srcnum].n_links++] = destnum;
+}
+
+void
+bcast_remove_link(bcast_t* bcast, char* src, char* dest) {
+  int srcnum, destnum;
+  int i;
+
+  srcnum = hostname_to_entry(bcast, src);
+  destnum = hostname_to_entry(bcast, dest);
+
+  for (i=0; i<bcast->entries[srcnum].n_links; i++)
+    if (bcast->entries[srcnum].links[i] == destnum) {
+      if (i < bcast->entries[srcnum].n_links-1) {
+        bcast->entries[srcnum].links[i] = 
+          bcast->entries[srcnum].links[--bcast->entries[srcnum].n_links];
+        break;
+      }
+      else
+        bcast->entries[srcnum].n_links--;
+    }  
+}
+
+int
+network_bcast_pkt(int hdr_len, char* hdr, int data_len, char* data) {
+  int i;
+  int me;
+
+  AbortOnCondition(!BCAST_ENABLED,
+                   "Error: network broadcast not enabled.");
+
+  if (BCAST_USE_TOPOLOGY_FILE){
+
+    me = topology.me;
+ 
+    for (i=0; i<topology.entries[me].n_links; i++) {
+      int dest = topology.entries[me].links[i];
+   
+      if (synthetic_network) {
+        if(genrand() < loss_rate)
+          continue;
+     
+        if(genrand() < duplication_rate)
+          send_pkt(topology.entries[dest].addr, hdr_len, hdr, data_len, data);
+      }
+   
+      if (send_pkt(topology.entries[dest].addr, 
+                   hdr_len, hdr, data_len, data) != hdr_len + data_len)
+        return -1;
+    }
+
+    if (BCAST_LOOPBACK) {
+      if (send_pkt(topology.entries[me].addr, 
+                   hdr_len, hdr, data_len, data) != hdr_len + data_len)
+        return -1;
+    }
+
+  } else { /* real broadcast */
+
+    /* send the packet using the private network broadcast address */
+    if (send_pkt(broadcast_addr, 
+                 hdr_len, hdr, data_len, data) != hdr_len + data_len)
+      return -1;
+
+  }
+  return hdr_len+data_len;
+}
+
+void
+network_add_bcast_link(char* src, char* dest) {
+  bcast_add_link(&topology, src, dest);
+}
 
 // void
 // network_remove_bcast_link(char* src, char* dest) {

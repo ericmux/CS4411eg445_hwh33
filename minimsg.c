@@ -8,59 +8,55 @@
 #include "hashtable.h"
 #include "interrupts.h"  //TODO: protect shared data by disabling interrupts
 #include "network.h" 
+#include "synch.h"
 
-// Both port numbers need to be at least 15 bits. We make them 16 so
-// that they are word-alligned. PN = Port Number.
-#define BITS_PER_PORT_NUMBER 16
-// By dimensional analysis: (bits / PN) * (bytes / bit) = (bytes / PN)
-#define BYTES_PER_PN_BUFFER (BITS_PER_PORT_NUMBER / CHAR_BIT)
+typedef enum {BOUND, UNBOUND} port_classification;
 
-// XXX: is changing this to a typedef okay?
 typedef struct miniport
 {
-    char unbound_pn_buffer[BYTES_PER_PN_BUFFER];
-    char bound_pn_buffer[BYTES_PER_PN_BUFFER];  // -1 indicates no bound port
-    char dest_addr_buffer[sizeof(network_address_t)]; //XXX: is this right?..
+    port_classification port_type;
+    unsigned int bound_port_number; // 0 indicates no bound port
+    unsigned int unbound_port_number;
+    union {
+        // bound ports need a destination address
+        network_address_t destination_address;
+        // while unbound ports only need a blocking semaphore
+        semaphore_t available_messages_sema;
+    } port_data;
 }miniport; 
 
 // The port numbers assigned to new ports.
 int current_bound_port_number;
 
-// If a port number is in bound_port_table, then
+// If a port number is in unavailable_bound_ports, then
 // it is currently being used.
 // NOTE: access to  this table must be protected from
 // interrupts!
-hashtable_t bound_port_table;
+hashtable_t unavailable_bound_ports;
 
-// A helper function to get an int from a char buffer.
-int int_from_buffer(char *buffer) {
-    return *(int *)buffer;
-}
-
-// A helper function to get a char buffer from an int.
-char* buffer_from_int(int n) {
-    char *new_buffer = (char *)malloc(sizeof(int));
-    new_buffer = (char *)&n;
-    return new_buffer;
-}
-
-// A helper function to get a network_address_t from a char buffer.
-// We have to return a pointer to a network_address_t because
-// we cannot return a type defined as an array.
-network_address_t* addr_from_buffer(char *buffer) {
-    network_address_t *address_ptr = (network_address_t *)malloc(sizeof(network_address_t));
-    network_address_copy((unsigned int *)buffer, *address_ptr);
-    return address_ptr;
-}
-
-// A helper function to get a char buffer from a network_addr_t.
-// XXX: Passing in address as a void pointer because of compile
-// error. Fix this. (should be using network_address_t)
-char* buffer_from_addr(void *address) {
-    char *new_buffer = (char *)malloc(sizeof(network_address_t));
-    network_address_copy((network_address_t) address, (network_address_t) new_buffer);
-    //new_buffer = (char *)&network_address_t;
-    return new_buffer;
+// A helper function to get the next available bound port number.
+// Returns -1 if no bound ports are available. XXX: possibly change
+int get_next_bound_pn() {
+    // We count the number of loops to ensure that we don't check for the 
+    // same port number twice.
+    // TODO: what to do when there are no available ports? Semaphore maybe?
+    // ports are numbered 32768 - 65535
+    int num_ports = 65535 - 32767;
+    int num_loops = 0;
+    while (num_loops < num_ports
+           && hashtable_key_exists(unavailable_bound_ports, current_bound_port_number))
+    {
+        current_bound_port_number++;
+        if (current_bound_port_number > 65535) {
+            // Rollover from 65535 to 32768
+            current_bound_port_number = 32768;
+        }
+        num_loops++;
+    }
+    
+    if (num_loops >= num_ports) return -1; // no ports were available
+    
+    return current_bound_port_number; 
 }
 
 /* performs any required initialization of the minimsg layer.
@@ -69,7 +65,7 @@ void
 minimsg_initialize()
 {
     current_bound_port_number = 32768;
-    bound_port_table = hashtable_create();
+    unavailable_bound_ports = hashtable_create();
 }
 
 /* Creates an unbound port for listening. Multiple requests to create the same
@@ -82,16 +78,21 @@ minimsg_initialize()
 miniport_t
 miniport_create_unbound(int port_number)
 {
-    miniport_t new_miniport = (miniport_t) malloc(sizeof(miniport));
+    miniport_t new_miniport;
+    semaphore_t new_available_messages_sema;
+
+    new_miniport = (miniport_t) malloc(sizeof(miniport));
 
     // Port numbers outside of this range are invalid.
     if (port_number < 0 || port_number > 32767) return NULL;
 
-    //new_miniport->unbound_pn_buffer = buffer_from_int(port_number);
-    // We are just setting this port up for listening, so the following are NULL.
-    // We store -1 as the bound port number to avoid bad data.
-    //new_miniport->bound_pn_buffer = buffer_from_int(-1);
-    //new_miniport->dest_addr_buffer = NULL;
+    new_available_messages_sema = semaphore_create();
+    semaphore_initialize(new_available_messages_sema, 0);
+
+    new_miniport->port_type = UNBOUND;
+    new_miniport->bound_port_number = 0;
+    new_miniport->unbound_port_number = port_number;
+    new_miniport->port_data.available_messages_sema = new_available_messages_sema; 
 
     return new_miniport;
 }
@@ -109,29 +110,15 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
 {
     miniport_t new_miniport;
 
-    // Obtain the port number for the bound port by searching for the first
-    // unused port.
-    // TODO: what to do when there are no available ports?
-    while (hashtable_key_exists(bound_port_table, current_bound_port_number)) {
-        current_bound_port_number++;
-    }
-
     new_miniport = (miniport_t)malloc(sizeof(miniport));
+    
+    new_miniport->port_type = BOUND;
+    new_miniport->bound_port_number = get_next_bound_pn();
+    new_miniport->unbound_port_number = remote_unbound_port_number;
+    network_address_copy(addr, miniport->port_data.destination_address);
 
-    // Set up our destination address and port number.
-    //new_miniport->unbound_pn_buffer = buffer_from_int(remote_unbound_port_number);
-    //new_miniport->dest_addr_buffer = buffer_from_addr(addr);
-    // Set the bound port to use for sending.
-    //new_miniport->bound_pn_buffer = buffer_from_int(current_bound_port_number);
-
-    // Now we need to add the bound port number to the table so that no other
-    // miniports try to take it.
-    bound_port_table = hashtable_put(bound_port_table, current_bound_port_number);
-
-    // The last thing we do is increment the bound port counter, making sure to
-    // roll over if overflow occurs.
-    current_bound_port_number++;
-    if (current_bound_port_number > 65535) current_bound_port_number = 32768;
+    // Make the bound port number unavailable to other miniports.
+    unavailable_bound_ports = hashtable_put(unavailable_bound_ports, current_bound_port_number);
 
     return 0;
 }
@@ -142,19 +129,14 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
 void
 miniport_destroy(miniport_t miniport)
 {
-    int bound_port_number;
-    
-    // If this miniport had a bound port, then we make that port available by 
-    // removing it from the table.
-    bound_port_number = int_from_buffer(miniport->bound_pn_buffer);
-    if (bound_port_number != -1) {
-        hashtable_remove(bound_port_table, bound_port_number);
-    }
-
-    // Now we simply free the miniport's buffers, then the miniport itself.
-    free(miniport->bound_pn_buffer);
-    free(miniport->unbound_pn_buffer);
-    free(miniport->dest_addr_buffer);
+    if (miniport->port_type == BOUND) {
+        // If this was a bound port, make its bound port number available.
+        hashtable_remove(unavailable_bound_ports, miniport->bound_port_number);
+        // XXX: what do to about miniport->data.destination_address?
+    } else {
+        // If this was an unbound port, free its semaphore.
+        semaphore_destroy(miniport->port_data.available_messages_sema);
+    }  
 
     free(miniport);
 }

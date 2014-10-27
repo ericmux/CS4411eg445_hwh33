@@ -70,6 +70,8 @@ hashtable_t hashtable_create() {
 // To be called by hashtable_put when the load factor is exceeded.
 hashtable_t double_table_size(hashtable_t old_table) {
     int i;
+    int key_to_copy;
+    void **data_ptr_to_copy = (void **)malloc(sizeof(void *));
     linked_list_t current_bucket;
 
     // Create a new hashtable of double the size to copy data over into.
@@ -79,8 +81,8 @@ hashtable_t double_table_size(hashtable_t old_table) {
     for (i = 0; i < old_table->num_buckets; i++) {
         current_bucket = old_table->buckets[i];
         while (!linked_list_empty(current_bucket)) {
-            int key_to_copy = linked_list_pop(current_bucket);
-            hashtable_put(new_table, key_to_copy);
+            key_to_copy = linked_list_pop(current_bucket, data_ptr_to_copy);
+            hashtable_put(new_table, key_to_copy, *data_ptr_to_copy);
         }
     }
 
@@ -92,7 +94,7 @@ hashtable_t double_table_size(hashtable_t old_table) {
 
 // The programmer must take the returned table as their new table
 // as the old one may be overwritten.
-hashtable_t hashtable_put(hashtable_t table, int key) {
+hashtable_t hashtable_put(hashtable_t table, int key, void *data) {
     unsigned int hash_value;
     int bucket_number;
 
@@ -111,10 +113,22 @@ hashtable_t hashtable_put(hashtable_t table, int key) {
     // Now we append the key to the end of the list in
     // the appropriate bucket and increment the number
     // of elements in our table.
-    linked_list_append(table->buckets[bucket_number], key);
+    linked_list_append(table->buckets[bucket_number], key, data);
     table->num_elements++;
 
     return table;
+}
+
+int hashtable_get(hashtable_t table, int key, void **data_ptr) {
+    unsigned int hash_value;
+    int bucket_number;
+
+    // Find the bucket number the key should be in.
+    hash_value = hash((unsigned int) key);
+    bucket_number = hash_value % table->num_buckets;
+
+    // Now find the first element mapped to by key in the appropriate bucket.
+    return linked_list_get(table->buckets[bucket_number], key, data_ptr);
 }
 
 // Removes ALL instances of key from table.
@@ -140,7 +154,7 @@ int hashtable_key_exists(hashtable_t table, int key) {
     bucket_number = hash_value % table->num_buckets;
 
     // Now check for the key in the bucket.
-    return linked_list_number_exists(table->buckets[bucket_number], key);
+    return linked_list_key_exists(table->buckets[bucket_number], key);
 }
 
 void hashtable_free(hashtable_t table) {

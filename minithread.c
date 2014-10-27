@@ -141,7 +141,10 @@ void scheduler_switch(scheduler_t scheduler){
 		old_level = set_interrupt_level(DISABLED);
 
 		switch_result = scheduler_switch_try_once(scheduler);
-		if(switch_result) return;
+		if(switch_result){
+			set_interrupt_level(old_level);
+			return;
+		}
 
 		//If the current thread isn't finished yet and has yielded, allow it to proceed.
 		if(current_thread != NULL){

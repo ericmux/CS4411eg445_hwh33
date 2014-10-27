@@ -343,7 +343,7 @@ minithread_sleep_with_timeout(int delay)
 {
 	semaphore_t sleep_sema = semaphore_create();
 
-        semaphore_initialize(sleep_sema, 0);
+    semaphore_initialize(sleep_sema, 0);
 
 	register_alarm(delay, semaphore_V_wrapper, sleep_sema);
 	semaphore_P(sleep_sema);

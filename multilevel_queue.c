@@ -26,8 +26,8 @@ multilevel_queue_t multilevel_queue_new(int number_of_levels)
 	new_multilevel_queue = (multilevel_queue_t)malloc(sizeof(multilevel_queue));
 	new_queue_array = (queue_t *)malloc(sizeof(queue_t) * number_of_levels);
 	new_multilevel_queue->queue_array = new_queue_array;
-	new_multilevel_q->number_of_levels = number_of_levels;
-	return new_multilevel_q;
+	new_multilevel_queue->number_of_levels = number_of_levels;
+	return new_multilevel_queue;
 }
 
 /*

@@ -249,9 +249,9 @@ void minithread_start(minithread_t t) {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 
 	if(t->state == READY  || t->state == RUNNING) {
-            set_interrupt_level(old_level); //XXX: added this, not sure if necessary
+            set_interrupt_level(old_level);
             return;
-        }
+    }
 	t->state = READY;
 
 	queue_append(thread_scheduler->ready_queue, t);
@@ -337,10 +337,12 @@ void wrapper_minithread_start(void *arg){
 void 
 minithread_sleep_with_timeout(int delay)
 {
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
-	register_alarm(delay, wrapper_minithread_start, current_thread);
-	set_interrupt_level(old_level);
-	minithread_stop();
+	semaphore_t sleep_sema = semaphore_initialize(0);
+
+	register_alarm(delay, semaphore_V, sleep_sema);
+	semaphore_P(sleep_sema);
+
+	semaphore_destroy(sleep_sema);
 }
 
 

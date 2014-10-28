@@ -120,10 +120,11 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 
 	/* 
 		We have to context switch only if either the max number of quanta for the current level has expired or
-	   	the current thread has finished. We also need to switch if we're scheduling for the first time.
+	   	the current thread has finished or put to wait before it expires. 
+	   	We also need to switch if we're scheduling for the first time.
 	*/
 	if(scheduler->quanta_count >= quanta_durations[scheduler->level] || 
-		current_thread == NULL || current_thread->state == FINISHED){
+		current_thread == NULL || current_thread->state == FINISHED || current_thread->state == WAITING){
 		
 		unsigned int old_queue_level;
 		if(scheduler->level == number_of_levels - 1){

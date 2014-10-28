@@ -6,19 +6,19 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
 
 /* if debuging is desired set value to 1 */
 #define DEBUG 0
+#define INTERRUPT_DEFER 0
+#define INTERRUPT_DROP 1
 
 /* for now kernel printfs are just regular printfs */
 #define kprintf printf
 
-/* Macro to clean up the code for waiting on mutexes */
-#define WaitOnObject(mutex)                                      \
-    if (WaitForSingleObject(mutex, INFINITE) != WAIT_OBJECT_0) { \
-        printf("Error: code %ld.\n", GetLastError());            \
-        exit(1);                                                 \
-    }
+#define GetLastError() errno
 
 #define AbortOnCondition(cond,message)                       \
     if (cond) {                                              \
@@ -29,7 +29,7 @@
 
 #define AbortOnError(fctcall)                         \
     if (fctcall == 0) {                               \
-        printf("Error: file %s line %d: code %ld.\n", \
+        printf("Error: file %s line %d: code %d.\n", \
                __FILE__, __LINE__, GetLastError());   \
         exit(1);                                      \
     }

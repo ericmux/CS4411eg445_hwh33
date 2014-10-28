@@ -24,19 +24,23 @@ This release contains three groups of files:
     - start.c and end.c
     - interrupts.*
     - machine_primitives.*
+    - network.*               <-- new in project 3!
     - random.*
 
 2. the threading library itself
-    - minithread.*       <-- updated in project 2!
+    - alarm.*
+    - minithread.*
+    - multilevel_queue.*
+    - miniheader.*            <-- new in project 3!
+    - minimsg.*               <-- new in project 3!
     - queue.*
-    - multilevel_queue.* <-- new in project 2!
-    - synch.*            <-- you will need to edit in project 2!
-    - alarm.*            <-- new in project 2!
+    - synch.*
 
 3. sample applications
     - buffer.c
     - sieve.c
     - test*.c
+    - network[1-6].c          <-- new in project 3!
 
 You should not need to edit the system primitives, though you may want to read
 the header files!

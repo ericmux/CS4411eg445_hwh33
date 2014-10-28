@@ -53,7 +53,8 @@ semaphore_t cleanup_sema = NULL;
 
 int number_of_levels = 4;
 int maxval = 100;
-static int quantas[4] = {1, 2, 4, 8};
+static int quanta_durations[4] = {1, 2, 4, 8};
+static int quanta_proportions[4] = {50, 75, 90, 100};
 
 typedef struct scheduler {
 	multilevel_queue_t 	ready_queue;
@@ -90,11 +91,15 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 
 int scheduler_pick_level(scheduler_t scheduler){
 
-	if(scheduler->freq_count++ < 50) return 0;
-	if(scheduler->freq_count   < 75) return 1;
-	if(scheduler->freq_count   < 90) return 2;
+	int proportion = quanta_proportions[0];
 
-	if(scheduler->freq_count == maxval) scheduler->freq_count = 0;
+	if(scheduler->freq_count++ < quanta_proportions[0]) return 0;
+
+	if(scheduler->freq_count   < quanta_proportions[1]) return 1;
+
+	if(scheduler->freq_count   < quanta_proportions[2]) return 2;
+
+	if(scheduler->freq_count == quanta_proportions[3]) scheduler->freq_count = 0;
 
 	return 3;
 }
@@ -138,6 +143,7 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 
 			if(deq_level != scheduler->level){
 				scheduler->level = deq_level;
+				scheduler->freq_count = quanta_proportions[scheduler->level];
 			}
 
 			//Check if we're scheduling for the first time.

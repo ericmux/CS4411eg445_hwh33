@@ -12,8 +12,10 @@
 #include "interrupts.h"
 #include "minithread.h"
 #include "queue.h"
+#include "multilevel_queue.h"
 #include "synch.h"
 #include "alarm.h"
+#include "random.h"
 
 #include <assert.h>
 
@@ -45,16 +47,21 @@ minithread_t current_thread = NULL;
 //Semaphore for cleaning up only when needed.
 semaphore_t cleanup_sema = NULL;
 
-//Semaphore for thread scheduling.
-semaphore_t thread_arrived_sema = NULL;
-
-
 /*
-	Scheduler definition.
+	Scheduler definition. (Multivel additions for p2)
 */
+
+int number_of_levels = 4;
+int maxval = 100;
+static int quanta_durations[4] = {1, 2, 4, 8};
+static int quanta_proportions[4] = {0,50, 75, 90};
+
 typedef struct scheduler {
-	queue_t ready_queue;
-	queue_t finished_queue;
+	multilevel_queue_t 	ready_queue;
+	queue_t 			finished_queue;
+	unsigned int 		level;
+	unsigned int 		quanta_count;
+	unsigned int 		freq_count;
 } scheduler;
 typedef struct scheduler *scheduler_t;
 
@@ -71,36 +78,80 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 
 	*scheduler_ptr = (scheduler_t) malloc(sizeof(struct scheduler));
 	s = *scheduler_ptr;
-	s->ready_queue = queue_new();
+	s->ready_queue = multilevel_queue_new(number_of_levels);
 	s->finished_queue = queue_new();
+	s->level = 0;
+	s->quanta_count = 0;
+	s->freq_count = 0;
 
 	cleanup_sema 		= semaphore_create();
 	semaphore_initialize(cleanup_sema, 0);
 
-	thread_arrived_sema = semaphore_create();
-	semaphore_initialize(thread_arrived_sema, 0);
 }
 
+//Pick the level to peek on the multilevel_queue based on the frequency counter.
+int scheduler_pick_level(scheduler_t scheduler){
+
+	if(scheduler->freq_count++ < quanta_proportions[1]) return 0;
+
+	if(scheduler->freq_count   < quanta_proportions[2]) return 1;
+
+	if(scheduler->freq_count   < quanta_proportions[3]) return 2;
+
+	if(scheduler->freq_count == maxval) scheduler->freq_count = 0;
+
+	return 3;
+}
+
+
 /*
-* Scheduler method that makes the context switch. It adds the current TCB to the appropriate queue,
-* depending on its state and then dequeues the next TCB, switching to it. It also busy waits for new threads
-* to become ready, releasing them from the blocked queue if necessary.
+* Try to context switch only once, return 1 (success) if it found a valid TCB to switch to, otherwise 0 (failure).
 */
-void scheduler_switch(scheduler_t scheduler){
+int scheduler_switch_dequeue(scheduler_t scheduler){
+	minithread_t thread_to_run;	
 
-	minithread_t thread_to_run;
+	interrupt_level_t old_level;
+	int deq_level;
 
-	do{
-		interrupt_level_t old_level;
-		int deq_result;
+	//Scheduler cannot be interrupted while it's trying to dequeue.
+	old_level = set_interrupt_level(DISABLED);
 
-		//Scheduler cannot be interrupted while it's trying to decide.
-		old_level = set_interrupt_level(DISABLED);
+	scheduler->quanta_count++;
 
-		deq_result = queue_dequeue(scheduler->ready_queue, (void **) &thread_to_run);
+	/* 
+		We have to context switch only if either the max number of quanta for the current level has expired or
+	   	the current thread has finished or put to wait before it expires. 
+	   	We also need to switch if we're scheduling for the first time.
+	*/
+	if(scheduler->quanta_count >= quanta_durations[scheduler->level] || 
+		current_thread == NULL || current_thread->state == FINISHED || current_thread->state == WAITING){
+		
+		unsigned int old_queue_level;
+		if(scheduler->level == number_of_levels - 1){
+			old_queue_level = scheduler->level - 1;
+		} else {
+			old_queue_level = scheduler->level;
+		} 
 
-		if(deq_result == 0){
+		scheduler->quanta_count = 0;
+		scheduler->level = scheduler_pick_level(scheduler);
+
+		deq_level = multilevel_queue_dequeue(scheduler->ready_queue, scheduler->level, (void **) &thread_to_run);
+
+		if(deq_level == -1){
+			//No threads found for the new level, return to 0.
+			scheduler->level = 0;
+			scheduler->freq_count = quanta_proportions[scheduler->level];
+			deq_level = multilevel_queue_dequeue(scheduler->ready_queue, scheduler->level, (void **) &thread_to_run);
+		}
+
+		if(deq_level != -1){
 			stack_pointer_t *oldsp_ptr; 
+
+			if(deq_level != scheduler->level){
+				scheduler->level = deq_level;
+				scheduler->freq_count = quanta_proportions[scheduler->level];
+			}
 
 			//Check if we're scheduling for the first time.
 			if(current_thread == NULL){
@@ -112,33 +163,56 @@ void scheduler_switch(scheduler_t scheduler){
 				if(current_thread->state == FINISHED){
 					queue_append(scheduler->finished_queue, current_thread);
 				} else if(current_thread->state == RUNNING || current_thread->state == READY){
-					current_thread->state = READY;
-					queue_append(scheduler->ready_queue, current_thread);
+
+					//if self-switching, I shouldn't re-enqueue myself.
+					if(current_thread != thread_to_run){
+						current_thread->state = READY;
+						multilevel_queue_enqueue(scheduler->ready_queue, old_queue_level + 1, current_thread);
+					}
 				}
 			}
 
 			thread_to_run->state = RUNNING;
 			current_thread = thread_to_run;
 
-                        set_interrupt_level(old_level); //XXX: added this. I think we need to re-enable before context switch
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
+			return 1;
+		}
+	}
+
+	set_interrupt_level(old_level);
+	return 0;
+}
+
+
+/*
+* Scheduler method that makes the context switch. It adds the current TCB to the appropriate queue,
+* depending on its state and then dequeues the next TCB, switching to it. It also busy waits for new threads
+* to become ready, releasing them from the blocked queue if necessary.
+*/
+void scheduler_switch(scheduler_t scheduler){
+
+	interrupt_level_t old_level;
+	int switch_result;
+
+	//Scheduler cannot be interrupted while it's trying to decide.
+	old_level = set_interrupt_level(DISABLED);
+
+	switch_result = scheduler_switch_dequeue(scheduler);
+	if(switch_result){
+		set_interrupt_level(old_level);
+		return;
+	}
+
+	//If the current thread isn't finished yet and has yielded, allow it to proceed.
+	if(current_thread->state == RUNNING){
+			set_interrupt_level(old_level);
 			return;
-		}
+	}
 
-		//At this point we know we won't switch this iteration, so restore interrupt level.
-		set_interrupt_level(old_level); // XXX: moved to below following if bracket
-
-		//If the current thread isn't finished yet and has yielded, allow it to proceed.
-		if(current_thread != NULL){
-			if(current_thread->state == RUNNING) return;
-
-			//prompts the idle loop, the scheduler will now only busy check the ready_queue for threads.
-			current_thread = NULL;
-		}
-
-		//set_interrupt_level(old_level);
-
-	} while(1);
+	//There are no threads to be run and the current_thread cannot continue. Reenable interrupts and busy wait.
+	set_interrupt_level(old_level);
+	while(current_thread->state != RUNNING && current_thread != READY);
 	
 }
 
@@ -196,7 +270,7 @@ minithread_t minithread_fork(proc_t proc, arg_t arg) {
 	forked_thread = minithread_create(proc, arg);
 
 	old_level = set_interrupt_level(DISABLED);
-	queue_append(thread_scheduler->ready_queue, forked_thread);
+	multilevel_queue_enqueue(thread_scheduler->ready_queue, 0, forked_thread);
 	set_interrupt_level(old_level);
 
 
@@ -254,7 +328,7 @@ void minithread_start(minithread_t t) {
     }
 	t->state = READY;
 
-	queue_append(thread_scheduler->ready_queue, t);
+	multilevel_queue_enqueue(thread_scheduler->ready_queue, 0, t);
 	set_interrupt_level(old_level);
 }
 
@@ -277,14 +351,15 @@ clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	alarm_id alarm = pop_alarm();
-	if(alarm != NULL){
+	while(alarm != NULL){
 		execute_alarm(alarm);
 		deregister_alarm(alarm);
+		alarm = pop_alarm();
 	}
 	current_tick++;
 	set_interrupt_level(old_level);
 
-	scheduler_switch(thread_scheduler);
+	scheduler_switch_dequeue(thread_scheduler);
 }
 
 /*

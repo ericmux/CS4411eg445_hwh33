@@ -1,0 +1,1566 @@
+diff -rupN ../../2/release/defs.h ./defs.h
+--- ../../2/release/defs.h	2014-09-23 23:09:22.945262030 -0400
++++ ./defs.h	2014-10-16 04:48:06.619828625 -0400
+@@ -6,19 +6,19 @@
+ #include <assert.h>
+ #include <sys/types.h>
+ #include <fcntl.h>
++#include <string.h>
++#include <errno.h>
++#include <stdlib.h>
+ 
+ /* if debuging is desired set value to 1 */
+ #define DEBUG 0
++#define INTERRUPT_DEFER 0
++#define INTERRUPT_DROP 1
+ 
+ /* for now kernel printfs are just regular printfs */
+ #define kprintf printf
+ 
+-/* Macro to clean up the code for waiting on mutexes */
+-#define WaitOnObject(mutex)                                      \
+-    if (WaitForSingleObject(mutex, INFINITE) != WAIT_OBJECT_0) { \
+-        printf("Error: code %ld.\n", GetLastError());            \
+-        exit(1);                                                 \
+-    }
++#define GetLastError() errno
+ 
+ #define AbortOnCondition(cond,message)                       \
+     if (cond) {                                              \
+@@ -29,7 +29,7 @@
+ 
+ #define AbortOnError(fctcall)                         \
+     if (fctcall == 0) {                               \
+-        printf("Error: file %s line %d: code %ld.\n", \
++        printf("Error: file %s line %d: code %d.\n", \
+                __FILE__, __LINE__, GetLastError());   \
+         exit(1);                                      \
+     }
+diff -rupN ../../2/release/.gitignore ./.gitignore
+--- ../../2/release/.gitignore	2014-09-23 23:09:22.945262030 -0400
++++ ./.gitignore	2014-10-16 04:54:10.683843299 -0400
+@@ -1,3 +1,9 @@
++network1
++network2
++network3
++network4
++network5
++network6
+ test1
+ test2
+ test3
+diff -rupN ../../2/release/Makefile ./Makefile
+--- ../../2/release/Makefile	2014-09-23 23:14:39.541255305 -0400
++++ ./Makefile	2014-10-16 03:54:36.747699246 -0400
+@@ -10,7 +10,7 @@ default: all
+ #    necessary PortOS code.
+ #
+ # this would be a good place to add your tests
+-all: test1 test2 test3 buffer sieve
++all: test1 test2 test3 buffer sieve network1 network2 network3 network4 network5 network6
+ 
+ # running "make clean" will remove all files ignored by git.  To ignore more
+ # files, you should add them to the file .gitignore
+@@ -34,7 +34,11 @@ OBJ =                              \
+     random.o                       \
+     alarm.o                        \
+     queue.o                        \
+-    synch.o
++    synch.o                        \
++    miniheader.o                   \
++    minimsg.o                      \
++    multilevel_queue.o             \
++    network.o
+ 
+ %: %.o start.o end.o $(OBJ) $(SYSTEMOBJ)
+ 	$(CC) $(LIB) -o $@ start.o $(filter-out start.o end.o $(SYSTEMOBJ), $^) end.o $(SYSTEMOBJ) $(LFLAGS)
+diff -rupN ../../2/release/miniheader.c ./miniheader.c
+--- ../../2/release/miniheader.c	1969-12-31 19:00:00.000000000 -0500
++++ ./miniheader.c	2014-10-16 04:36:57.503801655 -0400
+@@ -0,0 +1,44 @@
++#include "miniheader.h"
++
++void pack_unsigned_int(char* buf, unsigned int val)
++{
++    unsigned char* ubuf = (unsigned char *) buf;
++    ubuf[0] = (val>>24) & 0xff;
++    ubuf[1] = (val>>16) & 0xff;
++    ubuf[2] = (val>>8) & 0xff;
++    ubuf[3] = val & 0xff;
++}
++
++unsigned int unpack_unsigned_int(char *buf)
++{
++    unsigned char* ubuf = (unsigned char *) buf;
++    return (unsigned int) (ubuf[0]<<24) | (ubuf[1]<<16) | (ubuf[2]<<8) | ubuf[3];
++}
++
++void pack_unsigned_short(char* buf, unsigned short val)
++{
++    unsigned char* ubuf = (unsigned char *) buf;
++    ubuf[0] = (val>>8) & 0xff;
++    ubuf[1] = val & 0xff;
++}
++
++unsigned short unpack_unsigned_short(char* buf)
++{
++    unsigned char* ubuf = (unsigned char *) buf;
++    return (unsigned short) (ubuf[0]<<8) | ubuf[1];
++}
++
++void pack_address(char* buf, network_address_t address)
++{
++    unsigned int* addr_ptr = (unsigned int*) address;
++    pack_unsigned_int(buf, addr_ptr[0]);
++    pack_unsigned_int(buf+sizeof(unsigned int), addr_ptr[1]);
++}
++
++void unpack_address(char* buf, network_address_t address)
++{
++    unsigned int* addr_ptr = (unsigned int*) address;
++    addr_ptr[0] = unpack_unsigned_int(buf);
++    addr_ptr[1] = unpack_unsigned_int(buf+sizeof(unsigned int));
++}
++
+diff -rupN ../../2/release/miniheader.h ./miniheader.h
+--- ../../2/release/miniheader.h	1969-12-31 19:00:00.000000000 -0500
++++ ./miniheader.h	2014-10-16 03:20:14.535616125 -0400
+@@ -0,0 +1,63 @@
++#ifndef __MINIHEADER_H__
++#define __MINIHEADER_H__
++
++/*
++ * Definitions for the network header format.
++ */
++#include "network.h"
++
++/* protocol types */
++enum { PROTOCOL_MINIDATAGRAM = 1, PROTOCOL_MINISTREAM };
++
++/* message types for minisockets */
++enum { MSG_SYN = 1, MSG_SYNACK, MSG_ACK, MSG_FIN };
++
++/* header definition for unreliable packets */
++typedef struct mini_header
++{
++    char protocol;
++
++    char source_address[8];
++    char source_port[2];
++
++    char destination_address[8];
++    char destination_port[2];
++
++} *mini_header_t;
++
++/* header definition for reliable packets, note the overlap with mini_header_t */
++typedef struct mini_header_reliable
++{
++    char protocol;
++
++    char source_address[8];
++    char source_port[2];
++
++    char destination_address[8];
++    char destination_port[2];
++
++    char message_type;
++    char seq_number[4];
++    char ack_number[4];
++
++} *mini_header_reliable_t;
++
++/* packs a native unsigned short into 2 bytes in network byte order */
++void pack_unsigned_short(char *buf, unsigned short val);
++
++/* packs a native unsigned integer into 4 bytes in network byte order */
++void pack_unsigned_int(char *buf, unsigned int val);
++
++/* packs an opaque network address into 8 bytes in network byte order */
++void pack_address(char *buf, network_address_t address);
++
++/* unpacks a native unsigned integer from 2 bytes in network byte order */
++unsigned short unpack_unsigned_short(char *buf);
++
++/* unpacks a native unsigned integer from 4 bytes in network byte order */
++unsigned int unpack_unsigned_int(char *buf);
++
++/* unpacks a network address from 8 bytes in network byte order */
++void unpack_address(char* buf, network_address_t address);
++
++#endif /*__MINIHEADER_H__*/
+diff -rupN ../../2/release/minimsg.c ./minimsg.c
+--- ../../2/release/minimsg.c	1969-12-31 19:00:00.000000000 -0500
++++ ./minimsg.c	2014-10-16 04:39:04.643806780 -0400
+@@ -0,0 +1,80 @@
++/*
++ *  Implementation of minimsgs and miniports.
++ */
++#include "minimsg.h"
++
++struct miniport
++{
++    int dummy; /* you should erase this field and replace it with your definition */
++};
++
++/* performs any required initialization of the minimsg layer.
++ */
++void
++minimsg_initialize()
++{
++}
++
++/* Creates an unbound port for listening. Multiple requests to create the same
++ * unbound port should return the same miniport reference. It is the responsibility
++ * of the programmer to make sure he does not destroy unbound miniports while they
++ * are still in use by other threads -- this would result in undefined behavior.
++ * Unbound ports must range from 0 to 32767. If the programmer specifies a port number
++ * outside this range, it is considered an error.
++ */
++miniport_t
++miniport_create_unbound(int port_number)
++{
++    return 0;
++}
++
++/* Creates a bound port for use in sending packets. The two parameters, addr and
++ * remote_unbound_port_number together specify the remote's listening endpoint.
++ * This function should assign bound port numbers incrementally between the range
++ * 32768 to 65535. Port numbers should not be reused even if they have been destroyed,
++ * unless an overflow occurs (ie. going over the 65535 limit) in which case you should
++ * wrap around to 32768 again, incrementally assigning port numbers that are not
++ * currently in use.
++ */
++miniport_t
++miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
++{
++    return 0;
++}
++
++/* Destroys a miniport and frees up its resources. If the miniport was in use at
++ * the time it was destroyed, subsequent behavior is undefined.
++ */
++void
++miniport_destroy(miniport_t miniport)
++{
++}
++
++/* Sends a message through a locally bound port (the bound port already has an associated
++ * receiver address so it is sufficient to just supply the bound port number). In order
++ * for the remote system to correctly create a bound port for replies back to the sending
++ * system, it needs to know the sender's listening port (specified by local_unbound_port).
++ * The msg parameter is a pointer to a data payload that the user wishes to send and does not
++ * include a network header; your implementation of minimsg_send must construct the header
++ * before calling network_send_pkt(). The return value of this function is the number of
++ * data payload bytes sent not inclusive of the header.
++ */
++int
++minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg_t msg, int len)
++{
++    return 0;
++}
++
++/* Receives a message through a locally unbound port. Threads that call this function are
++ * blocked until a message arrives. Upon arrival of each message, the function must create
++ * a new bound port that targets the sender's address and listening port, so that use of
++ * this created bound port results in replying directly back to the sender. It is the
++ * responsibility of this function to strip off and parse the header before returning the
++ * data payload and data length via the respective msg and len parameter. The return value
++ * of this function is the number of data payload bytes received not inclusive of the header.
++ */
++int minimsg_receive(miniport_t local_unbound_port, miniport_t* new_local_bound_port, minimsg_t msg, int *len)
++{
++    return 0;
++}
++
+diff -rupN ../../2/release/minimsg.h ./minimsg.h
+--- ../../2/release/minimsg.h	1969-12-31 19:00:00.000000000 -0500
++++ ./minimsg.h	2014-10-16 03:23:22.511623701 -0400
+@@ -0,0 +1,68 @@
++#ifndef __MINIMSG_H__
++#define __MINIMSG_H__
++/*
++ *  Definitions for minimsgs and miniports.
++ *
++ *      You should implement the functions defined in this file, using
++ *      the names for types and functions defined here. Functions must take
++ *      the exact arguments in the prototypes.
++ */
++#include "network.h"
++
++/* The maximum size of a minimsg.
++ * Must be <= MAX_NETWORK_PKT_SIZE - NETWORK_HDR_SIZE
++ */
++#define MINIMSG_MAX_MSG_SIZE (4096)
++
++typedef struct miniport* miniport_t;
++typedef char* minimsg_t;
++
++/* performs any required initialization of the minimsg layer.  */
++extern void minimsg_initialize();
++
++/* Creates an unbound port for listening. Multiple requests to create the same
++ * unbound port should return the same miniport reference. It is the responsibility
++ * of the programmer to make sure he does not destroy unbound miniports while they
++ * are still in use by other threads -- this would result in undefined behavior.
++ * Unbound ports must range from 0 to 32767. If the programmer specifies a port number
++ * outside this range, it is considered an error.
++ */
++extern miniport_t miniport_create_unbound(int port_number);
++
++/* Creates a bound port for use in sending packets. The two parameters, addr and
++ * remote_unbound_port_number together specify the remote's listening endpoint.
++ * This function should assign bound port numbers incrementally between the range
++ * 32768 to 65535. Port numbers should not be reused even if they have been destroyed,
++ * unless an overflow occurs (ie. going over the 65535 limit) in which case you should
++ * wrap around to 32768 again, incrementally assigning port numbers that are not
++ * currently in use.
++ */
++extern miniport_t miniport_create_bound(network_address_t addr, int remote_unbound_port_number);
++
++/* Destroys a miniport and frees up its resources. If the miniport was in use at
++ * the time it was destroyed, subsequent behavior is undefined.
++ */
++extern void miniport_destroy(miniport_t miniport);
++
++/* Sends a message through a locally bound port (the bound port already has an associated
++ * receiver address so it is sufficient to just supply the bound port number). In order
++ * for the remote system to correctly create a bound port for replies back to the sending
++ * system, it needs to know the sender's listening port (specified by local_unbound_port).
++ * The msg parameter is a pointer to a data payload that the user wishes to send and does not
++ * include a network header; your implementation of minimsg_send must construct the header
++ * before calling network_send_pkt(). The return value of this function is the number of
++ * data payload bytes sent not inclusive of the header.
++ */
++extern int minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg_t msg, int len);
++
++/* Receives a message through a locally unbound port. Threads that call this function are
++ * blocked until a message arrives. Upon arrival of each message, the function must create
++ * a new bound port that targets the sender's address and listening port, so that use of
++ * this created bound port results in replying directly back to the sender. It is the
++ * responsibility of this function to strip off and parse the header before returning the
++ * data payload and data length via the respective msg and len parameter. The return value
++ * of this function is the number of data payload bytes received not inclusive of the header.
++ */
++extern int minimsg_receive(miniport_t local_unbound_port, miniport_t* new_local_bound_port, minimsg_t msg, int *len);
++
++#endif /*__MINIMSG_H__*/
+diff -rupN ../../2/release/network1.c ./network1.c
+--- ../../2/release/network1.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network1.c	2014-10-16 04:50:26.915834280 -0400
+@@ -0,0 +1,57 @@
++/* network test program 1
++
++   local loopback test: sends and then receives one message on the same machine.
++
++   USAGE: ./network1 <port>
++
++   where <port> is the minimsg port to use
++*/
++
++#include "minithread.h"
++#include "minimsg.h"
++#include "synch.h"
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <assert.h>
++
++
++#define BUFFER_SIZE 256
++
++
++miniport_t listen_port;
++miniport_t send_port;
++
++char text[] = "Hello, world!\n";
++int textlen = 14;
++
++int
++thread(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length = BUFFER_SIZE;
++    miniport_t from;
++    network_address_t my_address;
++
++    network_get_my_address(my_address);
++    listen_port = miniport_create_unbound(0);
++    send_port = miniport_create_bound(my_address, 0);
++
++    minimsg_send(listen_port, send_port, text, textlen);
++    minimsg_receive(listen_port, &from, buffer, &length);
++    printf("%s", buffer);
++
++    return 0;
++}
++
++int
++main(int argc, char** argv) {
++    short fromport;
++    fromport = atoi(argv[1]);
++    network_udp_ports(fromport,fromport); 
++    textlen = strlen(text) + 1;
++    minithread_system_initialize(thread, NULL);
++    return -1;
++}
++
++
+diff -rupN ../../2/release/network2.c ./network2.c
+--- ../../2/release/network2.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network2.c	2014-10-16 04:51:45.447837445 -0400
+@@ -0,0 +1,76 @@
++/* network test program 2
++
++   local loopback test: spawns two threads, one of which sends a stream of
++   messages and exits, the other of which calls receive the same number of
++   times.
++
++   USAGE: ./network2 <port>
++
++   where port is the minimsg port to listen on.
++*/
++
++#include "defs.h"
++#include "minithread.h"
++#include "minimsg.h"
++#include "synch.h"
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++
++#define BUFFER_SIZE 256
++#define MAX_COUNT 100
++
++miniport_t port;
++
++int
++receive(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t from;
++
++    for (i=0; i<MAX_COUNT; i++) {
++        length = BUFFER_SIZE;
++        minimsg_receive(port, &from, buffer, &length);
++        printf("%s", buffer);
++        miniport_destroy(from);
++    }
++
++  return 0;
++}
++
++int
++transmit(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t write_port;
++    network_address_t my_address;
++
++    network_get_my_address(my_address);
++    port = miniport_create_unbound(0);
++    write_port = miniport_create_bound(my_address, 0);
++
++    minithread_fork(receive, NULL);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        printf("Sending packet %d.\n", i+1);
++        sprintf(buffer, "Count is %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port, write_port, buffer, length);
++    }
++
++    return 0;
++}
++
++int
++main(int argc, char** argv) {
++    short fromport;
++    fromport = atoi(argv[1]);
++    network_udp_ports(fromport,fromport); 
++    minithread_system_initialize(transmit, NULL);
++    return -1;
++}
++
++
+diff -rupN ../../2/release/network3.c ./network3.c
+--- ../../2/release/network3.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network3.c	2014-10-16 04:53:11.555840916 -0400
+@@ -0,0 +1,102 @@
++/* network test program 3
++
++     local loopback test: spawns three threads and creates two ports. one
++     thread acts as the sender and sends pairs of messages, one to each port,
++     in a loop, with yields in between. each of the other threads is assigned a
++     port, and reads messages out of it. both ports are local.
++
++     USAGE: ./network3 <port>
++*/
++
++#include "defs.h"
++#include "minithread.h"
++#include "minimsg.h"
++#include "synch.h"
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++
++#define BUFFER_SIZE 256
++#define MAX_COUNT 100
++
++miniport_t port1;
++miniport_t port2;
++
++int
++receive1(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t from;
++
++    for (i=0; i<MAX_COUNT; i++) {
++        length = BUFFER_SIZE;
++        minimsg_receive(port1, &from, buffer, &length);
++        printf("%s", buffer);
++        miniport_destroy(from);
++    }
++
++    return 0;
++}
++
++int
++receive2(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t from;
++
++    for (i=0; i<MAX_COUNT; i++) {
++        length = BUFFER_SIZE;
++        minimsg_receive(port2, &from, buffer, &length);
++        printf("%s", buffer);
++        miniport_destroy(from);
++    }
++
++    return 0;
++}
++
++int
++transmit(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t write_port1;
++    miniport_t write_port2;
++    network_address_t my_address;
++
++    network_get_my_address(my_address);
++
++    port1 = miniport_create_unbound(0);
++    port2 = miniport_create_unbound(1);
++    write_port1 = miniport_create_bound(my_address, 0);
++    write_port2 = miniport_create_bound(my_address, 1);
++
++    minithread_fork(receive1, NULL);
++    minithread_fork(receive2, NULL);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        printf("Sending packet %d to receiver 1.\n", i+1);
++        sprintf(buffer, "Count for receiver 1 is %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port1, write_port1, buffer, length);
++        minithread_yield();
++
++        printf("Sending packet %d to receiver 2.\n", i+1);
++        sprintf(buffer, "Count for receiver 2 is %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port2, write_port2, buffer, length);
++    }
++
++    return 0;
++}
++
++int
++main(int argc, char** argv) {
++    short fromport;
++    fromport = atoi(argv[1]);
++    network_udp_ports(fromport,fromport); 
++    minithread_system_initialize(transmit, NULL);
++    return -1;
++}
+diff -rupN ../../2/release/network4.c ./network4.c
+--- ../../2/release/network4.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network4.c	2014-10-16 04:53:45.591842288 -0400
+@@ -0,0 +1,94 @@
++/* network test program 4
++
++     local loopback test: similar to network3.c, but in reverse: two senders send
++     to one receiver.
++
++     USAGE: ./network4 <port>
++*/
++
++#include "defs.h"
++#include "minithread.h"
++#include "minimsg.h"
++#include "synch.h"
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++
++#define BUFFER_SIZE 256
++#define MAX_COUNT 80
++
++miniport_t port;
++network_address_t my_address;
++
++int
++receive(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t from;
++
++    for (i=0; i<2*MAX_COUNT; i++) {
++        length = BUFFER_SIZE;
++        minimsg_receive(port, &from, buffer, &length);
++        printf("%s", buffer);
++        miniport_destroy(from);
++    }
++
++    return 0;
++}
++
++int
++transmit2(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t write_port;
++
++    write_port = miniport_create_bound(my_address, 0);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        printf("Sending packet %d from sender 2.\n", i+1);
++        sprintf(buffer, "Count from sender 2 is %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port, write_port, buffer, length);
++        minithread_yield();
++    }
++
++    return 0;
++}
++
++int
++transmit1(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t write_port;
++
++    network_get_my_address(my_address);
++
++    port = miniport_create_unbound(0);
++    write_port = miniport_create_bound(my_address, 0);
++
++    minithread_fork(transmit2, NULL);
++    minithread_fork(receive, NULL);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        printf("Sending packet %d from sender 1.\n", i+1);
++        sprintf(buffer, "Count from sender 1 is %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port, write_port, buffer, length);
++        minithread_yield();
++    }
++
++    return 0;
++}
++
++int
++main(int argc, char** argv) {
++    short fromport;
++    fromport = atoi(argv[1]);
++    network_udp_ports(fromport,fromport);
++    minithread_system_initialize(transmit1, NULL);
++    return -1;
++}
+diff -rupN ../../2/release/network5.c ./network5.c
+--- ../../2/release/network5.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network5.c	2014-10-16 03:42:41.635670422 -0400
+@@ -0,0 +1,93 @@
++/* network test program 5
++
++     send a stream of messages from one computer to another;
++     this test may hang since the message layer (built on UDP) is unreliable, so
++     if a message is lost, the receiver will block indefinitely.
++
++     USAGE: ./network5 <souceport> <destport> [<hostname>]
++
++     sourceport = udp port to listen on.
++     destport     = udp port to send to.
++
++     if no hostname is supplied, will function as the receiver; if a hostname is
++     given, will send to that hostname. receiver must be running first!
++*/
++
++#include "defs.h"
++#include "minithread.h"
++#include "minimsg.h"
++#include "synch.h"
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++
++#define BUFFER_SIZE 256
++#define MAX_COUNT 100
++
++char* hostname;
++
++int
++receive(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t port;
++    miniport_t from;
++
++    port = miniport_create_unbound(1);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        length = BUFFER_SIZE;
++        minimsg_receive(port, &from, buffer, &length);
++        printf("%s", buffer);
++        miniport_destroy(from);
++    }
++
++    return 0;
++}
++
++int
++transmit(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    network_address_t addr;
++    miniport_t port;
++    miniport_t dest;
++
++    AbortOnCondition(network_translate_hostname(hostname, addr) < 0,
++                     "Could not resolve hostname, exiting.");
++
++    port = miniport_create_unbound(0);
++    dest = miniport_create_bound(addr, 1);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        printf("Sending packet %d.\n", i+1);
++        sprintf(buffer, "Count is %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port, dest, buffer, length);
++    }
++
++    return 0;
++}
++
++int
++main(int argc, char** argv) {
++
++    short fromport, toport;
++    fromport = atoi(argv[1]);
++    toport = atoi(argv[2]);
++    network_udp_ports(fromport,toport); 
++
++    if (argc > 3) {
++        hostname = argv[3];
++        minithread_system_initialize(transmit, NULL);
++    }
++    else {
++        minithread_system_initialize(receive, NULL);
++    }
++
++    return -1;
++}
++
+diff -rupN ../../2/release/network6.c ./network6.c
+--- ../../2/release/network6.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network6.c	2014-10-16 03:43:26.431672227 -0400
+@@ -0,0 +1,102 @@
++/* network test program 6
++
++     send messages back and forth between two processes on different computers
++
++     USAGE: ./network6 <souceport> <destport> [<hostname>]
++
++     sourceport = udp port to listen on.
++     destport     = udp port to send to.
++
++     if no hostname is supplied, will wait for a packet before sending the first
++     packet; if a hostname is given, will send and then receive. 
++     the receive-first copy must be started first!
++*/
++
++#include "defs.h"
++#include "minithread.h"
++#include "minimsg.h"
++#include "synch.h"
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++
++#define BUFFER_SIZE 256
++#define MAX_COUNT 100
++
++
++char* hostname;
++
++
++int
++receive_first(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length;
++    int i;
++    miniport_t port;
++    miniport_t from;
++
++    port = miniport_create_unbound(1);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        length = BUFFER_SIZE;
++        minimsg_receive(port, &from, buffer, &length);
++        printf("%s", buffer);
++        printf("Sending packet %d.\n", i+1);
++        sprintf(buffer, "Received packet %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port, from, buffer, length);
++        miniport_destroy(from);
++    }
++
++    return 0;
++}
++
++int
++transmit_first(int* arg) {
++    char buffer[BUFFER_SIZE];
++    int length = BUFFER_SIZE;
++    int i;
++    network_address_t addr;
++    miniport_t port;
++    miniport_t dest;
++    miniport_t from;
++
++    AbortOnCondition(network_translate_hostname(hostname, addr) < 0,
++             "Could not resolve hostname, exiting.");
++
++    port = miniport_create_unbound(0);
++    dest = miniport_create_bound(addr, 1);
++
++    for (i=0; i<MAX_COUNT; i++) {
++        printf("Sending packet %d.\n", i+1);
++        sprintf(buffer, "Received packet %d.\n", i+1);
++        length = strlen(buffer) + 1;
++        minimsg_send(port, dest, buffer, length);
++        length = BUFFER_SIZE;
++        minimsg_receive(port, &from, buffer, &length);
++        printf("%s", buffer);
++        miniport_destroy(from);
++    }
++
++    return 0;
++}
++
++int
++main(int argc, char** argv) {
++    short fromport, toport;
++    fromport = atoi(argv[1]);
++    toport = atoi(argv[2]);
++    network_udp_ports(fromport,toport); 
++
++    if (argc > 3) {
++        hostname = argv[3];
++        minithread_system_initialize(transmit_first, NULL);
++    }
++    else {
++        minithread_system_initialize(receive_first, NULL);
++    }
++
++    return -1;
++}
++
+diff -rupN ../../2/release/network.c ./network.c
+--- ../../2/release/network.c	1969-12-31 19:00:00.000000000 -0500
++++ ./network.c	2014-10-16 04:49:13.887831336 -0400
+@@ -0,0 +1,524 @@
++/*
++ * network.c:
++ *      This module paints the unix socket interface a pretty color.
++ */
++
++#include <string.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/socket.h>
++#include <netdb.h>
++#include <arpa/inet.h>
++#include <pthread.h>
++#include <signal.h>
++#include <unistd.h>
++#include <ctype.h>
++
++#include "defs.h"
++#include "network.h"
++#include "interrupts_private.h"
++#include "minithread.h"
++#include "random.h"
++
++#define BCAST_ENABLED 0
++#define BCAST_USE_TOPOLOGY_FILE 0
++#define BCAST_ADDRESS "192.168.1.255"
++#define BCAST_LOOPBACK 0
++#define BCAST_TOPOLOGY_FILE "topology.txt"
++
++#define BCAST_MAX_LINE_LEN 128
++#define BCAST_MAX_ENTRIES 64
++#define BCAST_MAX_NAME_LEN 64
++
++#define MINIMSG_PORT 8086
++
++#define NETWORK_INTERRUPT_TYPE 2
++
++/*******************************************************************************
++*  Private types and functions                                                 *
++*******************************************************************************/
++
++typedef struct {
++  char name[BCAST_MAX_NAME_LEN];
++  network_address_t addr;
++  int links[BCAST_MAX_ENTRIES];
++  int n_links;
++} bcast_entry_t;
++
++typedef struct {
++  int n_entries;
++  bcast_entry_t entries[BCAST_MAX_ENTRIES];
++  int me;
++} bcast_t;
++
++
++bcast_t topology;
++
++short my_udp_port = MINIMSG_PORT;
++short other_udp_port = MINIMSG_PORT;
++
++double loss_rate = 0.0;
++double duplication_rate = 0.0;
++int synthetic_network = 0;
++
++
++struct address_info {
++  int sock;
++  struct sockaddr_in sin;
++  char pkt[MAX_NETWORK_PKT_SIZE];
++};
++
++struct address_info if_info;
++static network_address_t broadcast_addr = { 0 };
++
++/* forward definition */
++void start_network_poll(interrupt_handler_t, int*);
++void network_address_to_sockaddr(network_address_t addr, struct sockaddr_in* sin);
++void sockaddr_to_network_address(struct sockaddr_in* sin, network_address_t addr);
++
++/* zero the address, so as to make it invalid */
++void network_address_blankify(network_address_t addr) {
++   addr[0]=addr[1]=0;
++}
++
++/** Copy address "original" to address "copy". */
++void
++network_address_copy(network_address_t original, network_address_t copy) {
++  copy[0] = original[0];
++  copy[1] = original[1];
++}
++
++/* Compare addresses. Return 1 if same, 0 if different. */
++int
++network_address_same(network_address_t a, network_address_t b) {
++  return (a[0] == b[0] && a[1] == b[1]);
++}
++
++void
++network_printaddr(network_address_t addr) {
++  char name[40];
++  network_format_address(addr, name, 40);
++  printf("%s", name);
++}
++
++static int
++send_pkt(network_address_t dest_address, 
++         int hdr_len, char* hdr, 
++         int data_len, char* data) {
++  int cc;
++  struct sockaddr_in sin;
++  char* bufp;
++  int sz, pktlen;
++  
++  pktlen = hdr_len + data_len;
++  
++  /* sanity checks */
++  if (hdr_len < 0 || data_len < 0 || pktlen > MAX_NETWORK_PKT_SIZE)
++    return 0;
++  
++  /*
++   * Pull up the headers and data and stuff them into the output
++   * packet with the
++   * field sizes embedded.
++   */
++  
++  bufp = if_info.pkt;
++  
++  sz = hdr_len;
++  memcpy(bufp, hdr, sz);
++  bufp += sz;
++  
++  sz = data_len;
++  memcpy(bufp, data, sz);
++  bufp += sz;
++  
++  network_address_to_sockaddr(dest_address, &sin);
++  cc = sendto(if_info.sock,
++              if_info.pkt,
++              pktlen,
++              0,
++              (struct sockaddr *) &sin,
++              sizeof(sin));
++  
++  return cc;
++}
++
++int 
++network_send_pkt(network_address_t dest_address, int hdr_len, 
++                 char* hdr, int data_len, char* data) {
++
++  if (synthetic_network) {
++    if(genrand() < loss_rate)
++      return (hdr_len+data_len);
++
++    if(genrand() < duplication_rate)
++      send_pkt(dest_address, hdr_len, hdr, data_len, data);
++  }
++
++  return send_pkt(dest_address, hdr_len, hdr, data_len, data);
++}
++
++void
++network_get_my_address(network_address_t my_address) {
++  char hostname[64];
++  assert(gethostname(hostname, 64) == 0);
++  network_translate_hostname(hostname, my_address);
++  my_address[1] = htons(my_udp_port);
++}
++
++int
++network_translate_hostname(char* hostname, network_address_t address) {
++  struct hostent* host;
++  unsigned int iaddr;
++  //printf("resolving name %s\n",hostname);
++  if(isalpha(hostname[0])) {
++          host = gethostbyname(hostname);
++          if (host == NULL)
++                return -1;
++          else {
++                address[0] = *((int *) host->h_addr);
++                address[1] = htons(other_udp_port);
++                //printf("address[0] = %x",address[0]);
++                //printf("address[1] = %x",address[1]);
++                return 0;
++          }
++  }
++  else {
++          iaddr = inet_addr(hostname);
++          //printf("iaddr = %x\n",iaddr);
++          address[0] = iaddr;
++          address[1] = htons(other_udp_port);
++          return 0;
++   }  
++}
++
++int 
++network_compare_network_addresses(network_address_t addr1,
++                                  network_address_t addr2){
++  return (addr1[0]==addr2[0] && addr1[1]==addr2[1]);
++}
++
++void
++sockaddr_to_network_address(struct sockaddr_in* sin, network_address_t addr) {
++  addr[0] = sin->sin_addr.s_addr;
++  addr[1] = sin->sin_port;
++}
++
++void
++network_address_to_sockaddr(network_address_t addr, struct sockaddr_in* sin) {
++  memset(sin, 0, sizeof(*sin));
++  sin->sin_addr.s_addr = addr[0];
++  sin->sin_port = (short)addr[1];
++  sin->sin_family = SOCK_DGRAM;
++}
++
++int 
++network_format_address(network_address_t address, char* string, int length) {
++  struct in_addr ipaddr;
++  char* textaddr;
++  int addrlen;
++  
++  ipaddr.s_addr = address[0];
++  textaddr = inet_ntoa(ipaddr);
++  addrlen = strlen(textaddr);
++
++  if (length >= addrlen + 5) {
++    strcpy(string, textaddr);
++    string[addrlen] = ':';
++    sprintf(string+addrlen+1, "%d", ntohs((short) address[1]));
++    return 0;
++  }
++  else 
++    return -1;
++}
++
++void
++network_udp_ports(short myportnum, short otherportnum) {
++  my_udp_port = myportnum;
++  other_udp_port = otherportnum;
++}
++
++void
++network_synthetic_params(double loss, double duplication) {
++  synthetic_network = 1;        
++  loss_rate = loss;
++  duplication_rate = duplication;
++}
++
++void
++bcast_initialize(char* configfile, bcast_t* bcast) {
++  FILE* config = fopen(configfile, "r");
++  char line[BCAST_MAX_LINE_LEN];
++  int i = 0;
++  char* rv;
++  network_address_t my_addr;
++  unsigned int my_ip_addr;
++
++  network_get_my_address(my_addr);
++  my_ip_addr = my_addr[0];
++
++  while ((rv = fgets(line, BCAST_MAX_LINE_LEN, config)) != NULL) {
++    if (line[0] == '\r' || line[0] == '\n')
++      break;
++        line[strlen(line)-1] = '\0';
++    strcpy(bcast->entries[i].name, line);
++    bcast->entries[i].n_links = 0;
++    if (network_translate_hostname(line, bcast->entries[i].addr) != 0) {
++      kprintf("Error: could not resolve hostname %s.\n", line);
++      AbortOnCondition(1,"Crashing.");
++    }
++    if (bcast->entries[i].addr[0] == my_ip_addr)
++      bcast->me = i;
++    i++;
++  }
++
++  bcast->n_entries = i;
++  
++
++  if (rv != NULL)
++    for (i=0; i<bcast->n_entries; i++) {
++      int j;
++      AbortOnCondition(fgets(line, BCAST_MAX_LINE_LEN, config) == NULL,
++                       "Error: incomplete adjacency matrix.");
++
++      for (j=0; j<bcast->n_entries; j++)
++        if (i == j)
++          ; /* avoid self-links */
++        else if (line[j] != '.') {
++          bcast->entries[i].links[bcast->entries[i].n_links] = j;
++          bcast->entries[i].n_links++;
++        }         
++    }
++
++  fclose(config);
++}
++
++int
++hostname_to_entry(bcast_t* bcast, char* hostname) {
++  network_address_t addr;
++  unsigned int ipaddr;
++  int entry = -1;
++  int i;
++
++  if (hostname == NULL)
++    return bcast->me;
++
++  if (network_translate_hostname(hostname, addr) != 0) {
++    kprintf("Error: could not resolve host name.\n");
++      AbortOnCondition(1,"Crashing.");
++  }
++
++  ipaddr = addr[0];
++
++  for (i=0; i<bcast->n_entries; i++)
++    if (ipaddr == bcast->entries[i].addr[0])
++      entry = i;
++
++  AbortOnCondition(entry == -1,
++                   "Error: host name not in broadcast table.");
++
++  return entry;
++}
++
++void
++bcast_add_link(bcast_t* bcast, char* src, char* dest) {
++  int srcnum, destnum;
++  int i;
++
++  srcnum = hostname_to_entry(bcast, src);
++  destnum = hostname_to_entry(bcast, dest);
++
++  for (i=0; i<bcast->entries[srcnum].n_links; i++)
++    if (bcast->entries[srcnum].links[i] == destnum)
++      return;
++
++  bcast->entries[srcnum].links[bcast->entries[srcnum].n_links++] = destnum;
++}
++
++void
++bcast_remove_link(bcast_t* bcast, char* src, char* dest) {
++  int srcnum, destnum;
++  int i;
++
++  srcnum = hostname_to_entry(bcast, src);
++  destnum = hostname_to_entry(bcast, dest);
++
++  for (i=0; i<bcast->entries[srcnum].n_links; i++)
++    if (bcast->entries[srcnum].links[i] == destnum) {
++      if (i < bcast->entries[srcnum].n_links-1) {
++        bcast->entries[srcnum].links[i] = 
++          bcast->entries[srcnum].links[--bcast->entries[srcnum].n_links];
++        break;
++      }
++      else
++        bcast->entries[srcnum].n_links--;
++    }  
++}
++
++int
++network_bcast_pkt(int hdr_len, char* hdr, int data_len, char* data) {
++  int i;
++  int me;
++
++  AbortOnCondition(!BCAST_ENABLED,
++                   "Error: network broadcast not enabled.");
++  
++  if (BCAST_USE_TOPOLOGY_FILE){
++
++    me = topology.me;
++    
++    for (i=0; i<topology.entries[me].n_links; i++) {
++      int dest = topology.entries[me].links[i];
++      
++      if (synthetic_network) {
++        if(genrand() < loss_rate)
++          continue;
++        
++        if(genrand() < duplication_rate)
++          send_pkt(topology.entries[dest].addr, hdr_len, hdr, data_len, data);
++      }
++      
++      if (send_pkt(topology.entries[dest].addr, 
++                   hdr_len, hdr, data_len, data) != hdr_len + data_len)
++        return -1;
++    }
++
++    if (BCAST_LOOPBACK) {
++      if (send_pkt(topology.entries[me].addr, 
++                   hdr_len, hdr, data_len, data) != hdr_len + data_len)
++        return -1;
++    }
++  
++  } else { /* real broadcast */
++
++    /* send the packet using the private network broadcast address */
++    if (send_pkt(broadcast_addr, 
++                 hdr_len, hdr, data_len, data) != hdr_len + data_len)
++      return -1;
++
++  }
++  return hdr_len+data_len;
++}
++
++void
++network_add_bcast_link(char* src, char* dest) {
++  bcast_add_link(&topology, src, dest);
++}
++
++void
++network_remove_bcast_link(char* src, char* dest) {
++  bcast_remove_link(&topology, src, dest);
++}
++
++
++int network_poll(void* arg) {
++  int* s;
++  network_interrupt_arg_t* packet;
++  struct sockaddr_in addr;
++  unsigned int fromlen = sizeof(struct sockaddr_in);
++
++  s = (int *) arg;
++
++  for (;;) {
++
++    /* we rely on run_user_handler to destroy this data structure */
++    if (DEBUG)
++      kprintf("NET:Allocating an incoming packet.\n");
++
++    packet = 
++      (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
++    assert(packet != NULL);
++  
++    packet->size = recvfrom(*s, packet->buffer, MAX_NETWORK_PKT_SIZE,
++                            0, (struct sockaddr *) &addr, &fromlen);
++    if (packet->size <= 0) {
++      kprintf("NET:Error, %d.\n", errno);
++      AbortOnCondition(1,"Crashing.");
++    }
++    else if (DEBUG)
++      kprintf("NET:Received a packet, seqno %d.\n", ntohl(*((int *) packet->buffer)));
++   
++    assert(fromlen == sizeof(struct sockaddr_in));
++    sockaddr_to_network_address(&addr, packet->sender);
++
++    /* 
++     * now we have filled in the arg to the network interrupt service routine,
++     * so we have to get the user's thread to run it.
++     */
++    if (DEBUG)
++      kprintf("NET:packet arrived.\n");
++    send_interrupt(NETWORK_INTERRUPT_TYPE, mini_network_handler, (void*)packet);
++  }     
++}
++
++/* 
++ * start polling for network packets. this is separate so that clock interrupts
++ * can be turned on without network interrupts. however, this function requires
++ * that clock_init has been called!
++ */
++void start_network_poll(interrupt_handler_t network_handler, int* s) {
++  pthread_t network_thread;
++  sigset_t set;
++  sigset_t old_set;
++  struct sigaction sa;
++  sigemptyset(&set);
++  sigaddset(&set,SIGRTMAX-1);
++  sigaddset(&set,SIGRTMAX-2);
++  sigprocmask(SIG_BLOCK,&set,&old_set);
++
++  /* create clock and return threads, but discard ids */
++  AbortOnCondition(pthread_create(&network_thread, NULL, (void*)network_poll, s),
++      "pthread");
++
++  sa.sa_handler = (void*)handle_interrupt;
++  sa.sa_flags = SA_SIGINFO | SA_RESTART | SA_ONSTACK; 
++  sa.sa_sigaction= (void*)handle_interrupt;
++  sigemptyset(&sa.sa_mask);
++  sigaddset(&sa.sa_mask,SIGRTMAX-2);
++  sigaddset(&sa.sa_mask,SIGRTMAX-1);
++  if (sigaction(SIGRTMAX-2, &sa, NULL) == -1)
++      AbortOnError(0);
++
++  pthread_sigmask(SIG_SETMASK,&old_set,NULL);
++}
++
++int
++network_initialize(network_handler_t network_handler) {
++  int arg = 1;
++  mini_network_handler=(interrupt_handler_t) network_handler;
++
++  memset(&if_info, 0, sizeof(if_info));
++  
++  if_info.sock = socket(PF_INET, SOCK_DGRAM, 0);
++  if (if_info.sock < 0)  {
++    perror("socket");
++    return -1;
++  }
++
++  if_info.sin.sin_family = SOCK_DGRAM;
++  if_info.sin.sin_addr.s_addr = htonl(0);
++  if_info.sin.sin_port = htons(my_udp_port);
++  if (bind(if_info.sock, (struct sockaddr *) &if_info.sin, 
++           sizeof(if_info.sin)) < 0)  {
++    /* kprintf("Error: code %ld.\n", GetLastError());*/
++    AbortOnError(0);
++    perror("bind");
++    return -1;
++  }
++
++  /* set for fast reuse */
++  assert(setsockopt(if_info.sock, SOL_SOCKET, SO_REUSEADDR, 
++                    (char *) &arg, sizeof(int)) == 0);
++
++  if (BCAST_ENABLED)
++    bcast_initialize(BCAST_TOPOLOGY_FILE, &topology);
++
++  /*
++   * Interrupts are handled through the caller's handler.
++   */
++
++  start_network_poll(mini_network_handler, &if_info.sock);
++
++  return 0;
++}
++
+diff -rupN ../../2/release/network.h ./network.h
+--- ../../2/release/network.h	1969-12-31 19:00:00.000000000 -0500
++++ ./network.h	2014-10-16 04:33:49.735794087 -0400
+@@ -0,0 +1,108 @@
++#ifndef __NETWORK_H__
++#define __NETWORK_H__
++
++/*
++ * network.h:
++ *      Low-level network interface.
++ *
++ *      This interface defines a low-level network interface for sending and
++ *      receiving packets between pseudo-network interfaces located on the 
++ *      same or different hosts.
++ */
++
++#define MAX_NETWORK_PKT_SIZE    8192
++
++/* network_address_t's should be treated as opaque types. See functions below */
++typedef unsigned int network_address_t[2];
++
++/*******************************************************************************
++*  Network interrupt handler                                                   *
++*******************************************************************************/
++
++/* the argument to the network interrupt handler */
++typedef struct {
++    network_address_t sender;
++    char buffer[MAX_NETWORK_PKT_SIZE];
++    int size;
++} network_interrupt_arg_t;
++
++/* the type of an interrupt handler.  These functions are responsible for freeing
++ * the argument that is passed in */
++typedef void (*network_handler_t)(network_interrupt_arg_t *arg);
++
++/*
++ * network_initialize should be called before clock interrupts start
++ * happening (or with clock interrupts disabled).  The initialization
++ * procedure returns 0 on success, -1 on failure.  The function
++ * handler(data) is called when a network packet arrives.
++ *
++ * You must call this function before you call any other network
++ * functions, including network_translate_hostname().
++ */
++int network_initialize(network_handler_t network_handler);
++
++/*
++ * only used for testing; normally, you should not have to call this
++ * function. it should be called before network_initialize, and sets
++ * the local UDP port to use for miniports, as well as the port number
++ * to use for "remote" ports; by this mechanism, it's possible to run
++ * a pair of processes on the same computer without their ports
++ * conflicting. of course, this is a hack.
++ */
++void network_udp_ports(short myportnum, short otherportnum);
++
++
++/*******************************************************************************
++*  Functions for sending packets                                               *
++*******************************************************************************/
++
++/*
++ * network_send_pkt returns the number of bytes sent if it was able to
++ * successfully send the data.  Returns -1 otherwise.
++ */
++int
++network_send_pkt(network_address_t dest_address,
++                 int hdr_len, char * hdr,
++                 int  data_len, char * data);
++
++
++/*******************************************************************************
++*  Functions for working with network addresses                                *
++*******************************************************************************/
++
++/*
++ * network_my_address returns the network_address that can be used
++ * to send a packet to the caller's address space.  Note that
++ * an address space can send a packet to itself by specifying the result of
++ * network_get_my_address() as the dest_address to network_send_pkt.
++ */
++void network_get_my_address(network_address_t my_address);
++
++/* look up the given host and return the corresponding network address.
++ * Returns TODO
++ */
++int network_translate_hostname(char* hostname, network_address_t address);
++
++/*
++ * Compares network addresses. Returns 0 if different and
++ * nonzero if identical.
++ */
++int network_compare_network_addresses(network_address_t addr1,
++                                      network_address_t addr2);
++
++/*
++ * write the network address in a human-readable way, into a buffer of length
++ * "length"; will return -1 if the string is too short, else 0. the address
++ * will be in the form "the.text.ip.address:port", e.g. "128.84.223.105:20".
++ * Note: the port is an actual UDP port, not a miniport! 
++ */
++int network_format_address(network_address_t address, char* string, int length);
++
++/* zero the address, so as to make it invalid */
++void network_address_blankify(network_address_t addr);
++
++/* copy address "original" to address "copy". */
++void network_address_copy(network_address_t original, network_address_t copy);
++
++#endif /*__NETWORK_H_*/
++
+diff -rupN ../../2/release/README ./README
+--- ../../2/release/README	2014-09-23 23:25:26.085241569 -0400
++++ ./README	2014-10-16 03:51:01.103690554 -0400
+@@ -24,19 +24,23 @@ This release contains three groups of fi
+     - start.c and end.c
+     - interrupts.*
+     - machine_primitives.*
++    - network.*               <-- new in project 3!
+     - random.*
+ 
+ 2. the threading library itself
+-    - minithread.*       <-- updated in project 2!
++    - alarm.*
++    - minithread.*
++    - multilevel_queue.*
++    - miniheader.*            <-- new in project 3!
++    - minimsg.*               <-- new in project 3!
+     - queue.*
+-    - multilevel_queue.* <-- new in project 2!
+-    - synch.*            <-- you will need to edit in project 2!
+-    - alarm.*            <-- new in project 2!
++    - synch.*
+ 
+ 3. sample applications
+     - buffer.c
+     - sieve.c
+     - test*.c
++    - network[1-6].c          <-- new in project 3!
+ 
+ You should not need to edit the system primitives, though you may want to read
+ the header files!

@@ -292,9 +292,10 @@ clock_handler(void* arg)
 {
 	interrupt_level_t old_level = set_interrupt_level(DISABLED);
 	alarm_id alarm = pop_alarm();
-	if(alarm != NULL){
+	while(alarm != NULL){
 		execute_alarm(alarm);
 		deregister_alarm(alarm);
+		alarm = pop_alarm();
 	}
 	current_tick++;
 	set_interrupt_level(old_level);

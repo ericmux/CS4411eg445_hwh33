@@ -55,6 +55,12 @@ extern void miniport_destroy(miniport_t miniport);
  */
 extern int minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg_t msg, int len);
 
+/* Delivers a message to an unbound port's mailbox and makes it known that messages are 
+ * available by calling semaphore_V on the port's available messages semaphore. This
+ * function should be called by the network interrupt handler.
+ */
+extern void minimsg_dropoff_message(network_interrupt_arg_t *raw_msg);
+
 /* Receives a message through a locally unbound port. Threads that call this function are
  * blocked until a message arrives. Upon arrival of each message, the function must create
  * a new bound port that targets the sender's address and listening port, so that use of

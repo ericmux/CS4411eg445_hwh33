@@ -100,7 +100,7 @@ int get_source_port(char *packet_buffer) {
 } 
 
 //Takes in a packet as a char buffer and returns the destination port.
-int get_destinatin_port(char *packet_buffer) {
+int get_destination_port(char *packet_buffer) {
 // The source port is located after the protocol (a char)
 // and the source address (an 8-byte char buffer).
     int *int_ptr = (int *) &packet_buffer[sizeof(char) + 8 * sizeof(char) 

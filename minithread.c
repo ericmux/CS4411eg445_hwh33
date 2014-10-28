@@ -395,6 +395,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 
 	//Initialize network system for remote communication.
+	minimsg_initialize();
 	network_initialize(minimsg_dropoff_message);
 
 	set_interrupt_level(ENABLED);

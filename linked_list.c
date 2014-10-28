@@ -81,9 +81,12 @@ void linked_list_remove(linked_list_t list, int key_to_remove) {
 // linked_list_empty). Returns the popped key and stores the 
 // popped node's data in data_ptr. 
 int linked_list_pop(linked_list_t list, void **data_ptr) {
-    int key_to_return = list->head->key;
+    int key_to_return;
+    node *node_to_free;
+
+    key_to_return = list->head->key;
     *data_ptr = list->head->data;
-    node *node_to_free = list->head;
+    node_to_free = list->head;
     list->head = node_to_free->next;
     free(node_to_free);
 

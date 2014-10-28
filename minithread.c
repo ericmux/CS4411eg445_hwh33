@@ -154,8 +154,12 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 				if(current_thread->state == FINISHED){
 					queue_append(scheduler->finished_queue, current_thread);
 				} else if(current_thread->state == RUNNING || current_thread->state == READY){
-					current_thread->state = READY;
-					multilevel_queue_enqueue(scheduler->ready_queue, old_queue_level + 1, current_thread);
+
+					//if self-switching, I shouldn't re-enqueue myself.
+					if(current_thread != thread_to_run){
+						current_thread->state = READY;
+						multilevel_queue_enqueue(scheduler->ready_queue, old_queue_level + 1, current_thread);
+					}
 				}
 			}
 

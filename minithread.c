@@ -15,7 +15,8 @@
 #include "multilevel_queue.h"
 #include "synch.h"
 #include "alarm.h"
-#include "random.h"
+#include "network.h"
+#include "minimsg.h"
 
 #include <assert.h>
 
@@ -392,6 +393,10 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Initialize clock system for preemption.
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
+
+	//Initialize network system for remote communication.
+	network_initialize(minimsg_dropoff_message);
+
 	set_interrupt_level(ENABLED);
 
 	//Start concurrency.

@@ -250,7 +250,7 @@ minithread_t minithread_fork(proc_t proc, arg_t arg) {
 	forked_thread = minithread_create(proc, arg);
 
 	old_level = set_interrupt_level(DISABLED);
-	multilevel_queue_append(thread_scheduler->ready_queue, 0, forked_thread);
+	multilevel_queue_enqueue(thread_scheduler->ready_queue, 0, forked_thread);
 	set_interrupt_level(old_level);
 
 
@@ -308,7 +308,7 @@ void minithread_start(minithread_t t) {
     }
 	t->state = READY;
 
-	multilevel_queue_append(thread_scheduler->ready_queue, 0, t);
+	multilevel_queue_enqueue(thread_scheduler->ready_queue, 0, t);
 	set_interrupt_level(old_level);
 }
 

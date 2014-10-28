@@ -131,11 +131,11 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 		deq_level = multilevel_queue_dequeue(scheduler->ready_queue, scheduler->level, (void **) &thread_to_run);
 
 		if(deq_level != -1){
+			stack_pointer_t *oldsp_ptr; 
+
 			if(deq_level != scheduler->level){
 				scheduler->level = deq_level;
 			}
-
-			stack_pointer_t *oldsp_ptr; 
 
 			//Check if we're scheduling for the first time.
 			if(current_thread == NULL){
@@ -250,7 +250,7 @@ minithread_t minithread_fork(proc_t proc, arg_t arg) {
 	forked_thread = minithread_create(proc, arg);
 
 	old_level = set_interrupt_level(DISABLED);
-	queue_append(thread_scheduler->ready_queue, forked_thread);
+	multilevel_queue_append(thread_scheduler->ready_queue, 0, forked_thread);
 	set_interrupt_level(old_level);
 
 
@@ -308,7 +308,7 @@ void minithread_start(minithread_t t) {
     }
 	t->state = READY;
 
-	queue_append(thread_scheduler->ready_queue, t);
+	multilevel_queue_append(thread_scheduler->ready_queue, 0, t);
 	set_interrupt_level(old_level);
 }
 

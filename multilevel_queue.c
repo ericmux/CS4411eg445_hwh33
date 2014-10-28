@@ -58,19 +58,17 @@ int multilevel_queue_dequeue(multilevel_queue_t queue, int level, void** item)
 	if (queue == NULL || level < 0 || level > queue->number_of_levels - 1) return -1;
 
 	found_item = 0;
-	current_level = 0;
+	current_level = level;
 	*item = NULL;
 	while (!found_item && current_level < queue->number_of_levels) {
 		// queue_dequeue returns -1 on error and 0 on success. So found_item
 		// will be 0 (false) if the item was not found and 1 (true) if it was.
 		found_item = 1 + queue_dequeue(queue->queue_array[current_level], item);
-		current_level++;
+		if (!found_item) {current_level++;}
 	}
 
-	// If anything was found, then item was set in the loop. Otherwise, it's still NULL.
-	// found_item is 1 (true) if we found an item and 0 (false) if we did not. So
-	// found_item - 1 will be 0 on success and -1 on error.
-	return found_item - 1;
+        if (found_item) {return current_level;}
+        else {return -1;}
 }
 
 /* 

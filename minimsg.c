@@ -84,9 +84,9 @@ mini_header_t pack_header(network_address_t source_address, int source_port,
 
     new_header->protocol = PROTOCOL_MINIDATAGRAM;
     pack_address(new_header->source_address, source_address);
-    pack_unsigned_int(new_header->source_port, (unsigned int) source_port);
+    pack_unsigned_short(new_header->source_port, (short) source_port);
     pack_address(new_header->destination_address, dest_address);
-    pack_unsigned_int(new_header->destination_port, (unsigned int) dest_port);
+    pack_unsigned_short(new_header->destination_port, (short) dest_port);
 
     return new_header;
 }
@@ -95,25 +95,22 @@ mini_header_t pack_header(network_address_t source_address, int source_port,
 int get_source_port(char *packet_buffer) {
 // The source port is located after the protocol (a char)
 // and the source address (an 8-byte char buffer).
-    int *int_ptr = (int *) &packet_buffer[sizeof(char) + 8 * sizeof(char)];
-    return *int_ptr; 
+    return (int) unpack_unsigned_short(&packet_buffer[9]);
 } 
 
 //Takes in a packet as a char buffer and returns the destination port.
 int get_destination_port(char *packet_buffer) {
 // The source port is located after the protocol (a char)
 // and the source address (an 8-byte char buffer).
-    int *int_ptr = (int *) &packet_buffer[sizeof(char) + 8 * sizeof(char) 
-                                          + 2 * sizeof(char) + 8 * sizeof(char)];
-    return *int_ptr; 
+    return (int) unpack_unsigned_short(&packet_buffer[19]);
 }
 
 // Takes in a packet as a char buffer and returns the packet's payload.
 minimsg_t get_payload(char *packet_buffer) {
     // The payload is located after the entire header, which
     // is a struct of type mini_header.
-    minimsg_t *payload_ptr = (minimsg_t *) &packet_buffer[sizeof(struct mini_header)];
-    return *payload_ptr;
+    minimsg_t payload_ptr = (minimsg_t) &packet_buffer[sizeof(struct mini_header)];
+    return payload_ptr;
 }
 
 /* performs any required initialization of the minimsg layer.
@@ -140,14 +137,18 @@ miniport_create_unbound(int port_number)
     mailbox *new_mailbox;
     semaphore_t new_available_messages_sema;
     queue_t new_received_messages_q;
+    interrupt_level_t old_level;
 
     // Check for a bad port_number. Port numbers outside of this range are invalid.
     if (port_number < 0 || port_number > 32767) return NULL;
+
+    old_level = set_interrupt_level(DISABLED);
 
     // Check if a miniport at this port number has already been created. If so,
     // return that miniport. hashtable_get returns 0 on success and stores the
     // pointer found in the table at the address of the 3rd argument.
     if (hashtable_get(unbound_ports_table, port_number, (void **) &new_miniport) == 0) {
+        set_interrupt_level(old_level);
         return new_miniport; // it's not actually new
     }
 
@@ -170,6 +171,8 @@ miniport_create_unbound(int port_number)
     // Before we return, we store the new miniport in the unbound port table.
     unbound_ports_table = hashtable_put(unbound_ports_table, port_number, new_miniport); 
 
+    set_interrupt_level(old_level);
+
     return new_miniport;
 }
 
@@ -187,12 +190,15 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
     miniport_t new_miniport;
     destination_data *new_destination_data;
     int bound_port_number;
+    interrupt_level_t old_level;
 
     // Check for NULL input or a bad remote_unbound_port_number.
     if (addr == NULL 
         || remote_unbound_port_number < 0 || remote_unbound_port_number > 32767) {
         return NULL;
     }
+  
+    old_level = set_interrupt_level(DISABLED);
 
     // The first thing we do is set up the port's destination data.
     new_destination_data = (destination_data *)malloc(sizeof(destination_data));
@@ -209,6 +215,8 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
     bound_port_number = get_next_bound_pn();
     bound_ports_table = hashtable_put(bound_ports_table, bound_port_number, new_miniport);
 
+    set_interrupt_level(old_level);
+
     return new_miniport;
 }
 
@@ -218,20 +226,29 @@ miniport_create_bound(network_address_t addr, int remote_unbound_port_number)
 void
 miniport_destroy(miniport_t miniport)
 {
+    interrupt_level_t old_level;
+
     // Check for NULL input.
     if (miniport == NULL) return;
 
+    old_level = set_interrupt_level(DISABLED);
+
     if (miniport->port_type == UNBOUND) {
         hashtable_remove(unbound_ports_table, miniport->port_data.mailbox->port_number);
+        set_interrupt_level(old_level);
         semaphore_destroy(miniport->port_data.mailbox->available_messages_sema);
         queue_free(miniport->port_data.mailbox->received_messages);
         free(miniport->port_data.mailbox);
     } else {
         hashtable_remove(bound_ports_table, miniport->port_data.destination_data->source_port);
+        set_interrupt_level(old_level);
         free(miniport->port_data.destination_data);
     }  
 
     free(miniport);
+
+    //set_interrupt_level(old_level);
+
 }
 
 /* Sends a message through a locally bound port (the bound port already has an associated
@@ -283,11 +300,11 @@ minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg
     // bytes it was able to send and -1 on failure.
     // XXX: check casting of msg_header
     bytes_sent = network_send_pkt(
-        destination_address, sizeof(msg_header), (char *)msg_header, len, msg);  
+        destination_address, sizeof(struct mini_header), (char *)msg_header, len, msg);  
 
     if (bytes_sent == -1) return 0;
 
-    return bytes_sent - sizeof(msg_header);
+    return bytes_sent - sizeof(struct mini_header);
 
 }
 
@@ -297,24 +314,40 @@ minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg
  */
 void minimsg_dropoff_message(network_interrupt_arg_t *raw_msg)
 {
+    interrupt_level_t old_level;
     int local_unbound_port_number;
     miniport_t local_unbound_port;
-   
+    int get_result;
+
     // Check for NULL input.
     if (raw_msg == NULL) return;
 
     // Get the local unbound port number from the message header.
     local_unbound_port_number = get_destination_port(raw_msg->buffer);
 
+    old_level = set_interrupt_level(DISABLED);
+
     // Get the miniport from the unbound ports table.
     local_unbound_port = (miniport_t) malloc(sizeof(miniport));
-    hashtable_get(unbound_ports_table, local_unbound_port_number, (void **) &local_unbound_port);
+    get_result = hashtable_get(unbound_ports_table, local_unbound_port_number, (void **) &local_unbound_port);
+    
+    set_interrupt_level(old_level);
+
+    if (get_result == -1) {
+        return;
+    }
+
+    old_level = set_interrupt_level(DISABLED);
 
     // Dropoff the message by appending it to the port's message queue.
     queue_append(local_unbound_port->port_data.mailbox->received_messages, raw_msg);
+ 
+    set_interrupt_level(old_level);
+
     // V on the semaphore to let threads know that messages are available
     semaphore_V(local_unbound_port->port_data.mailbox->available_messages_sema);
 
+    
     return;
 }
 
@@ -341,8 +374,7 @@ int minimsg_receive(miniport_t local_unbound_port, miniport_t* new_local_bound_p
 
     // We have moved past the P, so a message is available. Grab the message by dequeueing it.
     raw_msg = (network_interrupt_arg_t *)malloc(sizeof(network_interrupt_arg_t));
-    if (queue_dequeue(
-        local_unbound_port->port_data.mailbox->received_messages, (void **) &raw_msg) == -1) 
+    if (queue_dequeue(local_unbound_port->port_data.mailbox->received_messages, (void **) &raw_msg) == -1) 
     {
         return 0;  // if here, an error occurred and no bytes were received
     }
@@ -350,12 +382,11 @@ int minimsg_receive(miniport_t local_unbound_port, miniport_t* new_local_bound_p
     // Now strip off and parse the header.
     source_port = get_source_port(raw_msg->buffer);
     *new_local_bound_port = miniport_create_bound(raw_msg->sender, source_port);
-    msg = get_payload(raw_msg->buffer); 
+    strcpy(msg, get_payload(raw_msg->buffer)); 
     payload_size = raw_msg->size - sizeof(struct mini_header); //XXX: need to check this
     *len = payload_size;
 
     // We don't need the raw message anymore, so we free it.
-    free(raw_msg->buffer); //XXX: necessary?
     free(raw_msg);
 
     return payload_size;

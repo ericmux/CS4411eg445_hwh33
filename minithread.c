@@ -91,8 +91,6 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 
 int scheduler_pick_level(scheduler_t scheduler){
 
-	int proportion = quanta_proportions[0];
-
 	if(scheduler->freq_count++ < quanta_proportions[0]) return 0;
 
 	if(scheduler->freq_count   < quanta_proportions[1]) return 1;
@@ -123,7 +121,7 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 		We have to context switch only if either the max number of quanta for the current level has expired or
 	   	the current thread has finished. We also need to switch if we're scheduling for the first time.
 	*/
-	if(scheduler->quanta_count >= quantas[scheduler->level] || 
+	if(scheduler->quanta_count >= quanta_durations[scheduler->level] || 
 		current_thread == NULL || current_thread->state == FINISHED){
 		
 		unsigned int old_queue_level;

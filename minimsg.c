@@ -99,6 +99,15 @@ int get_source_port(char *packet_buffer) {
     return *int_ptr; 
 } 
 
+//Takes in a packet as a char buffer and returns the destination port.
+int get_destinatin_port(char *packet_buffer) {
+// The source port is located after the protocol (a char)
+// and the source address (an 8-byte char buffer).
+    int *int_ptr = (int *) &packet_buffer[sizeof(char) + 8 * sizeof(char) 
+                                          + 2 * sizeof(char) + 8 * sizeof(char)];
+    return *int_ptr; 
+}
+
 // Takes in a packet as a char buffer and returns the packet's payload.
 minimsg_t get_payload(char *packet_buffer) {
     // The payload is located after the entire header, which
@@ -219,7 +228,6 @@ miniport_destroy(miniport_t miniport)
         free(miniport->port_data.mailbox);
     } else {
         hashtable_remove(bound_ports_table, miniport->port_data.destination_data->source_port);
-        // XXX: what to do about destination address?
         free(miniport->port_data.destination_data);
     }  
 
@@ -257,9 +265,7 @@ minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg
         return 0;
     }
 
-    // Do I need to check for len != length of msg?
-
-    // Prepare the data for our header. 
+    // Prepare the data for our header.
     network_get_my_address(source_address);
     network_address_copy(
         local_bound_port->port_data.destination_data->destination_address,
@@ -280,7 +286,8 @@ minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg
         destination_address, sizeof(msg_header), (char *)msg_header, len, msg);  
 
     if (bytes_sent == -1) return 0;
-    else return bytes_sent - sizeof(msg_header);
+
+    return bytes_sent - sizeof(msg_header);
 
 }
 
@@ -288,10 +295,20 @@ minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg
  * available by calling semaphore_V on the port's available messages semaphore. This
  * function should be called by the network interrupt handler.
  */
-void minimsg_dropoff_message(miniport_t local_unbound_port, network_interrupt_arg_t *raw_msg)
+void minimsg_dropoff_message(network_interrupt_arg_t *raw_msg)
 {
+    int local_unbound_port_number;
+    miniport_t local_unbound_port;
+   
     // Check for NULL input.
-    if (local_unbound_port == NULL || raw_msg == NULL) return;
+    if (raw_msg == NULL) return;
+
+    // Get the local unbound port number from the message header.
+    local_unbound_port_number = get_destination_port(raw_msg->buffer);
+
+    // Get the miniport from the unbound ports table.
+    local_unbound_port = (miniport_t) malloc(sizeof(miniport));
+    hashtable_get(unbound_ports_table, local_unbound_port_number, (void **) &local_unbound_port);
 
     // Dropoff the message by appending it to the port's message queue.
     queue_append(local_unbound_port->port_data.mailbox->received_messages, raw_msg);
@@ -338,9 +355,8 @@ int minimsg_receive(miniport_t local_unbound_port, miniport_t* new_local_bound_p
     *len = payload_size;
 
     // We don't need the raw message anymore, so we free it.
-    free(raw_msg->buffer);
+    free(raw_msg->buffer); //XXX: necessary?
     free(raw_msg);
-    // XXX: what to do about sender_address?
 
     return payload_size;
 }

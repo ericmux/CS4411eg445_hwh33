@@ -133,30 +133,27 @@ int scheduler_switch_try_once(scheduler_t scheduler){
 */
 void scheduler_switch(scheduler_t scheduler){
 
-	do{
-		interrupt_level_t old_level;
-		int switch_result;
+	interrupt_level_t old_level;
+	int switch_result;
 
-		//Scheduler cannot be interrupted while it's trying to decide.
-		old_level = set_interrupt_level(DISABLED);
+	//Scheduler cannot be interrupted while it's trying to decide.
+	old_level = set_interrupt_level(DISABLED);
 
-		switch_result = scheduler_switch_try_once(scheduler);
-		if(switch_result){
+	switch_result = scheduler_switch_try_once(scheduler);
+	if(switch_result){
+		set_interrupt_level(old_level);
+		return;
+	}
+
+	//If the current thread isn't finished yet and has yielded, allow it to proceed.
+	if(current_thread->state == RUNNING){
 			set_interrupt_level(old_level);
 			return;
-		}
+	}
 
-		//If the current thread isn't finished yet and has yielded, allow it to proceed.
-		if(current_thread != NULL){
-			if(current_thread->state == RUNNING){
-				set_interrupt_level(old_level);
-				return;
-			}
-		}
-
-		set_interrupt_level(old_level);
-
-	} while(1);
+	//There are no threads to be run and the current_thread cannot continue. Reenable interrupts and busy wait.
+	set_interrupt_level(old_level);
+	while(current_thread->state != RUNNING || current_thread != READY);
 	
 }
 

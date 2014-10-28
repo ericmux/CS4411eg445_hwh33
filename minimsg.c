@@ -94,14 +94,17 @@ mini_header_t pack_header(network_address_t source_address, int source_port,
 //Takes in a packet as a char buffer and returns the source port.
 int get_source_port(char *packet_buffer) {
 // The source port is located after the protocol (a char)
-// and the source address (an 8-byte char buffer).
+// and the source address (an 8-byte char buffer), so
+// 9 bytes into the buffer.
     return (int) unpack_unsigned_short(&packet_buffer[9]);
 } 
 
 //Takes in a packet as a char buffer and returns the destination port.
 int get_destination_port(char *packet_buffer) {
-// The source port is located after the protocol (a char)
-// and the source address (an 8-byte char buffer).
+// The destination port is located after the protocol (a char),
+// the source address (an 8-byte char buffer), the source port
+// (a 2-byte char buffer), and the destination address (an 8-byte char 
+// buffer), the source port(an 8-byte char buffer)
     return (int) unpack_unsigned_short(&packet_buffer[19]);
 }
 

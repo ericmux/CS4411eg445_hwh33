@@ -39,9 +39,9 @@ extern miniport_t miniport_create_unbound(int port_number);
  */
 extern miniport_t miniport_create_bound(network_address_t addr, int remote_unbound_port_number);
 
- Destroys a miniport and frees up its resources. If the miniport was in use at
+/* Destroys a miniport and frees up its resources. If the miniport was in use at
  * the time it was destroyed, subsequent behavior is undefined.
-
+ */
 extern void miniport_destroy(miniport_t miniport);
 
 /* Sends a message through a locally bound port (the bound port already has an associated

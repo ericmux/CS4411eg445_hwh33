@@ -10,7 +10,7 @@ typedef struct multilevel_queue {
 	// is the queue at level i. When the array is full,  
 	queue_t *queue_array;
 	int number_of_levels;
-};
+} multilevel_queue;
 
 /*
  * Returns an empty multilevel queue with number_of_levels levels. On error should return NULL.
@@ -23,11 +23,11 @@ multilevel_queue_t multilevel_queue_new(int number_of_levels)
 
 	if (number_of_levels < 1) return NULL;
 	
-	new_multilevel_queue = (multilevel_queue *)malloc(sizeof(multilevel_queue));
+	new_multilevel_queue = (multilevel_queue_t)malloc(sizeof(multilevel_queue));
 	new_queue_array = (queue_t *)malloc(sizeof(queue_t) * number_of_levels);
 	new_multilevel_queue->queue_array = new_queue_array;
-	new_multilevel_q->number_of_levels = number_of_levels;
-	return new_multilevel_q;
+	new_multilevel_queue->number_of_levels = number_of_levels;
+	return new_multilevel_queue;
 }
 
 /*

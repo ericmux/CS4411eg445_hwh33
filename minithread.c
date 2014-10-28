@@ -137,6 +137,13 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 
 		deq_level = multilevel_queue_dequeue(scheduler->ready_queue, scheduler->level, (void **) &thread_to_run);
 
+		if(deq_level == -1){
+			//No threads found for the new level, return to 0.
+			scheduler->level = 0;
+			scheduler->freq_count = quanta_proportions[scheduler->level];
+			deq_level = multilevel_queue_dequeue(scheduler->ready_queue, scheduler->level, (void **) &thread_to_run);
+		}
+
 		if(deq_level != -1){
 			stack_pointer_t *oldsp_ptr; 
 
@@ -170,10 +177,6 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return 1;
 		}
-
-		//No threads found for the new level, return to 0.
-		scheduler->level = 0;
-		scheduler->freq_count = quanta_proportions[scheduler->level];		
 	}
 
 	set_interrupt_level(old_level);

@@ -54,7 +54,7 @@ semaphore_t cleanup_sema = NULL;
 int number_of_levels = 4;
 int maxval = 100;
 static int quanta_durations[4] = {1, 2, 4, 8};
-static int quanta_proportions[4] = {50, 75, 90, 100};
+static int quanta_proportions[4] = {0,50, 75, 90};
 
 typedef struct scheduler {
 	multilevel_queue_t 	ready_queue;
@@ -89,15 +89,16 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 
 }
 
+//Pick the level to peek on the multilevel_queue based on the frequency counter.
 int scheduler_pick_level(scheduler_t scheduler){
 
-	if(scheduler->freq_count++ < quanta_proportions[0]) return 0;
+	if(scheduler->freq_count++ < quanta_proportions[1]) return 0;
 
-	if(scheduler->freq_count   < quanta_proportions[1]) return 1;
+	if(scheduler->freq_count   < quanta_proportions[2]) return 1;
 
-	if(scheduler->freq_count   < quanta_proportions[2]) return 2;
+	if(scheduler->freq_count   < quanta_proportions[3]) return 2;
 
-	if(scheduler->freq_count == quanta_proportions[3]) scheduler->freq_count = 0;
+	if(scheduler->freq_count == maxval) scheduler->freq_count = 0;
 
 	return 3;
 }
@@ -169,6 +170,10 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 			minithread_switch(oldsp_ptr, &(current_thread->sp));
 			return 1;
 		}
+
+		//No threads found for the new level, return to 0.
+		scheduler->level = 0;
+		scheduler->freq_count = quanta_proportions[scheduler->level];		
 	}
 
 	set_interrupt_level(old_level);

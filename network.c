@@ -17,7 +17,7 @@
 #include "defs.h"
 #include "network.h"
 #include "interrupts_private.h"
-#include "minithread.h"
+//#include "minithread.h"
 #include "random.h"
 
 #define BCAST_ENABLED 0
@@ -405,120 +405,120 @@ network_add_bcast_link(char* src, char* dest) {
   bcast_add_link(&topology, src, dest);
 }
 
-// void
-// network_remove_bcast_link(char* src, char* dest) {
-//   bcast_remove_link(&topology, src, dest);
-// }
+void
+network_remove_bcast_link(char* src, char* dest) {
+  bcast_remove_link(&topology, src, dest);
+}
 
 
-// int network_poll(void* arg) {
-//   int* s;
-//   network_interrupt_arg_t* packet;
-//   struct sockaddr_in addr;
-//   unsigned int fromlen = sizeof(struct sockaddr_in);
+int network_poll(void* arg) {
+  int* s;
+  network_interrupt_arg_t* packet;
+  struct sockaddr_in addr;
+  unsigned int fromlen = sizeof(struct sockaddr_in);
 
-//   s = (int *) arg;
+  s = (int *) arg;
 
-//   for (;;) {
+  for (;;) {
 
-//     /* we rely on run_user_handler to destroy this data structure */
-//     if (DEBUG)
-//       kprintf("NET:Allocating an incoming packet.\n");
+    /* we rely on run_user_handler to destroy this data structure */
+    if (DEBUG)
+      kprintf("NET:Allocating an incoming packet.\n");
 
-//     packet = 
-//       (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
-//     assert(packet != NULL);
-  
-//     packet->size = recvfrom(*s, packet->buffer, MAX_NETWORK_PKT_SIZE,
-//                             0, (struct sockaddr *) &addr, &fromlen);
-//     if (packet->size <= 0) {
-//       kprintf("NET:Error, %d.\n", errno);
-//       AbortOnCondition(1,"Crashing.");
-//     }
-//     else if (DEBUG)
-//       kprintf("NET:Received a packet, seqno %d.\n", ntohl(*((int *) packet->buffer)));
-   
-//     assert(fromlen == sizeof(struct sockaddr_in));
-//     sockaddr_to_network_address(&addr, packet->sender);
+    packet = 
+      (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
+    assert(packet != NULL);
 
-//     /* 
-//      * now we have filled in the arg to the network interrupt service routine,
-//      * so we have to get the user's thread to run it.
-//      */
-//     if (DEBUG)
-//       kprintf("NET:packet arrived.\n");
-//     send_interrupt(NETWORK_INTERRUPT_TYPE, mini_network_handler, (void*)packet);
-//   }     
-// }
+    packet->size = recvfrom(*s, packet->buffer, MAX_NETWORK_PKT_SIZE,
+                            0, (struct sockaddr *) &addr, &fromlen);
+    if (packet->size <= 0) {
+      kprintf("NET:Error, %d.\n", errno);
+      AbortOnCondition(1,"Crashing.");
+    }
+    else if (DEBUG)
+      kprintf("NET:Received a packet, seqno %d.\n", ntohl(*((int *) packet->buffer)));
 
-// /* 
-//  * start polling for network packets. this is separate so that clock interrupts
-//  * can be turned on without network interrupts. however, this function requires
-//  * that clock_init has been called!
-//  */
-// void start_network_poll(interrupt_handler_t network_handler, int* s) {
-//   pthread_t network_thread;
-//   sigset_t set;
-//   sigset_t old_set;
-//   struct sigaction sa;
-//   sigemptyset(&set);
-//   sigaddset(&set,SIGRTMAX-1);
-//   sigaddset(&set,SIGRTMAX-2);
-//   sigprocmask(SIG_BLOCK,&set,&old_set);
+    assert(fromlen == sizeof(struct sockaddr_in));
+    sockaddr_to_network_address(&addr, packet->sender);
 
-//   /* create clock and return threads, but discard ids */
-//   AbortOnCondition(pthread_create(&network_thread, NULL, (void*)network_poll, s),
-//       "pthread");
+    /* 
+     * now we have filled in the arg to the network interrupt service routine,
+     * so we have to get the user's thread to run it.
+     */
+    if (DEBUG)
+      kprintf("NET:packet arrived.\n");
+    send_interrupt(NETWORK_INTERRUPT_TYPE, mini_network_handler, (void*)packet);
+  }     
+}
 
-//   sa.sa_handler = (void*)handle_interrupt;
-//   sa.sa_flags = SA_SIGINFO | SA_RESTART | SA_ONSTACK; 
-//   sa.sa_sigaction= (void*)handle_interrupt;
-//   sigemptyset(&sa.sa_mask);
-//   sigaddset(&sa.sa_mask,SIGRTMAX-2);
-//   sigaddset(&sa.sa_mask,SIGRTMAX-1);
-//   if (sigaction(SIGRTMAX-2, &sa, NULL) == -1)
-//       AbortOnError(0);
+/* 
+ * start polling for network packets. this is separate so that clock interrupts
+ * can be turned on without network interrupts. however, this function requires
+ * that clock_init has been called!
+ */
+void start_network_poll(interrupt_handler_t network_handler, int* s) {
+  pthread_t network_thread;
+  sigset_t set;
+  sigset_t old_set;
+  struct sigaction sa;
+  sigemptyset(&set);
+  sigaddset(&set,SIGRTMAX-1);
+  sigaddset(&set,SIGRTMAX-2);
+  sigprocmask(SIG_BLOCK,&set,&old_set);
 
-//   pthread_sigmask(SIG_SETMASK,&old_set,NULL);
-// }
+  /* create clock and return threads, but discard ids */
+  AbortOnCondition(pthread_create(&network_thread, NULL, (void*)network_poll, s),
+      "pthread");
 
-// int
-// network_initialize(network_handler_t network_handler) {
-//   int arg = 1;
-//   mini_network_handler=(interrupt_handler_t) network_handler;
+  sa.sa_handler = (void*)handle_interrupt;
+  sa.sa_flags = SA_SIGINFO | SA_RESTART | SA_ONSTACK; 
+  sa.sa_sigaction= (void*)handle_interrupt;
+  sigemptyset(&sa.sa_mask);
+  sigaddset(&sa.sa_mask,SIGRTMAX-2);
+  sigaddset(&sa.sa_mask,SIGRTMAX-1);
+  if (sigaction(SIGRTMAX-2, &sa, NULL) == -1)
+      AbortOnError(0);
 
-//   memset(&if_info, 0, sizeof(if_info));
-  
-//   if_info.sock = socket(PF_INET, SOCK_DGRAM, 0);
-//   if (if_info.sock < 0)  {
-//     perror("socket");
-//     return -1;
-//   }
+  pthread_sigmask(SIG_SETMASK,&old_set,NULL);
+}
 
-//   if_info.sin.sin_family = SOCK_DGRAM;
-//   if_info.sin.sin_addr.s_addr = htonl(0);
-//   if_info.sin.sin_port = htons(my_udp_port);
-//   if (bind(if_info.sock, (struct sockaddr *) &if_info.sin, 
-//            sizeof(if_info.sin)) < 0)  {
-//     /* kprintf("Error: code %ld.\n", GetLastError());*/
-//     AbortOnError(0);
-//     perror("bind");
-//     return -1;
-//   }
+int
+network_initialize(network_handler_t network_handler) {
+  int arg = 1;
+  mini_network_handler=(interrupt_handler_t) network_handler;
 
-//   /* set for fast reuse */
-//   assert(setsockopt(if_info.sock, SOL_SOCKET, SO_REUSEADDR, 
-//                     (char *) &arg, sizeof(int)) == 0);
+  memset(&if_info, 0, sizeof(if_info));
 
-//   if (BCAST_ENABLED)
-//     bcast_initialize(BCAST_TOPOLOGY_FILE, &topology);
+  if_info.sock = socket(PF_INET, SOCK_DGRAM, 0);
+  if (if_info.sock < 0)  {
+    perror("socket");
+    return -1;
+  }
 
-//   /*
-//    * Interrupts are handled through the caller's handler.
-//    */
+  if_info.sin.sin_family = SOCK_DGRAM;
+  if_info.sin.sin_addr.s_addr = htonl(0);
+  if_info.sin.sin_port = htons(my_udp_port);
+  if (bind(if_info.sock, (struct sockaddr *) &if_info.sin, 
+           sizeof(if_info.sin)) < 0)  {
+    /* kprintf("Error: code %ld.\n", GetLastError());*/
+    AbortOnError(0);
+    perror("bind");
+    return -1;
+  }
 
-//   start_network_poll(mini_network_handler, &if_info.sock);
+  /* set for fast reuse */
+  assert(setsockopt(if_info.sock, SOL_SOCKET, SO_REUSEADDR, 
+                    (char *) &arg, sizeof(int)) == 0);
 
-//   return 0;
-// }
+  if (BCAST_ENABLED)
+    bcast_initialize(BCAST_TOPOLOGY_FILE, &topology);
+
+  /*
+   * Interrupts are handled through the caller's handler.
+   */
+
+  start_network_poll(mini_network_handler, &if_info.sock);
+
+  return 0;
+}
 

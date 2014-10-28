@@ -20,11 +20,15 @@ multilevel_queue_t multilevel_queue_new(int number_of_levels)
 {
 	multilevel_queue_t new_multilevel_queue;
 	queue_t *new_queue_array;
+        int i;
 
 	if (number_of_levels < 1) return NULL;
 	
 	new_multilevel_queue = (multilevel_queue_t) malloc(sizeof(multilevel_queue));
 	new_queue_array = (queue_t *)malloc(sizeof(queue_t) * number_of_levels);
+        for (i = 0; i < number_of_levels; i++) {
+            new_queue_array[i] = queue_new();
+        }
 	new_multilevel_queue->queue_array = new_queue_array;
 	new_multilevel_queue->number_of_levels = number_of_levels;
 	return new_multilevel_queue;

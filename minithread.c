@@ -60,6 +60,7 @@ typedef struct scheduler {
 	queue_t 			finished_queue;
 	unsigned int 		level;
 	unsigned int 		quanta_count;
+	unsigned int 		freq_count;
 } scheduler;
 typedef struct scheduler *scheduler_t;
 
@@ -80,19 +81,21 @@ void scheduler_init(scheduler_t *scheduler_ptr){
 	s->finished_queue = queue_new();
 	s->level = 0;
 	s->quanta_count = 0;
+	s->freq_count = 0;
 
 	cleanup_sema 		= semaphore_create();
 	semaphore_initialize(cleanup_sema, 0);
 
-	sgenrand(currentTimeMillis());
 }
 
 int scheduler_pick_level(scheduler_t scheduler){
-	unsigned int v = genintrand(maxval);
 
-	if(v < 50) return 0;
-	if(v < 75) return 1;
-	if(v < 90) return 2;
+	if(scheduler->freq_count++ < 50) return 0;
+	if(scheduler->freq_count   < 75) return 1;
+	if(scheduler->freq_count   < 90) return 2;
+
+	if(scheduler->freq_count == maxval) scheduler->freq_count = 0;
+
 	return 3;
 }
 

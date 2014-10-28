@@ -88,6 +88,7 @@ int multilevel_queue_free(multilevel_queue_t queue)
 		exit_code = queue_free(queue->queue_array[i]);
 		if (exit_code == -1) error_occurred = 1;
 	}
+        free(queue->queue_array);
 	free(queue);
 
 	// error_occurred is a boolean, so 1 indicates an error and 0 indicates a

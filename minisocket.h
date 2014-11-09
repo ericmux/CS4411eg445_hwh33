@@ -30,6 +30,8 @@ enum minisocket_error {
   SOCKET_OUTOFMEMORY    /* function could not complete because of insufficient memory */
 };
 
+
+
 /* Initializes the minisocket layer. */
 void minisocket_initialize();
 

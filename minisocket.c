@@ -52,10 +52,10 @@ void minisocket_initialize()
 	client_socket_array = (minisocket_t *)malloc(32767 * sizeof(minisocket_t));
 }
 
-mini_header_reliable_t pack_reliable_header(
-				network_address_t source_address, int source_port,
-				network_address_t destination_address, int destination_port,
-				char message_type, int seq_number, int ack_number)
+mini_header_reliable_t 
+pack_reliable_header(network_address_t source_address, int source_port,
+					 network_address_t destination_address, int destination_port,
+					 char message_type, int seq_number, int ack_number)
 {
 	mini_header_reliable_t new_header = 
 	(mini_header_reliable_t) malloc(sizeof(struct mini_header_reliable));
@@ -80,6 +80,7 @@ mini_header_reliable_t pack_reliable_header(
 int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
 				int data_len, char* data)
 {
+	// TODO: implement fragmentation, timeouts.
 	minisocket_error *error;
 	mini_header_reliable_t header;
 	int bytes_sent;
@@ -88,7 +89,7 @@ int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
 	int num_timeouts = 0;
 
 	while (num_timeouts < MAX_NUM_TIMEOUTS) {
-		bytes_sent network_send_pkt(address, hdr_len, hdr, data_len, data);
+		bytes_sent  = network_send_pkt(address, hdr_len, hdr, data_len, data);
 		bytes_received = minisocket_receive(
 			server, (minimsg_t) header, sizeof(struct mini_header_reliable), error);
 		
@@ -108,9 +109,16 @@ int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
 	return -1;
 }
 
-/* Sends an ACK to the destination port. */
-void send_ACK(port_t source_port, port_t dest_port) {
-	
+/* Sends a control packet. */
+void send_control_packet(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
+{
+	mini_header_reliable_t header;
+
+	pack_reliable_header(source_socket->address, source_socket->port_number,
+						 destination_socket->address, destination_socket->port_number,
+						 msg_type, 0, 0);
+	// XXX: what happens when &data = NULL in network_send_pkt?
+	network_send_pkt(destination_socket->address, sizeof(header), header, 0, NULL);
 }
 
 /* Sets the server's state to OPEN_SERVER and waits for a SYN from a client.

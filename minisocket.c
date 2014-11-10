@@ -765,8 +765,8 @@ void minisocket_close(minisocket_t socket)
     // Whether we return successfully or not from send_packet_and_wait doesn't
     // matter, we are closing the connection either way.
     // We free all allocated memory.
-	free(socket->listening_channel);
-	free(socket->destination_channel);
+	//free(socket->listening_channel);
+	//free(socket->destination_channel); XXX: how do I free these?
 	semaphore_destroy(socket->ack_sema);
 	semaphore_destory(socket->mailbox->available_messages_sema);
 	queue_free(socket->mailbox->received_messages);

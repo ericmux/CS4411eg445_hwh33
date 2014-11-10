@@ -6,6 +6,11 @@
 #include "minisocket.h"
 #include "synch.h"
 
+//Port number conventions.
+#define MAX_CLIENT_PORT_NUMBER (2<<15)-1
+#define MIN_CLIENT_PORT_NUMBER (2<<14)
+#define MAX_SERVER_PORT_NUMBER (2<<14)-1
+
 // Initial timeout to wait in milliseconds.
 #define INITIAL_TIMEOUT_MS 100
 #define MAX_NUM_TIMEOUTS 7
@@ -45,16 +50,17 @@ typedef struct minisocket
 
 int current_client_port_index;
 
-minisocket_t *server_socket_array;
-minisocket_t *client_socket_array;
+minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 
 /* Initializes the minisocket layer. */
 void minisocket_initialize()
 {
-	current_client_port_index = 32768;
-	server_socket_array = (minisocket_t *)malloc(32767 * sizeof(minisocket_t));
-	client_socket_array = (minisocket_t *)malloc(32767 * sizeof(minisocket_t));
+	current_client_port_index = MIN_CLIENT_PORT_NUMBER;
+	for(int i = 0; i < MAX_CLIENT_PORT_NUMBER + 1; i++){
+		current_sockets[i] = NULL;
+	}
 }
+
 
 mini_header_reliable_t 
 pack_reliable_header(network_address_t source_address, int source_port,

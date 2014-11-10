@@ -27,7 +27,7 @@ typedef struct socket_port_t {
 
 typedef struct mailbox_t {
 	int port_number;
-	semaphore_t available_messages_sema;
+	semaphore_t event_sema;
 	queue_t received_messages;
 } mailbox_t;
 
@@ -91,35 +91,48 @@ void unpack_reliable_header(char *packet_buffer, socket_port_t *destination_sock
 	*ack_number = unpack_unsigned_int(header->ack_number);
 }
 
+void semaphore_V_wrapper(void *semaphore_ptr) {
+        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
+        semaphore_V(semaphore);
+}
+
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 
  * ACK is received within that time, the packet is resent up to MAX_NUM_TIMEOUTS
  * times. Upon each resending of the packet, the time to wait doubles.
  * Returns the number of bytes sent on success and -1 on error.
  */
-int send_and_wait(network_address_t dest_address, int hdr_len, char* hdr,
-				int data_len, char* data)
+int send_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
+				  int data_len, char* data)
 {
 	// TODO: implement fragmentation, timeouts.
 	minisocket_error *error;
 	mini_header_reliable_t header;
 	int bytes_sent;
+	alarm_id timeout_alarm;
 
 	int timeout_to_wait = INITIAL_TIMEOUT_MS;
 	int num_timeouts = 0;
 
 	while (num_timeouts < MAX_NUM_TIMEOUTS) {
+		// Send the packet.
 		bytes_sent  = network_send_pkt(address, hdr_len, hdr, data_len, data);
+		
+		// Schedule the timeout alarm.
+		timeout_alarm = register_alarm(timeout_to_wait,
+									   semaphore_V_wrapper,
+									   sending_socket->destination_port->event_sema);
+
+		// Wait for an ACK. This function will return -1 if the alarm
+		// goes off before an ACK is received.
 		bytes_received = minisocket_receive(
 			server, (minimsg_t) header, sizeof(struct mini_header_reliable), error);
-		
-		if (bytes_received == -1) {
-			// what do I do about a receive error?
-			continue;
-		}
 
-		if (header->message_type == MSG_ACK) {
+		if (bytes_received != -1 && header->message_type == MSG_ACK) {
+			// We received an ACK, so we can return success.
 			return bytes_sent;
 		}
+
+		if (bytes_received == -1)
 
 		timeout_to_wait = timeout_to_wait * 2;
 		num_timeouts++;
@@ -218,7 +231,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	minisocket_t new_server_socket; 
 	socket_port_t new_listening_port;
 	socket_port_t new_sending_port;
-	semaphore_t new_available_messages_sema;
+	semaphore_t new_event_sema;
 	network_address_t server_address;
 
 	// Check for null input.
@@ -243,13 +256,13 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_listening_port->address = server_address;
 
     // Now set up the server's mailbox.
-    new_available_messages_sema = semaphore_create();
-    semaphore_initialize(new_available_messages_sema, 0);
+    new_event_sema = semaphore_create();
+    semaphore_initialize(new_event_sema, 0);
     new_received_messages_q = queue_new();
     
     new_mailbox = (mailbox *)malloc(sizeof(mailbox));
     new_mailbox->port_number = port_number;
-    new_mailbox->available_messages_sema = new_available_messages_sema;
+    new_mailbox->event_sema = new_event_sema;
     new_mailbox->received_messages = new_received_messages_q;
 
 	// Initialize the server socket.
@@ -257,7 +270,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_server_socket->socket_type = SERVER;
 	new_server_socket->state = OPEN_SERVER;
 	new_server_socket->listening_port = new_listening_port;
-	new_server_socket->available_messages_sema = new_available_messages_sema;
+	new_server_socket->event_sema = new_event_sema;
 
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
@@ -340,6 +353,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     
     // If there is no destination socket at the port, drop the packet.
     if (destination_socket == NULL) {
+    	set_interrupt_level(old_level);
         return;
     }
 
@@ -358,7 +372,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     // V on the semaphore to let threads know that messages are available
-    semaphore_V(destination_socket_port->port_data.mailbox->available_messages_sema);
+    semaphore_V(destination_socket_port->port_data.mailbox->event_sema);
     
     return;
 }

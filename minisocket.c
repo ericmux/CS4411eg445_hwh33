@@ -206,10 +206,10 @@ void send_packet_no_wait(minisocket_t sending_socket, char msg_type)
 	int seq_number = sending_socket->seq_number;
 	int ack_number = sending_socket->ack_number;
 
-	pack_reliable_header(destination_address, destination_port, source_address, source_port,
+	header = pack_reliable_header(destination_address, destination_port, source_address, source_port,
 						 msg_type, seq_number, ack_number);
 	// XXX: what happens when &data = NULL in network_send_pkt?
-	network_send_pkt(destination_address, sizeof(header), header, 0, NULL);
+	network_send_pkt(destination_address, sizeof(header), (char *) header, 0, NULL);
 }
 
 /* Sets the server's state to OPEN_SERVER and waits for a SYN from a client.
@@ -496,6 +496,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     char msg_type;
     socket_channel_t destination_socket_channel;
     socket_channel_t source_socket_channel;
+    minisocket_t destination_socket;
 
     // Check for NULL input.
     if (raw_packet == NULL) return;
@@ -530,7 +531,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     //Check if it's an ACK.
-    if(raw_packet->size <= sizeof(struct mini_header_reliable_t) && msg_type == MSG_ACK
+    if(raw_packet->size <= sizeof(struct mini_header_reliable) && msg_type == MSG_ACK
     	&& destination_socket->seq_number == ack_number){
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);
@@ -556,7 +557,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // that the packet has been picked up by the socket, merely delivery).
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
-    send_packet_no_wait(MSG_ACK, destination_socket_channel, source_socket_channel);
+    send_packet_no_wait(destination_socket, MSG_ACK);
 
     // V on the semaphore to let threads know that messages are available
     semaphore_V(destination_socket->mailbox->available_messages_sema);

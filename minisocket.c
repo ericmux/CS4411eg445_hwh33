@@ -673,7 +673,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	// Copy the payload of the packet into msg. We're done with the packet now, so free it.
 	msg_buffer = (char *)msg;
 	copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
-	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
+	bytes_received = raw_msg->size - sizeof(struct mini_header_reliable);
 	free(raw_msg);
     
     // Pop messages off of the queue until the queue is empty or the total bytes received

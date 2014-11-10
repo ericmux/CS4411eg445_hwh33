@@ -168,7 +168,7 @@ void send_packet_no_wait(char msg_type, socket_port_t source_socket, socket_port
  * returns. If no ACK is received, then the server goes back to waiting
  * for a SYN.
  */ 
-void wait_for_client(minisocket_t server, minisocket_error *error) {
+void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 	int bytes_received;
 	int bytes_sent;
 	socket_channel_t new_sending_port;

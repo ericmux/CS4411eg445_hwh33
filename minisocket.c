@@ -230,6 +230,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 	// header is used for both receiving and sending control packets.
 	mini_header_reliable_t header;
 
+
 	server->state = OPEN_SERVER;
 
 	while(1) {
@@ -250,8 +251,14 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 
 			// Check to see if the message received was a SYN.
 			if (header->message_type == MSG_SYN) {
-				network_address_copy(header->source_address, server->destination_channel.address);
-				server->destination_channel.port_number = header->source_port;
+				socket_channel_t dummy_source;
+				int seq_number;
+				int ack_number;
+
+				unpack_reliable_header((char * ) header, &server->destination_channel, &dummy_source, (char * ) &dummy_source,
+					&seq_number, &ack_number);
+				server->seq_number++;
+				server->ack_number++;
 				server->state = HANDSHAKING;
 			}
 		}

@@ -501,8 +501,8 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
 
     // Get the local unbound port number from the message header.
     unpack_reliable_header(raw_packet->buffer, 
-    					   &destination_socket_port,
-    					   &source_socket_port,
+    					   &destination_socket_channel,
+    					   &source_socket_channel,
     					   &msg_type,
     					   &seq_number,
     					   &ack_number);
@@ -510,7 +510,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     old_level = set_interrupt_level(DISABLED);
 
     // Find the socket the packet was intended for.
-    port_number = destination_socket_channel->port_number;
+    port_number = destination_socket_channel.port_number;
     destination_socket = current_sockets[port_number];
     
     // If there is no destination socket at the port, drop the packet.
@@ -519,12 +519,12 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
         return;
     }
     //If the packet was not from its peer, reply MSG_FIN and leave.
-    if(!network_compare_network_addresses(source_socket_channel->address, destination_socket->destination_channel->address)
-    	|| source_socket_channel->port_number != destination_socket->destination_socket_channel->port_number){
+    if(!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
+    	|| source_socket_channel.port_number != destination_socket->destination_socket_channel.port_number){
     	
     	set_interrupt_level(old_level);
 
-    	send_control_packet(MSG_FIN, destination_socket_channel, source_socket_channel);
+    	send_packet_no_wait(destination_socket, MSG_FIN);
     	return;
     }
 

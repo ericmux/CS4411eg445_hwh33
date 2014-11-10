@@ -9,7 +9,6 @@
 #include "alarm.h"
 #include "interrupts.h"
 #include "queue.h"
-#include "minisocket_utils.c"
 
 //Port number conventions.
 #define MAX_CLIENT_PORT_NUMBER (2<<15)-1

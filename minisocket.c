@@ -184,7 +184,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	mini_header_reliable_t	syn_header;
 
 
-	valid_port = minisocket_client_get_valid_port();
+	valid_port = minisocket_utils_client_get_valid_port();
 	if(!valid_port){
 		*error = SOCKET_NOMOREPORTS;
 		return NULL;
@@ -232,11 +232,11 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 
 
     //Send SYN packet to begin connection to server.
-    syn_header = pack_reliable_header(client_socket->listening_channel.address, client_socket->listening_channel.port_number,
+    syn_header = minisocket_utils_pack_reliable_header(client_socket->listening_channel.address, client_socket->listening_channel.port_number,
     					 client_socket->destination_channel.address, client_socket->destination_channel.port_number,
     					 MSG_SYN, client_socket->seq_number, client_socket->ack_number);
 
-    send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), (char *) syn_header, 0, NULL);
+    minisocket_utils_send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), (char *) syn_header, 0, NULL);
 
     *error = SOCKET_NOERROR;
     return client_socket;
@@ -282,7 +282,7 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 	}
 
 	// Construct a header for the packet.
-	header = pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
+	header = minisocket_utils_pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
 								  socket->destination_channel.address, socket->destination_channel.port_number,
 								  PROTOCOL_MINISTREAM, socket->seq_number, socket->ack_number);
 
@@ -297,7 +297,7 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 		} else {
 			frag_size = len - payload_bytes_sent;
 		}
-		frag_bytes_sent = send_packet_and_wait(socket, sizeof(header), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
+		frag_bytes_sent = minisocket_utils_send_packet_and_wait(socket, sizeof(header), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
 		if (frag_bytes_sent == -1) {
 			*error = SOCKET_SENDERROR;
 			return payload_bytes_sent;
@@ -324,7 +324,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     if (raw_packet == NULL) return;
 
     // Get the local unbound port number from the message header.
-    unpack_reliable_header(raw_packet->buffer, 
+    minisocket_utils_unpack_reliable_header(raw_packet->buffer, 
     					   &destination_socket_channel,
     					   &source_socket_channel,
     					   &msg_type,
@@ -348,7 +348,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	
     	set_interrupt_level(old_level);
 
-    	send_packet_no_wait(destination_socket, MSG_FIN);
+    	minisocket_utils_send_packet_no_wait(destination_socket, MSG_FIN);
     	return;
     }
 
@@ -358,13 +358,13 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
 	    // We register an alarm to close the connection in MS_TO_WAIT_TILL_CLOSE milliseconds and 
 	    // call V on the appropriate semaphore to prevent blocking.
     	if (destination_socket->state == CONNECTION_CLOSING) {
-    		send_packet_no_wait(destination_socket, MSG_ACK);
+    		minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
 			set_interrupt_level(old_level);    		
     		return;
     	}
 
     	destination_socket->state = CONNECTION_CLOSING;
-    	register_alarm(MS_TO_WAIT_TILL_CLOSE, close_socket, destination_socket);
+    	register_alarm(MS_TO_WAIT_TILL_CLOSE, minisocket_utils_close_socket, destination_socket);
     	
     	if (destination_socket->state == SENDING) semaphore_V(destination_socket->ack_sema);
     	else semaphore_V(destination_socket->mailbox->available_messages_sema);
@@ -407,7 +407,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // that the packet has been picked up by the socket, merely delivery).
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
-    send_packet_no_wait(destination_socket, MSG_ACK);
+    minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
 
     // V on the semaphore to let threads know that messages are available
     semaphore_V(destination_socket->mailbox->available_messages_sema);
@@ -469,7 +469,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 
 	// Copy the payload of the packet into msg. We're done with the packet now, so free it.
 	msg_buffer = (char *)msg;
-	copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
+	minisocket_utils_copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
 	bytes_received = raw_msg->size - sizeof(struct mini_header_reliable);
 	free(raw_msg);
     
@@ -495,7 +495,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
     	}
 	
 		// Copy the payload of the packet into msg. We're done with the packet now, so free it.
-    	copy_payload(&msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
+    	minisocket_utils_copy_payload(&msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
     	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
 		
 		free(raw_msg);
@@ -519,11 +519,11 @@ void minisocket_close(minisocket_t socket)
 
 	// Send a FIN packet to the connected socket to indicate that the connection
 	// is closing.
-	fin_header = pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
+	fin_header = minisocket_utils_pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
     					 socket->destination_channel.address, socket->destination_channel.port_number,
     					 MSG_FIN, socket->seq_number, socket->ack_number);
 
-    send_packet_and_wait(socket, sizeof(fin_header), (char *) fin_header, 0, NULL);
+    minisocket_utils_send_packet_and_wait(socket, sizeof(fin_header), (char *) fin_header, 0, NULL);
 
     // Whether we return successfully or not from send_packet_and_wait doesn't
     // matter, we are closing the connection either way.

@@ -2,7 +2,7 @@
 
 
 mini_header_reliable_t 
-pack_reliable_header(network_address_t source_address, int source_port,
+minisocket_utils_pack_reliable_header(network_address_t source_address, int source_port,
 					 network_address_t destination_address, int destination_port,
 					 char message_type, int seq_number, int ack_number)
 {
@@ -21,7 +21,7 @@ pack_reliable_header(network_address_t source_address, int source_port,
     return new_header;
 }
 
-void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_channel,
+void minisocket_utils_unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_channel,
 							socket_channel_t *source_channel, char *msg_type, int *seq_number, int *ack_number)
 {
 	// A temporary structure to make the implementation below more clear.
@@ -40,7 +40,7 @@ void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_c
 /* Copies the payload into the memory location specified. It is assumed that the 
  * given memory location is valid and has enough room.
  */
-void copy_payload(char *location_to_copy_to, char *buffer, int bytes_to_copy)
+void minisocket_utils_copy_payload(char *location_to_copy_to, char *buffer, int bytes_to_copy)
 {
 	char *payload = &buffer[sizeof(struct mini_header_reliable)];
 	memcpy(location_to_copy_to, payload, bytes_to_copy);
@@ -48,7 +48,7 @@ void copy_payload(char *location_to_copy_to, char *buffer, int bytes_to_copy)
 }
 
 /* Sets a socket's state to closed. Used as an alarm handler. */
-void close_socket(void *socket_ptr) {
+void minisocket_utils_close_socket(void *socket_ptr) {
         minisocket_t socket = (minisocket_t) socket;
         socket->state = CONNECTION_CLOSED;
 }
@@ -56,7 +56,7 @@ void close_socket(void *socket_ptr) {
 /* Waits for the given ACK to come in by calling P on the ACM semaphore. 
  * Returns 1 if the ACK was received and 0 if a timeout occurred.
  */
-int minisocket_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
+int minisocket_utils_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 {
 
 	/* A wrapper function to pass into an alarm. */
@@ -93,7 +93,7 @@ int minisocket_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
  * times. Upon each resending of the packet, the time to wait doubles.
  * Returns the number of bytes sent on success and -1 on error.
  */
-int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
+int minisocket_utils_send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 				  		 int data_len, char* data)
 {
 	// TODO: implement fragmentation, timeouts.
@@ -109,7 +109,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 		
 		// Wait for an ACK. This function will return 0 if the alarm
 		// goes off before an ACK is received.
-		ack_received = minisocket_wait_for_ack(sending_socket, timeout_to_wait);
+		ack_received = minisocket_utils_wait_for_ack(sending_socket, timeout_to_wait);
 
 		if (ack_received) {
 			// Success! Return the number of bytes.
@@ -131,7 +131,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 }
 
 /* Used for sending control packets, when we don't need to wait for an ACK. */
-void send_packet_no_wait(minisocket_t sending_socket, char msg_type){
+void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_type){
 	mini_header_reliable_t header;
 
 	network_address_t source_address;
@@ -159,7 +159,7 @@ void send_packet_no_wait(minisocket_t sending_socket, char msg_type){
  * returns. If no ACK is received, then the server goes back to waiting
  * for a SYN.
  */ 
-void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
+void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *error) {
 	int bytes_received;
 	int bytes_sent;
 	// header is used for both receiving and sending control packets.
@@ -226,7 +226,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 /*
 * Grab an open port for a new client, otherwise returns 0.
 */
-int minisocket_client_get_valid_port(){
+int minisocket_utils_client_get_valid_port(){
 	int valid_port = current_client_port_index;
 
 	for(; valid_port < MAX_CLIENT_PORT_NUMBER + 1; valid_port++){

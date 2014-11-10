@@ -628,12 +628,12 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 {
 	interrupt_level_t old_level;
 	network_interrupt_arg_t *raw_msg;
-	mini_header_reliable header;
+	mini_header_reliable_t header;
 	state_t state;
 	int bytes_received;
 	int queue_empty;
 	int dequeue_result;
-	minimsg_t new_raw_packet;
+	char *msg_buffer;
 
     // Check for NULL input.
     if (socket == NULL || msg == NULL || error == NULL) {
@@ -654,17 +654,17 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	old_level = set_interrupt_level(DISABLED);
 
 	queue_empty = 0;
-	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &new_raw_packet);
+	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &raw_msg);
 	if (dequeue_result == -1) {
 		queue_empty = 1;
 		if (socket->state == CONNECTION_CLOSING) {
-			minisocket_enter_closing_state(socket);
+			//minisocket_enter_closing_state(socket);
 			// return error??
 		}
 		*error = SOCKET_RECEIVEERROR;
 		return -1;
 	}
-	if (new_raw_packet->size - sizeof(struct mini_header_reliable) > max_len) {
+	if (raw_msg->size - sizeof(struct mini_header_reliable) > max_len) {
 		queue_prepend(socket->mailbox->available_messages_sema);
 		semaphore_V(socket->mailbox->available_messages_sema);
 		*error = SOCKET_NOERROR;
@@ -672,16 +672,17 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	}
 
 	// Copy the payload of the packet into msg. We're done with the packet now, so free it.
-	copy_payload(msg, new_raw_packet->buffer, new_raw_packet->size - sizeof(struct mini_header_reliable));
-	bytes_received += new_raw_packet->size - sizeof(struct mini_header_reliable);
-	free(new_raw_packet);
+	msg_buffer = (char *)msg;
+	copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
+	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
+	free(raw_msg);
     
     // Pop messages off of the queue until the queue is empty or the total bytes received
     // is greater than max_len. We continue calling semaphore_P as the number of P's needs to
     // reflect the number of dequeues.
     while (!queue_empty && bytes_received < max_len) {
     	semaphore_P(socket->mailbox->available_messages_sema);
-    	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &new_raw_packet);
+    	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &raw_msg);
     	// Check if the queue was empty.
     	if (dequeue_result == -1) {
     		queue_empty = 1;
@@ -692,18 +693,20 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
     	bytes_with_new_packet = bytes_received + new_raw_packet->buffer->size - sizeof(struct mini_header_reliable);
     	if (bytes_with_new_packet > max_len) {
     		// Put the message back on the queue and V the semaphore to reflect this.
-    		queue_prepend(socket->mailbox->received_messages, new_raw_packet);
+    		queue_prepend(socket->mailbox->received_messages, raw_msg);
     		semaphore_V(socket->mailbox->available_messages_sema);
     		break;
     	}
 	
 		// Copy the payload of the packet into msg. We're done with the packet now, so free it.
-    	copy_payload(msg[bytes_received], new_raw_packet->buffer, new_raw_packet->size - sizeof(struct mini_header_reliable));
+    	copy_payload(msg_buffer[bytes_received], new_raw_packet->buffer, new_raw_packet->size - sizeof(struct mini_header_reliable));
     	bytes_received += new_raw_packet->size - sizeof(struct mini_header_reliable);
-    	free(new_raw_packet);
+		
+		free(raw_msg);
     }
 
     set_interrupt_level(old_level);
+
 
     // Now we have filled msg as much as we can, so return the number of bytes we put into it.
     *error = SOCKET_NOERROR;

@@ -109,8 +109,8 @@ void semaphore_V_wrapper(void *semaphore_ptr) {
  * times. Upon each resending of the packet, the time to wait doubles.
  * Returns the number of bytes sent on success and -1 on error.
  */
-int send_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
-				  int data_len, char* data)
+int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
+				  		 int data_len, char* data)
 {
 	// TODO: implement fragmentation, timeouts.
 	minisocket_error *error;
@@ -150,7 +150,7 @@ int send_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 }
 
 /* Used for sending control packets, when we don't need to wait for an ACK. */
-void send_no_wait(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
+void send_packet_no_wait(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
 {
 	mini_header_reliable_t header;
 

@@ -39,7 +39,7 @@ OBJ =                              \
     miniheader.o                   \
     minimsg.o                      \
     multilevel_queue.o             \
-    minisocket.o
+    minisocket.o 				   \
     network.o                      \
     hashtable.o                    \
     linked_list.o

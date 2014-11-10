@@ -146,7 +146,7 @@ void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_
 	network_address_copy(sending_socket->destination_channel.address, destination_address);
 	network_address_copy(sending_socket->listening_channel.address, source_address);
 
-	header = pack_reliable_header(destination_address, destination_port, source_address, source_port,
+	header = minisocket_utils_pack_reliable_header(destination_address, destination_port, source_address, source_port,
 						 msg_type, seq_number, ack_number);
 	// XXX: what happens when &data = NULL in network_send_pkt?
 	network_send_pkt(destination_address, sizeof(header), (char *) header, 0, NULL);
@@ -190,8 +190,10 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 				int seq_number;
 				int ack_number;
 
-				unpack_reliable_header((char * ) header, &server->destination_channel, &dummy_source, (char * ) &dummy_source,
+				minisocket_utils_unpack_reliable_header((char * ) header, 
+					&server->destination_channel, &dummy_source, (char * ) &dummy_source,
 					&seq_number, &ack_number);
+				
 				server->seq_number++;
 				server->ack_number++;
 				server->state = HANDSHAKING;
@@ -199,12 +201,12 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 		}
 
 		// We received a SYN, so send a SYNACK back.
-		header = pack_reliable_header(
+		header = minisocket_utils_pack_reliable_header(
 			server->destination_channel.address, server->destination_channel.port_number,
 			server->listening_channel.address, server->listening_channel.port_number,
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
-		bytes_sent = send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
+		bytes_sent = minisocket_utils_send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
 
 		if (bytes_sent != sizeof(struct mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to

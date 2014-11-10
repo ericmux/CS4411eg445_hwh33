@@ -5,6 +5,8 @@
 
 #include "minisocket.h"
 #include "synch.h"
+#include "interrupts.h"
+#include "queue.h"
 
 //Port number conventions.
 #define MAX_CLIENT_PORT_NUMBER (2<<15)-1
@@ -311,6 +313,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	socket_port_t new_sending_port;
 	semaphore_t new_available_messages_sema;
 	network_address_t server_address;
+	queue_t new_received_messages_q;
 
 	// Check for null input.
 	if (error == NULL) {
@@ -335,7 +338,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 
     // Create the ACK semaphore.
     new_ack_sema = semaphore_create;
-    semaphore_initialize(ack_sema, 0);
+    semaphore_initialize(new_ack_sema, 0);
 
     // Now set up the server's mailbox.
     new_available_messages_sema = semaphore_create();

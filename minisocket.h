@@ -105,4 +105,11 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
  */
 void minisocket_close(minisocket_t socket); 
 
+
+/*
+* Network interrupt handler. Delivers the message and handles most of the special message types.
+* Also ACKS the sender if appropriate. 
+*/
+extern void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet);
+
 #endif /* __MINISOCKETS_H_ */

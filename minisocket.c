@@ -324,7 +324,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     socket_channel_t source_socket_channel;
 
     // Check for NULL input.
-    if (raw_msg == NULL) return;
+    if (raw_packet == NULL) return;
 
     // Get the local unbound port number from the message header.
     unpack_reliable_header(raw_packet->buffer, 
@@ -355,7 +355,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     // Dropoff the message by appending it to the port's message queue.
-    queue_append(destination_socket->mailbox->received_messages, raw_msg);
+    queue_append(destination_socket->mailbox->received_messages, raw_packet);
  
     set_interrupt_level(old_level);
 
@@ -369,7 +369,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     // V on the semaphore to let threads know that messages are available
-    semaphore_V(destination_socket_port->port_data.mailbox->available_messages_sema);
+    semaphore_V(destination_socket_port->mailbox->available_messages_sema);
     
     return;
 }

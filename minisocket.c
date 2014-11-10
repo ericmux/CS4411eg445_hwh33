@@ -10,10 +10,6 @@
 #include "interrupts.h"
 #include "queue.h"
 
-
- //Include util functions.
-#include "minisocket_utils.c"
-
 //Port number conventions.
 #define MAX_CLIENT_PORT_NUMBER (2<<15)-1
 #define MIN_CLIENT_PORT_NUMBER (2<<14)
@@ -65,6 +61,11 @@ typedef struct minisocket
 static int current_client_port_index;
 
 minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
+
+
+ //Include util functions.
+#include "minisocket_utils.c"
+
 
 /* Initializes the minisocket layer. */
 void minisocket_initialize()

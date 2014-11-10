@@ -65,17 +65,17 @@ void minisocket_initialize()
 
 mini_header_reliable_t 
 pack_reliable_header(network_address_t source_address, int source_port,
-					 network_address_t destination_address, int destination_socket_channel,
+					 network_address_t destination_address, int destination_port,
 					 char message_type, int seq_number, int ack_number)
 {
 	mini_header_reliable_t new_header = 
 	(mini_header_reliable_t) malloc(sizeof(struct mini_header_reliable));
 
-	new_header->protocol = PROTOCOL_MINIDATAGRAM;
+	new_header->protocol = PROTOCOL_MINISTREAM;
     pack_address(new_header->source_address, source_address);
     pack_unsigned_short(new_header->source_port, (short) source_port);
     pack_address(new_header->destination_address, dest_address);
-    pack_unsigned_short(new_header->destination_socket_channel, (short) dest_port);
+    pack_unsigned_short(new_header->destination_port, (short) dest_port);
     new_header->message_type = message_type;
     pack_unsigned_int(new_header->seq_number, seq_number);
     pack_unsigned_int(new_header->ack_number, ack_number);
@@ -83,35 +83,37 @@ pack_reliable_header(network_address_t source_address, int source_port,
     return new_header;
 }
 
-void unpack_reliable_header(char *packet_buffer, socket_port_t *destination_socket_port,
-							socket_port_t *source_socket_port, char *msg_type, int *seq_number, int *ack_number)
+void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_channel,
+							socket_channel_t *source_channel, char *msg_type, int *seq_number, int *ack_number)
 {
 	// A temporary structure to make the implementation below more clear.
 	mini_header_reliable_t header = (mini_header_reliable_t) packet_buffer;
 
-	destination_socket_port = (socket_port_t *)malloc(sizeof(struct(socket_port_t)));
-	source_socket_port = (socket_port_t *)malloc(sizeof(struct(socket_port_t)))
+	destination_channel = (socket_channel_t *)malloc(sizeof(struct(socket_channel_t)));
+	source_channel = (socket_channel_t *)malloc(sizeof(struct(socket_channel_t)))
 
-	unpack_address(header->source_address, source_socket_port->address);
-	*source_socket_port->port_number = unpack_unsigned_short(header->source_port);
-	unpack_address(header->destination_address, destination_socket_port->address)
-	*destination_socket_port->port_number = unpack_unsigned_short(header->destination_port);
+	unpack_address(header->source_address, source_channel->address);
+	*source_socket_channel->port_number = unpack_unsigned_short(header->source_port);
+	unpack_address(header->destination_address, destination_socket_channel->address)
+	*destination_socket_channel->port_number = unpack_unsigned_short(header->destination_port);
 	*msg_type = header->msg_type;
 	*seq_number = unpack_unsigned_int(header->seq_number);
 	*ack_number = unpack_unsigned_int(header->ack_number);
 }
 
-/* A wrapper function to pass into an alarm. */
-void semaphore_V_wrapper(void *semaphore_ptr) {
-        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
-        semaphore_V(semaphore);
-}
 
 /* Waits for the given ACK to come in by calling P on the ACM semaphore. 
  * Returns 1 if the ACK was received and 0 if a timeout occurred.
  */
 int minisocket_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 {
+
+	/* A wrapper function to pass into an alarm. */
+	void semaphore_V_wrapper(void *semaphore_ptr) {
+	        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
+	        semaphore_V(semaphore);
+	}
+
 	interrupt_level_t old_level;
 
 	// Schedule the timeout alarm. This will wake us up from the P after
@@ -237,12 +239,12 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 		}
 
 		// We received a SYN, so send a SYNACK back.
-		header = pack_header(
+		header = pack_reliable_header(
 			server->destination_channel->address, server->destination_channel->port_number,
 			server->listening_channel->address, server->listening_channel->port_number,
-			SYNACK, server->seq_number, server->ack_number);
+			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
-		bytes_sent = send_packet(server, sizeof(header), header, 0, NULL);
+		bytes_sent = send_packet_and_wait(server, sizeof(header), header, 0, NULL);
 
 		if (bytes_sent != sizeof(mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to

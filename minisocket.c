@@ -752,6 +752,8 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
  */
 void minisocket_close(minisocket_t socket)
 {
+	mini_header_reliable fin_header;
+
 	// Send a FIN packet to the connected socket to indicate that the connection
 	// is closing.
 	fin_header = pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,

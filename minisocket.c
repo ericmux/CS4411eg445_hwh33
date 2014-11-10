@@ -266,7 +266,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 /*
 * Grab an open port for a new client, otherwise returns 0.
 */
-int get_valid_port(){
+int minisocket_client_get_valid_port(){
 	int valid_port = current_client_port_index;
 
 	for(; valid_port < MAX_CLIENT_PORT_NUMBER + 1; valid_port++){
@@ -387,8 +387,10 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	network_address_t	netaddr;
 	int valid_port;
 
+	mini_header_reliable_t	syn_header;
 
-	valid_port = get_valid_port();
+
+	valid_port = minisocket_client_get_valid_port();
 	if(!valid_port){
 		*error = SOCKET_NOMOREPORTS;
 		return NULL;
@@ -399,6 +401,8 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 		return NULL;
 	}
 
+
+	//Allocating client socket memory.
 	network_get_my_address(netaddr);
 	listening_channel.address = netaddr;
 	listening_channel.port = valid_port;
@@ -424,17 +428,40 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     client_socket->state = HANDSHAKING;
     client_socket->listening_channel = listening_channel;
     client_socket->destination_channel = destination_channel;
-    client_socket->seq_number = 0;
+    client_socket->seq_number = 1;
     client_socket->ack_number = 0;
     client_socket->ack_sema = ack_sema;
     client_socket->available_messages_sema = available_messages_sema;
     client_socket->ack_received = 0;
     client_socket->mailbox = mailbox;
 
+    current_sockets[valid_port] = client_socket;
+
+
+    //Send SYN packet to begin connection to server.
+    syn_header = pack_reliable_header(client_socket->listening_channel->address, client_socket->listening_channel->port_number,
+    					 client_socket->destination_channel->address, client_socket->destination_channel->port_number,
+    					 MSG_SYN, client_socket->seq_number, client_socket->ack_number);
+
+    send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), syn_header, 0, NULL);
+
+
     *error = SOCKET_NOERROR;
     return client_socket;
 }
 
+
+enum minisocket_error {
+  SOCKET_NOERROR=0,
+  SOCKET_NOMOREPORTS,   /* ran out of free ports */
+  SOCKET_PORTINUSE,     /* server tried to use a port that is already in use */
+  SOCKET_NOSERVER,      /* client tried to connect to a port without a server */
+  SOCKET_BUSY,          /* client tried to connect to a port that is in use */
+  SOCKET_SENDERROR,
+  SOCKET_RECEIVEERROR,
+  SOCKET_INVALIDPARAMS, /* user supplied invalid parameters to the function */
+  SOCKET_OUTOFMEMORY    /* function could not complete because of insufficient memory */
+};
 
 /* 
  * Send a message to the other end of the socket.

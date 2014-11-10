@@ -348,8 +348,8 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	// Create the server's listening channel.
 	new_listening_channel.port_number = port;
 	network_get_my_address(server_address);
-	new_listening_channel.address = server_address;
-
+	network_address_copy(server_address,new_listening_channel.address);
+	
     // Create the ACK semaphore.
     new_ack_sema = semaphore_create();
     semaphore_initialize(new_ack_sema, 0);
@@ -377,7 +377,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
 	// sending port will be initialized within this function.
-	minisocket_wait_for_client(new_server_socket);
+	minisocket_wait_for_client(new_server_socket, error);
 
 	return new_server_socket;
 }
@@ -427,7 +427,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 
 	//Allocating client socket memory.
 	network_get_my_address(netaddr);
-	listening_channel.address = netaddr;
+	network_address_copy(netaddr, listening_channel.address);
 	listening_channel.port_number = valid_port;
 
 	network_address_copy(addr, destination_channel.address);

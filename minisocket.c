@@ -78,8 +78,8 @@ pack_reliable_header(network_address_t source_address, int source_port,
 	new_header->protocol = PROTOCOL_MINISTREAM;
     pack_address(new_header->source_address, source_address);
     pack_unsigned_short(new_header->source_port, (short) source_port);
-    pack_address(new_header->destination_address, dest_address);
-    pack_unsigned_short(new_header->destination_port, (short) dest_port);
+    pack_address(new_header->destination_address, destination_address);
+    pack_unsigned_short(new_header->destination_port, (short) destination_port);
     new_header->message_type = message_type;
     pack_unsigned_int(new_header->seq_number, seq_number);
     pack_unsigned_int(new_header->ack_number, ack_number);
@@ -93,13 +93,11 @@ void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_c
 	// A temporary structure to make the implementation below more clear.
 	mini_header_reliable_t header = (mini_header_reliable_t) packet_buffer;
 
-	destination_channel = (socket_channel_t *)malloc(sizeof(struct(socket_channel_t)));
-	source_channel = (socket_channel_t *)malloc(sizeof(struct(socket_channel_t)))
-
 	unpack_address(header->source_address, source_channel->address);
-	*source_socket_channel->port_number = unpack_unsigned_short(header->source_port);
-	unpack_address(header->destination_address, destination_socket_channel->address)
-	*destination_socket_channel->port_number = unpack_unsigned_short(header->destination_port);
+	source_channel->port_number = unpack_unsigned_short(header->source_port);
+	unpack_address(header->destination_address, destination_channel->address);
+	destination_channel->port_number = unpack_unsigned_short(header->destination_port);
+
 	*msg_type = header->msg_type;
 	*seq_number = unpack_unsigned_int(header->seq_number);
 	*ack_number = unpack_unsigned_int(header->ack_number);
@@ -162,7 +160,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 	minisocket_error *error;
 	mini_header_reliable_t header;
 	int bytes_sent;
-	alarm_id timeout_alarm;
+	int ack_received;
 
 	int timeout_to_wait = INITIAL_TIMEOUT_MS;
 	int num_timeouts = 0;

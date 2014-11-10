@@ -45,6 +45,8 @@ typedef struct minisocket
 	socket_channel_t destination_channel;
 	int seq_number;
 	int ack_number;
+	semaphore_t ack_sema;
+	int ack_received;
 	mailbox_t mailbox;
 } minisocket;
 
@@ -83,7 +85,7 @@ pack_reliable_header(network_address_t source_address, int source_port,
 }
 
 void unpack_reliable_header(char *packet_buffer, socket_port_t *destination_socket_port,
-							socket_port_t *source_socket_port, int *seq_number, int *ack_number)
+							socket_port_t *source_socket_port, char *msg_type, int *seq_number, int *ack_number)
 {
 	// A temporary structure to make the implementation below more clear.
 	mini_header_reliable_t header = (mini_header_reliable_t) packet_buffer;
@@ -95,13 +97,43 @@ void unpack_reliable_header(char *packet_buffer, socket_port_t *destination_sock
 	*source_socket_port->port_number = unpack_unsigned_short(header->source_port);
 	unpack_address(header->destination_address, destination_socket_port->address)
 	*destination_socket_port->port_number = unpack_unsigned_short(header->destination_port);
+	*msg_type = header->msg_type;
 	*seq_number = unpack_unsigned_int(header->seq_number);
 	*ack_number = unpack_unsigned_int(header->ack_number);
 }
 
+/* A wrapper function to pass into an alarm. */
 void semaphore_V_wrapper(void *semaphore_ptr) {
         semaphore_t semaphore = (semaphore_t) semaphore_ptr;
         semaphore_V(semaphore);
+}
+
+/* Waits for the given ACK to come in by calling P on the ACM semaphore. 
+ * Returns 1 if the ACK was received and 0 if a timeout occurred.
+ */
+int minisocket_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
+{
+	interrupt_level_t old_level;
+
+	// Schedule the timeout alarm. This will wake us up from the P after
+	// timeout_to_wait milliseconds if we have not woken up already.
+	alarm_id timeout_alarm = register_alarm(timeout_to_wait,
+								   			semaphore_V_wrapper,
+								   			sending_socket->ack_sema);
+
+
+	// Check for ACKs by calling P on the ACK semaphore.
+	semaphore_P(waiting_socket->ack_sema);
+
+	// If an ACK was received, then deregister the alarm and return success.
+	if (waiting_socket->ack_received) {
+		old_level = set_interrupt_level(DISABLED);
+		deregister_alarm(timeout_alarm);
+		set_interrupt_level(old_level);
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 
@@ -125,22 +157,15 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 		// Send the packet.
 		bytes_sent  = network_send_pkt(address, hdr_len, hdr, data_len, data);
 		
-		// Schedule the timeout alarm.
-		timeout_alarm = register_alarm(timeout_to_wait,
-									   semaphore_V_wrapper,
-									   sending_socket->destination_port->event_sema);
-
 		// Wait for an ACK. This function will return -1 if the alarm
 		// goes off before an ACK is received.
-		bytes_received = minisocket_receive(
-			server, (minimsg_t) header, sizeof(struct mini_header_reliable), error);
+		ack_received = minisocket_wait_for_ack(sending_socket, timeout_to_wait);
 
-		if (bytes_received != -1 && header->message_type == MSG_ACK) {
-			// We received an ACK, so we can return success.
-			return bytes_sent;
+		if (!ack_received && sending_socket->state == CONNECTION_CLOSING) {
+			// While we were waiting, the connection state changed to closing,
+			// exit the function with failure.
+			return -1;
 		}
-
-		if (bytes_received == -1)
 
 		timeout_to_wait = timeout_to_wait * 2;
 		num_timeouts++;
@@ -262,6 +287,10 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_listening_channel->port_number = port;
 	network_get_my_address(server_address);
 	new_listening_channel->address = server_address;
+
+    // Create the ACK semaphore.
+    new_ack_sema = semaphore_create;
+    semaphore_initialize(ack_sema, 0);
 
     // Now set up the server's mailbox.
     new_event_sema = semaphore_create();

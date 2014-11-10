@@ -339,6 +339,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     int port_number;
     int seq_number;
     int ack_number;
+    char msg_type;
     socket_channel_t destination_socket_channel;
     socket_channel_t source_socket_channel;
 
@@ -349,6 +350,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     unpack_reliable_header(raw_packet->buffer, 
     					   &destination_socket_port,
     					   &source_socket_port,
+    					   &msg_type,
     					   &seq_number,
     					   &ack_number);
 
@@ -372,6 +374,14 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	send_control_packet(MSG_FIN, destination_socket_channel, source_socket_channel);
     	return;
     }
+
+    //Check if it's an ACK.
+    if(raw_packet->size <= sizeof(struct mini_header_reliable_t) && msg_type == MSG_ACK
+    	&& destination_socket->seq_number == ack_number){
+    	destination_socket->ack_received = 1;
+    	semaphore_V(destination_socket->ack_sema);
+    }
+
 
     // Dropoff the message by appending it to the port's message queue.
     queue_append(destination_socket->mailbox->received_messages, raw_packet);

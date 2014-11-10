@@ -492,6 +492,9 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 {
 	mini_header_reliable_t header;
 	int payload_bytes_sent;
+	int frag_size;
+	int frag_bytes_sent;
+	char *msg_buffer;
 
 	// Check for NULL inputs.
 	if (socket == NULL || msg == NULL || error == NULL) {
@@ -506,12 +509,13 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 	}
 
 	// Construct a header for the packet.
-	header = pack_reliable_header(socket->listening_channel->address, socket->listening_channel->port_number,
-								  socket->destination_channel->address, socket->destination_address->port_number,
+	header = pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
+								  socket->destination_channel.address, socket->destination_channel.port_number,
 								  PROTOCOL_MINISTREAM, socket->seq_number, socket->ack_number);
 
 	// Send the message. If it is too big, break it into fragments and send each one
 	// individually.
+	msg_buffer = (char *)msg;
 	payload_bytes_sent = 0;
 	while (payload_bytes_sent < len) {
 		if (len - payload_bytes_sent > MAX_NETWORK_PKT_SIZE) {
@@ -520,9 +524,10 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 		} else {
 			frag_size = len - payload_bytes_sent;
 		}
-		frag_bytes_sent = send_packet_and_wait(socket, sizeof(header), header, frag_size, msg[payload_bytes_sent]);
+		frag_bytes_sent = send_packet_and_wait(socket, sizeof(header), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
 		if (frag_bytes_sent == -1) {
-
+			*error = SOCKET_SENDERROR;
+			return payload_bytes_sent;
 		}
 		payload_bytes_sent += frag_bytes_sent;
 	}

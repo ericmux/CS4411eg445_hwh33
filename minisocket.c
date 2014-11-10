@@ -199,9 +199,13 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 void send_packet_no_wait(minisocket_t sending_socket, char msg_type){
 	mini_header_reliable_t header;
 
-	network_address_t destination_address = sending_socket->destination_channel.address;
+	network_address_t source_address;
+	network_address_t destination_address; 
+
+	network_address_copy(sending_socket->destination_channel.address, destination_address);
+	network_address_copy(sending_socket->listening_channel.address, source_address);
+
 	int destination_port = sending_socket->destination_channel.port_number;
-	network_address_t source_address = sending_socket->listening_channel.address;
 	int source_port = sending_socket->listening_channel.port_number;
 	int seq_number = sending_socket->seq_number;
 	int ack_number = sending_socket->ack_number;

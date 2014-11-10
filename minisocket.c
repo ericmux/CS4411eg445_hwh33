@@ -262,6 +262,28 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 	}
 }
 
+
+/*
+* Grab an open port for a new client, otherwise returns 0.
+*/
+int get_valid_port(){
+	int valid_port = current_client_port_index;
+
+	for(; valid_port < MAX_CLIENT_PORT_NUMBER + 1; valid_port++){
+		if(current_sockets[valid_port] == NULL) break;
+	}
+	if(valid_port == MAX_CLIENT_PORT_NUMBER + 1){
+		valid_port = MIN_CLIENT_PORT_NUMBER;
+		for(; valid_port < current_client_port_index; valid_port++){
+			if(current_sockets[valid_port] == NULL) break;
+		}
+		if(valid_port == current_client_port_index) valid_port = 0;
+	}
+
+	return valid_port;
+}
+
+
 /* 
  * Listen for a connection from somebody else. When communication link is
  * created return a minisocket_t through which the communication can be made
@@ -336,19 +358,6 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 }
 
 
-typedef struct minisocket
-{
-	socket_t socket_type; // might be unecessary
-	state_t state;
-	socket_channel_t listening_channel;
-	socket_channel_t destination_channel;
-	int seq_number;
-	int ack_number;
-	semaphore_t ack_sema;
-	int ack_received;
-	mailbox_t mailbox;
-} minisocket;
-
 /*
  * Initiate the communication with a remote site. When communication is
  * established create a minisocket through which the communication can be made
@@ -376,21 +385,23 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	mailbox_t			mailbox;
 
 	network_address_t	netaddr;
+	int valid_port;
 
-	if(current_client_port_index > MAX_CLIENT_PORT_NUMBER){
+
+	valid_port = get_valid_port();
+	if(!valid_port){
 		*error = SOCKET_NOMOREPORTS;
 		return NULL;
 	}
-
-
-	network_get_my_address(netaddr);
-	listening_channel.address = netaddr;
-	listening_channel.port = current_client_port_index++;
 
 	if(port < 0 || port > MAX_SERVER_PORT_NUMBER){
 		*error = SOCKET_INVALIDPARAMS;
 		return NULL;
 	}
+
+	network_get_my_address(netaddr);
+	listening_channel.address = netaddr;
+	listening_channel.port = valid_port;
 
 	network_address_copy(addr, destination_channel.address);
 	destination_channel.port_number = port;

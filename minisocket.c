@@ -160,7 +160,6 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 				  		 int data_len, char* data)
 {
 	// TODO: implement fragmentation, timeouts.
-	minisocket_error *error;
 	int bytes_sent;
 	int ack_received;
 
@@ -177,7 +176,6 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 
 		if (ack_received) {
 			// Success! Return the number of bytes.
-			*error = SOCKET_NOERROR;
 			return bytes_sent;
 		}
 

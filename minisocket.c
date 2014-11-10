@@ -202,13 +202,14 @@ void send_packet_no_wait(minisocket_t sending_socket, char msg_type){
 	network_address_t source_address;
 	network_address_t destination_address; 
 
-	network_address_copy(sending_socket->destination_channel.address, destination_address);
-	network_address_copy(sending_socket->listening_channel.address, source_address);
 
 	int destination_port = sending_socket->destination_channel.port_number;
 	int source_port = sending_socket->listening_channel.port_number;
 	int seq_number = sending_socket->seq_number;
 	int ack_number = sending_socket->ack_number;
+
+	network_address_copy(sending_socket->destination_channel.address, destination_address);
+	network_address_copy(sending_socket->listening_channel.address, source_address);
 
 	header = pack_reliable_header(destination_address, destination_port, source_address, source_port,
 						 msg_type, seq_number, ack_number);
@@ -249,7 +250,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 
 			// Check to see if the message received was a SYN.
 			if (header->message_type == MSG_SYN) {
-				server->destination_channel.address = header->source_address;
+				network_address_copy(header->source_address, server->destination_channel.address);
 				server->destination_channel.port_number = header->source_port;
 				server->state = HANDSHAKING;
 			}
@@ -266,7 +267,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 		if (bytes_sent != sizeof(struct mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to
 			// waiting for clients.
-			server->destination_channel.address = NULL;
+			network_address_blankify(server->destination_channel.address);
 			server->destination_channel.port_number = -1;
 			server->state = OPEN_SERVER;
 			continue;

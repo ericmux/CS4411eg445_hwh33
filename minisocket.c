@@ -61,7 +61,9 @@ minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 void minisocket_initialize()
 {
 	current_client_port_index = MIN_CLIENT_PORT_NUMBER;
-	for(int i = 0; i < MAX_CLIENT_PORT_NUMBER + 1; i++){
+	
+	int i = 0;
+	for(; i < MAX_CLIENT_PORT_NUMBER + 1; i++){
 		current_sockets[i] = NULL;
 	}
 }
@@ -98,7 +100,7 @@ void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_c
 	unpack_address(header->destination_address, destination_channel->address);
 	destination_channel->port_number = unpack_unsigned_short(header->destination_port);
 
-	*msg_type = header->msg_type;
+	*msg_type = header->message_type;
 	*seq_number = unpack_unsigned_int(header->seq_number);
 	*ack_number = unpack_unsigned_int(header->ack_number);
 }
@@ -108,7 +110,7 @@ void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_c
  */
 void copy_payload(char *buffer, int bytes_to_copy, char *location_to_copy_to)
 {
-	char *payload = buffer[sizeof(struct mini_header_reliable)];
+	char *payload = &buffer[sizeof(struct mini_header_reliable)];
 	memcpy(location_to_copy_to, payload, bytes_to_copy);
 	return;
 }
@@ -131,7 +133,7 @@ int minisocket_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 	// timeout_to_wait milliseconds if we have not woken up already.
 	alarm_id timeout_alarm = register_alarm(timeout_to_wait,
 								   			semaphore_V_wrapper,
-								   			sending_socket->ack_sema);
+								   			waiting_socket->ack_sema);
 
 
 	// Check for ACKs by calling P on the ACK semaphore.
@@ -158,7 +160,6 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 {
 	// TODO: implement fragmentation, timeouts.
 	minisocket_error *error;
-	mini_header_reliable_t header;
 	int bytes_sent;
 	int ack_received;
 
@@ -167,7 +168,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 
 	while (num_timeouts < MAX_NUM_TIMEOUTS) {
 		// Send the packet.
-		bytes_sent  = network_send_pkt(address, hdr_len, hdr, data_len, data);
+		bytes_sent  = network_send_pkt(sending_socket->destination_channel.address, hdr_len, hdr, data_len, data);
 		
 		// Wait for an ACK. This function will return 0 if the alarm
 		// goes off before an ACK is received.
@@ -175,6 +176,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 
 		if (ack_received) {
 			// Success! Return the number of bytes.
+			*error = SOCKET_NOERROR;
 			return bytes_sent;
 		}
 
@@ -193,8 +195,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 }
 
 /* Used for sending control packets, when we don't need to wait for an ACK. */
-void send_packet_no_wait(minisocket_t sending_socket, char msg_type)
-{
+void send_packet_no_wait(minisocket_t sending_socket, char msg_type){
 	mini_header_reliable_t header;
 
 	network_address_t destination_address = sending_socket->destination_channel.address;
@@ -232,7 +233,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 				server,
 				(minimsg_t) header,
 				0,
-				&error);
+				error);
 
 			if (bytes_received == -1) {
 				// error will be set by minisocket_receive

@@ -689,7 +689,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
  		}
 
  		// Check if this new packet will put us over max_len.
-    	bytes_with_new_packet = bytes_received + new_raw_packet->buffer->size - sizeof(struct mini_header_reliable);
+    	bytes_with_new_packet = bytes_received + raw_msg->buffer->size - sizeof(struct mini_header_reliable);
     	if (bytes_with_new_packet > max_len) {
     		// Put the message back on the queue and V the semaphore to reflect this.
     		queue_prepend(socket->mailbox->received_messages, raw_msg);
@@ -698,8 +698,8 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
     	}
 	
 		// Copy the payload of the packet into msg. We're done with the packet now, so free it.
-    	copy_payload(msg_buffer[bytes_received], new_raw_packet->buffer, new_raw_packet->size - sizeof(struct mini_header_reliable));
-    	bytes_received += new_raw_packet->size - sizeof(struct mini_header_reliable);
+    	copy_payload(msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
+    	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
 		
 		free(raw_msg);
     }

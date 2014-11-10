@@ -60,9 +60,10 @@ minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 /* Initializes the minisocket layer. */
 void minisocket_initialize()
 {
+	int i;
 	current_client_port_index = MIN_CLIENT_PORT_NUMBER;
-	
-	int i = 0;
+	i = 0;
+
 	for(; i < MAX_CLIENT_PORT_NUMBER + 1; i++){
 		current_sockets[i] = NULL;
 	}
@@ -244,8 +245,8 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 
 			// Check to see if the message received was a SYN.
 			if (header->message_type == MSG_SYN) {
-				server->destination_channel->address = header.source_address;
-				server->destination_channel->port_number = header.source_port;
+				server->destination_channel.address = header.source_address;
+				server->destination_channel.port_number = header.source_port;
 				server->state = HANDSHAKING;
 			}
 		}
@@ -258,7 +259,7 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 		server->state = SENDING;
 		bytes_sent = send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
 
-		if (bytes_sent != sizeof(mini_header_reliable)) {
+		if (bytes_sent != sizeof(struct mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to
 			// waiting for clients.
 			server->destination_channel.address = NULL;
@@ -356,19 +357,18 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_server_socket->type = SERVER;
 	new_server_socket->state = OPEN_SERVER;
 	new_server_socket->listening_channel = new_listening_channel;
-	new_server_socket->new_sending_channel = 
 	new_server_socket->ack_sema = new_ack_sema;
 	new_server_socket->seq_number = 0;
 	new_server_socket->ack_number = 0;
 	new_server_socket->ack_received = 0;
-	new_server->mailbox = new_mailbox;
+	new_server_socket->mailbox = new_mailbox;
 
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
 	// sending port will be initialized within this function.
-	wait_for_client(new_server);
+	wait_for_client(new_server_socket);
 
-	return new_server;
+	return new_server_socket;
 }
 
 

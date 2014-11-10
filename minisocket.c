@@ -409,7 +409,16 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	&& destination_socket->seq_number == ack_number){
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);
+
+    	set_interrupt_level(old_level);
+    	return;
     }
+
+    //Check if data packet contains valuable info about the last ACK if ACK itself wasn't received.
+    if(!destination_socket->ack_received && destination_socket->seq_number == ack_number){
+    	destination_socket->ack_received = 1;
+    	semaphore_V(destination_socket->ack_sema);
+    } 
 
 
     // Dropoff the message by appending it to the port's message queue.
@@ -422,9 +431,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // that the packet has been picked up by the socket, merely delivery).
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
-    if (raw_packet->size > sizeof(mini_header_reliable)) {
-    	send_no_wait(MSG_ACK, destination_socket_channel, source_socket_channel);
-    }
+    send_packet_no_wait(MSG_ACK, destination_socket_channel, source_socket_channel);
 
     // V on the semaphore to let threads know that messages are available
     semaphore_V(destination_socket_port->mailbox->event_sema);

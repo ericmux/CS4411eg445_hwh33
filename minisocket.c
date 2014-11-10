@@ -293,6 +293,59 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 
 }
 
+void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
+{
+    interrupt_level_t old_level;
+    int port_number;
+    socket_port_t destination_socket_port;
+    socket_port_t source_socket_port;
+
+    // Check for NULL input.
+    if (raw_msg == NULL) return;
+
+    // Get the local unbound port number from the message header.
+    unpack_reliable_header(&destination_socket_port, &source_socket_port);
+
+    // Make sure the port number is valid.
+    // XXX: is this possible??
+    if (port_number < 0 || port_number > 65535) {
+    	return;
+    }
+
+    old_level = set_interrupt_level(DISABLED);
+
+    // Find the socket the packet was intended for.
+    if (port_number > 32767) {
+    	destination_socket = client_socket_array[port_number - 32767];
+    } else {
+    	destination_socket = server_socket_array[port_number];
+    }
+    
+    // If there is no destination socket at the port, drop the packet.
+    if (destination_socket == NULL) {
+        return;
+    }
+
+    // Dropoff the message by appending it to the port's message queue.
+    queue_append(destination_socket->mailbox->received_messages, raw_msg);
+ 
+    set_interrupt_level(old_level);
+
+    // If the packet received was a data packet, send an ACK to let the
+    // sender know that the packet was received (an ACK does not indicate
+    // that the packet has been picked up by the socket, merely delivery).
+    // We switch destination and source because we are sending from the
+    // new packet's intended destination.
+    if (raw_msg->size > sizeof(mini_header_reliable)) {
+    	send_control_packet(MSG_ACK, destination_socket_port, source_socket_port);
+    }
+
+    // V on the semaphore to let threads know that messages are available
+    semaphore_V(local_unbound_port->port_data.mailbox->available_messages_sema);
+    
+    return;
+}
+
 /*
  * Receive a message from the other end of the socket. Blocks until
  * some data is received (which can be smaller than max_len bytes).
@@ -313,6 +366,8 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		// return the header in msg
 		return sizeof(mini_header_reliable);
 	}
+
+	// pull ALL packets off of the queue
 
 }
 

@@ -19,6 +19,10 @@
 #define INITIAL_TIMEOUT_MS 100
 #define MAX_NUM_TIMEOUTS 7
 
+// The delay in milliseconds between receiving a
+// FIN and closing a socket (15 seconds). 
+#define MS_TO_WAIT_TILL_CLOSE 15000
+
 typedef enum {SERVER, CLIENT} socket_t;
 
 typedef enum {
@@ -26,7 +30,8 @@ typedef enum {
 	HANDSHAKING, 
 	OPEN_CONNECTION,
 	SENDING,
-	CONNECTION_CLOSING 
+	CONNECTION_CLOSING,
+	CONNECTION_CLOSED
 } state_t;
 
 typedef struct socket_channel_t {
@@ -69,6 +74,10 @@ void minisocket_initialize()
 	}
 }
 
+void close_socket(void *socket_ptr) {
+        minisocket_t socket = (minisocket_t) socket;
+        socket->state = CONNECTION_CLOSED;
+}
 
 mini_header_reliable_t 
 pack_reliable_header(network_address_t source_address, int source_port,
@@ -569,7 +578,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	set_interrupt_level(old_level);
         return;
     }
-    //If the packet was not from its peer, reply MSG_FIN and leave.
+    // If the packet was not from the connected socket, simply send a MSG_FIN.
     if(!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
     	|| source_socket_channel.port_number != destination_socket->destination_channel.port_number){
     	
@@ -579,22 +588,50 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	return;
     }
 
-    //Check if it's an ACK.
-    if(raw_packet->size <= sizeof(struct mini_header_reliable) && msg_type == MSG_ACK
-    	&& destination_socket->seq_number == ack_number){
-    	destination_socket->ack_received = 1;
-    	semaphore_V(destination_socket->ack_sema);
+    // Check to see if the message was a FIN.
+    if (msg_type == MSG_FIN) {
+	    // If the connection was closing, send an ACK back. Otherwise, set the state to closing.
+	    // We register an alarm to close the connection in MS_TO_WAIT_TILL_CLOSE milliseconds and 
+	    // call V on the appropriate semaphore to prevent blocking.
+    	if (destination_socket->state == CONNECTION_CLOSING) {
+    		send_packet_no_wait(destination_socket, MSG_ACK);
+			set_interrupt_level(old_level);    		
+    		return;
+    	}
+
+    	destination_socket->state = CONNECTION_CLOSING;
+    	register_alarm(MS_TO_WAIT_TILL_CLOSE, close_socket, destination_socket);
+    	
+    	if (destination_socket->state == SENDING) semaphore_V(destination_socket->ack_sema);
+    	else semaphore_V(destination_socket->mailbox->available_messages_sema);
 
     	set_interrupt_level(old_level);
     	return;
     }
 
-    //Check if data packet contains valuable info about the last ACK if ACK itself wasn't received.
-    if(!destination_socket->ack_received && destination_socket->seq_number == ack_number){
+    if (destination_socket->state == CONNECTION_CLOSING) {
+    	set_interrupt_level(old_level);
+    	return; // not positive about this
+    }
+
+    if (msg_type == MSG_SYNACK && destination_socket->state == HANDSHAKING
+    		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);
-    } 
+    	set_interrupt_level(old_level);
+    	return;
+    }
 
+    if (msg_type == MSG_ACK && destination_socket->state != HANDSHAKING 
+    		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
+    	destination_socket->ack_received = 1;
+    	semaphore_V(destination_socket->ack_sema);
+    }
+
+    if (raw_packet->size <= sizeof(struct mini_header_reliable)) {
+    	set_interrupt_level(old_level);
+    	return;
+    }
 
     // Dropoff the message by appending it to the port's message queue.
     queue_append(destination_socket->mailbox->received_messages, raw_packet);
@@ -655,11 +692,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	queue_empty = 0;
 	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &raw_msg);
 	if (dequeue_result == -1) {
-		queue_empty = 1;
-		if (socket->state == CONNECTION_CLOSING) {
-			//minisocket_enter_closing_state(socket);
-			// return error??
-		}
+		// This indicates that the connection is closing.
 		*error = SOCKET_RECEIVEERROR;
 		return -1;
 	}
@@ -705,7 +738,6 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
     }
 
     set_interrupt_level(old_level);
-
 
     // Now we have filled msg as much as we can, so return the number of bytes we put into it.
     *error = SOCKET_NOERROR;

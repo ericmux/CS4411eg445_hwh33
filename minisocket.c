@@ -308,12 +308,14 @@ int minisocket_client_get_valid_port(){
  */
 minisocket_t minisocket_server_create(int port, minisocket_error *error)
 {
-	minisocket_t new_server_socket; 
-	socket_port_t new_listening_port;
-	socket_port_t new_sending_port;
-	semaphore_t new_available_messages_sema;
-	network_address_t server_address;
-	queue_t new_received_messages_q;
+	minisocket_t 		new_server_socket; 
+	socket_channel_t	new_listening_channel;
+	socket_channel_t 	new_sending_channel;
+	semaphore_t 		new_available_messages_sema;
+	semaphre_t 			new_ack_sema;
+	network_address_t 	server_address;
+	queue_t 			new_received_messages_q;
+	mailbox_t			new_mailbox;
 
 	// Check for null input.
 	if (error == NULL) {
@@ -325,8 +327,8 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 		*error = SOCKET_INVALIDPARAMS;
 		return NULL;
 	}
-	if (server_socket_array[port] != NULL) {
-		*error = PORTINUSE;
+	if (current_sockets[port] != NULL) {
+		*error = SOCKET_PORTINUSE;
 		return NULL;
 	} 
 
@@ -345,7 +347,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
     semaphore_initialize(new_available_messages_sema, 0);
     new_received_messages_q = queue_new();
     
-    new_mailbox = (mailbox *)malloc(sizeof(mailbox));
+    new_mailbox = (mailbox_t)malloc(sizeof(mailbox));
     new_mailbox->port_number = port_number;
     new_mailbox->available_messages_sema = new_available_messages_sema;
     new_mailbox->received_messages = new_received_messages_q;

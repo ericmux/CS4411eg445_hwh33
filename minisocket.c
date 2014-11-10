@@ -33,10 +33,10 @@ typedef struct socket_channel_t {
 	network_address_t address;
 } socket_channel_t;
 
-typedef struct mailbox_t {
+typedef struct mailbox {
 	semaphore_t available_messages_sema;
 	queue_t received_messages;
-} mailbox_t;
+} *mailbox_t;
 
 typedef struct minisocket
 {
@@ -313,7 +313,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	socket_channel_t	new_listening_channel;
 	socket_channel_t 	new_sending_channel;
 	semaphore_t 		new_available_messages_sema;
-	semaphre_t 			new_ack_sema;
+	semaphore_t 		new_ack_sema;
 	network_address_t 	server_address;
 	queue_t 			new_received_messages_q;
 	mailbox_t			new_mailbox;
@@ -334,10 +334,9 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	} 
 
 	// Create the server's listening channel.
-	new_listening_channel = (socket_t)malloc(sizeof(socket_t));
-	new_listening_channel->port_number = port;
+	new_listening_channel.port_number = port;
 	network_get_my_address(server_address);
-	new_listening_channel->address = server_address;
+	new_listening_channel.address = server_address;
 
     // Create the ACK semaphore.
     new_ack_sema = semaphore_create;
@@ -348,7 +347,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
     semaphore_initialize(new_available_messages_sema, 0);
     new_received_messages_q = queue_new();
     
-    new_mailbox = (mailbox_t)malloc(sizeof(mailbox));
+    new_mailbox = (mailbox_t) malloc(sizeof(mailbox));
     new_mailbox->port_number = port_number;
     new_mailbox->available_messages_sema = new_available_messages_sema;
     new_mailbox->received_messages = new_received_messages_q;
@@ -452,8 +451,8 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 
 
     //Send SYN packet to begin connection to server.
-    syn_header = pack_reliable_header(client_socket->listening_channel->address, client_socket->listening_channel->port_number,
-    					 client_socket->destination_channel->address, client_socket->destination_channel->port_number,
+    syn_header = pack_reliable_header(client_socket->listening_channel.address, client_socket->listening_channel.port_number,
+    					 client_socket->destination_channel.address, client_socket->destination_channel.port_number,
     					 MSG_SYN, client_socket->seq_number, client_socket->ack_number);
 
     send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), syn_header, 0, NULL);

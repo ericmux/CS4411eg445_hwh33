@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "minisocket.h"
+#include "miniheader.h"
 #include "synch.h"
 #include "interrupts.h"
 #include "queue.h"
@@ -417,7 +418,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	//Allocating client socket memory.
 	network_get_my_address(netaddr);
 	listening_channel.address = netaddr;
-	listening_channel.port = valid_port;
+	listening_channel.port_number = valid_port;
 
 	network_address_copy(addr, destination_channel.address);
 	destination_channel.port_number = port;

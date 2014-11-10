@@ -198,17 +198,17 @@ void send_packet_no_wait(minisocket_t sending_socket, char msg_type)
 {
 	mini_header_reliable_t header;
 
-	network_address_t destination_address = sending_socket->destination_channel->address;
-	int destination_port = sending_socket->destination_channel->port_number;
-	network_address_t source_address = sending_socket->listening_channel->address;
-	int source_port = sending_socket->listening_channel->port_number;
-	seq_number = sending_socket->seq_number;
-	ack_number = sending_socket->ack_number;
+	network_address_t destination_address = sending_socket->destination_channel.address;
+	int destination_port = sending_socket->destination_channel.port_number;
+	network_address_t source_address = sending_socket->listening_channel.address;
+	int source_port = sending_socket->listening_channel.port_number;
+	int seq_number = sending_socket->seq_number;
+	int ack_number = sending_socket->ack_number;
 
 	pack_reliable_header(destination_address, destination_port, source_address, source_port,
 						 msg_type, seq_number, ack_number);
 	// XXX: what happens when &data = NULL in network_send_pkt?
-	network_send_pkt(destination_socket->address, sizeof(header), header, 0, NULL);
+	network_send_pkt(destination_address, sizeof(header), header, 0, NULL);
 }
 
 /* Sets the server's state to OPEN_SERVER and waits for a SYN from a client.
@@ -244,25 +244,25 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 
 			// Check to see if the message received was a SYN.
 			if (header->message_type == MSG_SYN) {
-				server->destination_channel->address = header->source_address;
-				server->destination_channel->port_number = header->source_port;
+				server->destination_channel->address = header.source_address;
+				server->destination_channel->port_number = header.source_port;
 				server->state = HANDSHAKING;
 			}
 		}
 
 		// We received a SYN, so send a SYNACK back.
 		header = pack_reliable_header(
-			server->destination_channel->address, server->destination_channel->port_number,
-			server->listening_channel->address, server->listening_channel->port_number,
+			server->destination_channel.address, server->destination_channel.port_number,
+			server->listening_channel.address, server->listening_channel.port_number,
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
-		bytes_sent = send_packet_and_wait(server, sizeof(header), header, 0, NULL);
+		bytes_sent = send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
 
 		if (bytes_sent != sizeof(mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to
 			// waiting for clients.
-			server->destination_channel->address = NULL;
-			server->destination_channel->port_number = -1;
+			server->destination_channel.address = NULL;
+			server->destination_channel.port_number = -1;
 			server->state = OPEN_SERVER;
 			continue;
 		} else {
@@ -558,7 +558,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     send_packet_no_wait(MSG_ACK, destination_socket_channel, source_socket_channel);
 
     // V on the semaphore to let threads know that messages are available
-    semaphore_V(destination_socket_port->mailbox->available_messages_sema);
+    semaphore_V(destination_socket->mailbox->available_messages_sema);
     
     return;
 }

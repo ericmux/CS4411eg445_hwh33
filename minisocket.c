@@ -1,6 +1,8 @@
 /*
  *	Implementation of minisockets.
  */
+#include <stdlib.h>
+
 #include "minisocket.h"
 #include "synch.h"
 
@@ -72,12 +74,29 @@ pack_reliable_header(network_address_t source_address, int source_port,
     return new_header;
 }
 
+void unpack_reliable_header(char *packet_buffer, socket_port_t *destination_socket_port,
+							socket_port_t *source_socket_port, int *seq_number, int *ack_number)
+{
+	// A temporary structure to make the implementation below more clear.
+	mini_header_reliable_t header = (mini_header_reliable_t) packet_buffer;
+
+	destination_socket_port = (socket_port_t *)malloc(sizeof(struct(socket_port_t)));
+	source_socket_port = (socket_port_t *)malloc(sizeof(struct(socket_port_t)))
+
+	unpack_address(header->source_address, source_socket_port->address);
+	*source_socket_port->port_number = unpack_unsigned_short(header->source_port);
+	unpack_address(header->destination_address, destination_socket_port->address)
+	*destination_socket_port->port_number = unpack_unsigned_short(header->destination_port);
+	*seq_number = unpack_unsigned_int(header->seq_number);
+	*ack_number = unpack_unsigned_int(header->ack_number);
+}
+
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 
  * ACK is received within that time, the packet is resent up to MAX_NUM_TIMEOUTS
  * times. Upon each resending of the packet, the time to wait doubles.
  * Returns the number of bytes sent on success and -1 on error.
  */
-int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
+int send_and_wait(network_address_t dest_address, int hdr_len, char* hdr,
 				int data_len, char* data)
 {
 	// TODO: implement fragmentation, timeouts.
@@ -109,8 +128,8 @@ int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
 	return -1;
 }
 
-/* Sends a control packet. */
-void send_control_packet(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
+/* Used for sending control packets, when we don't need to wait for an ACK. */
+void send_no_wait(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
 {
 	mini_header_reliable_t header;
 
@@ -304,7 +323,11 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     if (raw_msg == NULL) return;
 
     // Get the local unbound port number from the message header.
-    unpack_reliable_header(&destination_socket_port, &source_socket_port);
+    unpack_reliable_header(raw_packet->buffer, 
+    					   &destination_socket_port,
+    					   &source_socket_port,
+    					   &seq_number,
+    					   &ack_number);
 
     old_level = set_interrupt_level(DISABLED);
 

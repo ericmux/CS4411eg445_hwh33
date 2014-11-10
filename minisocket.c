@@ -426,7 +426,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	ack_sema = semaphore_create();
 	semaphore_initialize(ack_sema, 0);
 
-    mailbox = (mailbox *)malloc(sizeof(mailbox));
+    mailbox = (mailbox_t) malloc(sizeof(struct mailbox));
 
     available_messages_sema = semaphore_create();
     semaphore_initialize(available_messages_sema,0);
@@ -444,7 +444,6 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     client_socket->seq_number = 1;
     client_socket->ack_number = 0;
     client_socket->ack_sema = ack_sema;
-    client_socket->available_messages_sema = available_messages_sema;
     client_socket->ack_received = 0;
     client_socket->mailbox = mailbox;
 
@@ -456,8 +455,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     					 client_socket->destination_channel.address, client_socket->destination_channel.port_number,
     					 MSG_SYN, client_socket->seq_number, client_socket->ack_number);
 
-    send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), syn_header, 0, NULL);
-
+    send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), (char *) syn_header, 0, NULL);
 
     *error = SOCKET_NOERROR;
     return client_socket;
@@ -522,7 +520,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
     //If the packet was not from its peer, reply MSG_FIN and leave.
     if(!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
-    	|| source_socket_channel.port_number != destination_socket->destination_socket_channel.port_number){
+    	|| source_socket_channel.port_number != destination_socket->destination_channel.port_number){
     	
     	set_interrupt_level(old_level);
 

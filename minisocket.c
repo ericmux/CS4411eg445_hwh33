@@ -31,7 +31,6 @@ typedef struct socket_channel_t {
 } socket_channel_t;
 
 typedef struct mailbox_t {
-	int port_number;
 	semaphore_t available_messages_sema;
 	queue_t received_messages;
 } mailbox_t;
@@ -50,7 +49,7 @@ typedef struct minisocket
 	mailbox_t mailbox;
 } minisocket;
 
-int current_client_port_index;
+static int current_client_port_index;
 
 minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 
@@ -131,9 +130,9 @@ int minisocket_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 		deregister_alarm(timeout_alarm);
 		set_interrupt_level(old_level);
 		return 1;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 
@@ -157,7 +156,7 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 		// Send the packet.
 		bytes_sent  = network_send_pkt(address, hdr_len, hdr, data_len, data);
 		
-		// Wait for an ACK. This function will return -1 if the alarm
+		// Wait for an ACK. This function will return 0 if the alarm
 		// goes off before an ACK is received.
 		ack_received = minisocket_wait_for_ack(sending_socket, timeout_to_wait);
 
@@ -335,6 +334,19 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 }
 
 
+typedef struct minisocket
+{
+	socket_t socket_type; // might be unecessary
+	state_t state;
+	socket_channel_t listening_channel;
+	socket_channel_t destination_channel;
+	int seq_number;
+	int ack_number;
+	semaphore_t ack_sema;
+	int ack_received;
+	mailbox_t mailbox;
+} minisocket;
+
 /*
  * Initiate the communication with a remote site. When communication is
  * established create a minisocket through which the communication can be made
@@ -351,7 +363,63 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
  */
 minisocket_t minisocket_client_create(network_address_t addr, int port, minisocket_error *error)
 {
+	minisocket_t 		client_socket;
+	socket_channel_t 	listening_channel;
+	socket_channel_t 	destination_channel;
+	int 				seq_number;
+	int 				ack_number;
+	semaphore_t 		ack_sema;
+	semaphore_t 		available_messages_sema;
+	queue_t 			msg_queue;
+	mailbox_t			mailbox;
 
+	network_address_t	netaddr;
+
+	if(current_client_port_index > MAX_CLIENT_PORT_NUMBER){
+		*error = SOCKET_NOMOREPORTS;
+		return NULL;
+	}
+
+
+	network_get_my_address(netaddr);
+	listening_channel.address = netaddr;
+	listening_channel.port = current_client_port_index++;
+
+	if(port < 0 || port > MAX_SERVER_PORT_NUMBER){
+		*error = SOCKET_INVALIDPARAMS;
+		return NULL;
+	}
+
+	network_address_copy(addr, destination_channel.address);
+	destination_channel.port_number = port;
+
+	ack_sema = semaphore_create();
+	semaphore_initialize(ack_sema, 0);
+
+    mailbox = (mailbox *)malloc(sizeof(mailbox));
+
+    available_messages_sema = semaphore_create();
+    semaphore_initialize(available_messages_sema,0);
+    mailbox->available_messages_sema = available_messages_sema;
+
+    msg_queue = queue_new();
+    mailbox->received_messages = msg_queue;	
+
+    client_socket = (minisocket_t) malloc(sizeof(minisocket));
+
+    client_socket->type = CLIENT;
+    client_socket->state = HANDSHAKING;
+    client_socket->listening_channel = listening_channel;
+    client_socket->destination_channel = destination_channel;
+    client_socket->seq_number = 0;
+    client_socket->ack_number = 0;
+    client_socket->ack_sema = ack_sema;
+    client_socket->available_messages_sema = available_messages_sema;
+    client_socket->ack_received = 0;
+    client_socket->mailbox = mailbox;
+
+    *error = SOCKET_NOERROR;
+    return client_socket;
 }
 
 

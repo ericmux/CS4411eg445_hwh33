@@ -760,18 +760,18 @@ void minisocket_close(minisocket_t socket)
     					 socket->destination_channel.address, socket->destination_channel.port_number,
     					 MSG_FIN, socket->seq_number, socket->ack_number);
 
-    send_packet_and_wait(socket->destination_channel->address, 
+    send_packet_and_wait(socket->destination_channel.address, 
     					 sizeof(struct mini_header_reliable), 
     					 (char *) fin_header, 0, NULL);
 
     // Whether we return successfully or not from send_packet_and_wait doesn't
     // matter, we are closing the connection either way.
     // We free all allocated memory.
-	free(listening_channel);
-	free(destination_channel;
-	semaphore_destroy(ack_sema);
-	semaphore_destory(mailbox->available_messages_sema);
-	queue_free(mailbox->received_messages);
+	free(socket->listening_channel);
+	free(socket->destination_channel;
+	semaphore_destroy(socket->ack_sema);
+	semaphore_destory(socket->mailbox->available_messages_sema);
+	queue_free(socket->mailbox->received_messages);
 
 	free(socket);
 }

@@ -2,13 +2,9 @@
  *	Implementation of minisockets.
  */
 #include <stdlib.h>
+
 #include "minisocket.h"
 #include "synch.h"
-
-//Port number conventions.
-#define MAX_CLIENT_PORT_NUMBER (2<<15)-1
-#define MIN_CLIENT_PORT_NUMBER (2<<14)
-#define MAX_SERVER_PORT_NUMBER (2<<14)-1
 
 // Initial timeout to wait in milliseconds.
 #define INITIAL_TIMEOUT_MS 100
@@ -49,15 +45,15 @@ typedef struct minisocket
 
 int current_client_port_index;
 
-minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
+minisocket_t *server_socket_array;
+minisocket_t *client_socket_array;
 
 /* Initializes the minisocket layer. */
 void minisocket_initialize()
 {
-	current_client_port_index = MIN_CLIENT_PORT_NUMBER;
-	for(int i = 0; i < MAX_CLIENT_PORT_NUMBER + 1; i++){
-		current_sockets[i] = NULL;
-	}
+	current_client_port_index = 32768;
+	server_socket_array = (minisocket_t *)malloc(32767 * sizeof(minisocket_t));
+	client_socket_array = (minisocket_t *)malloc(32767 * sizeof(minisocket_t));
 }
 
 mini_header_reliable_t 
@@ -80,12 +76,29 @@ pack_reliable_header(network_address_t source_address, int source_port,
     return new_header;
 }
 
+void unpack_reliable_header(char *packet_buffer, socket_port_t *destination_socket_port,
+							socket_port_t *source_socket_port, int *seq_number, int *ack_number)
+{
+	// A temporary structure to make the implementation below more clear.
+	mini_header_reliable_t header = (mini_header_reliable_t) packet_buffer;
+
+	destination_socket_port = (socket_port_t *)malloc(sizeof(struct(socket_port_t)));
+	source_socket_port = (socket_port_t *)malloc(sizeof(struct(socket_port_t)))
+
+	unpack_address(header->source_address, source_socket_port->address);
+	*source_socket_port->port_number = unpack_unsigned_short(header->source_port);
+	unpack_address(header->destination_address, destination_socket_port->address)
+	*destination_socket_port->port_number = unpack_unsigned_short(header->destination_port);
+	*seq_number = unpack_unsigned_int(header->seq_number);
+	*ack_number = unpack_unsigned_int(header->ack_number);
+}
+
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 
  * ACK is received within that time, the packet is resent up to MAX_NUM_TIMEOUTS
  * times. Upon each resending of the packet, the time to wait doubles.
  * Returns the number of bytes sent on success and -1 on error.
  */
-int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
+int send_and_wait(network_address_t dest_address, int hdr_len, char* hdr,
 				int data_len, char* data)
 {
 	// TODO: implement fragmentation, timeouts.
@@ -117,8 +130,8 @@ int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
 	return -1;
 }
 
-/* Sends a control packet. */
-void send_control_packet(char msg_type, socket_channel_t source_socket, socket_channel_t destination_socket)
+/* Used for sending control packets, when we don't need to wait for an ACK. */
+void send_no_wait(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
 {
 	mini_header_reliable_t header;
 
@@ -158,7 +171,7 @@ void wait_for_client(minisocket_t server, minisocket_error *error) {
 				// error will be set by minisocket_receive
 				// TODO: return some indication of error.
 				// What is a receive error?? What is proper behavior here?
-				return;
+				continue;
 			}
 
 			// Check to see if the message received was a SYN.
@@ -220,7 +233,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 		*error = SOCKET_INVALIDPARAMS;
 		return NULL;
 	}
-	if (current_sockets[port] != NULL) {
+	if (server_socket_array[port] != NULL) {
 		*error = PORTINUSE;
 		return NULL;
 	} 
@@ -311,10 +324,14 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     socket_channel_t source_socket_channel;
 
     // Check for NULL input.
-    if (raw_packet == NULL) return;
+    if (raw_msg == NULL) return;
 
     // Get the local unbound port number from the message header.
-    unpack_reliable_header(&destination_socket_channel, &source_socket_channel, &seq_number, &ack_number);
+    unpack_reliable_header(raw_packet->buffer, 
+    					   &destination_socket_port,
+    					   &source_socket_port,
+    					   &seq_number,
+    					   &ack_number);
 
     old_level = set_interrupt_level(DISABLED);
 
@@ -338,7 +355,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     // Dropoff the message by appending it to the port's message queue.
-    queue_append(destination_socket->mailbox->received_messages, raw_packet);
+    queue_append(destination_socket->mailbox->received_messages, raw_msg);
  
     set_interrupt_level(old_level);
 
@@ -348,11 +365,11 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
     if (raw_packet->size > sizeof(mini_header_reliable)) {
-    	send_control_packet(MSG_ACK, destination_socket_channel, source_socket_channel);
+    	send_no_wait(MSG_ACK, destination_socket_channel, source_socket_channel);
     }
 
     // V on the semaphore to let threads know that messages are available
-    semaphore_V(local_unbound_port->port_data.mailbox->available_messages_sema);
+    semaphore_V(destination_socket_port->port_data.mailbox->available_messages_sema);
     
     return;
 }

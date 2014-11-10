@@ -42,8 +42,7 @@ OBJ =                              \
     minisocket.o 				   \
     network.o                      \
     hashtable.o                    \
-    linked_list.o                  \
-    minisocket_utils.o
+    linked_list.o
 
 %: %.o start.o end.o $(OBJ) $(SYSTEMOBJ)
 	$(CC) $(LIB) -o $@ start.o $(filter-out start.o end.o $(SYSTEMOBJ), $^) end.o $(SYSTEMOBJ) $(LFLAGS)

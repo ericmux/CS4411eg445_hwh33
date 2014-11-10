@@ -544,4 +544,3 @@ void minisocket_close(minisocket_t socket)
 
 	free(socket);
 }
-c

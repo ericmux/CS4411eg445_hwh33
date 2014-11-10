@@ -1,6 +1,7 @@
 /*
  *	Implementation of minisockets.
  */
+#include <stdlib.h>
 #include "minisocket.h"
 #include "synch.h"
 
@@ -48,13 +49,15 @@ typedef struct minisocket
 
 int current_client_port_index;
 
-minisocket_t *current_sockets;
+minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 
 /* Initializes the minisocket layer. */
 void minisocket_initialize()
 {
 	current_client_port_index = MIN_CLIENT_PORT_NUMBER;
-	current_sockets = (minisocket_t *)malloc((MAX_CLIENT_PORT_NUMBER + 1) * sizeof(minisocket_t));
+	for(int i = 0; i < MAX_CLIENT_PORT_NUMBER + 1; i++){
+		current_sockets[i] = NULL;
+	}
 }
 
 mini_header_reliable_t 

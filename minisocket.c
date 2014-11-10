@@ -32,7 +32,7 @@ typedef struct socket_channel_t {
 
 typedef struct mailbox_t {
 	int port_number;
-	semaphore_t event_sema;
+	semaphore_t available_messages_sema;
 	queue_t received_messages;
 } mailbox_t;
 
@@ -161,12 +161,18 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 		// goes off before an ACK is received.
 		ack_received = minisocket_wait_for_ack(sending_socket, timeout_to_wait);
 
+		if (ack_received) {
+			// Success! Return the number of bytes.
+			return bytes_sent;
+		}
+
 		if (!ack_received && sending_socket->state == CONNECTION_CLOSING) {
 			// While we were waiting, the connection state changed to closing,
 			// exit the function with failure.
 			return -1;
 		}
 
+		// Otherwise, we received a timeout, so respond accordingly.
 		timeout_to_wait = timeout_to_wait * 2;
 		num_timeouts++;
 	}
@@ -175,13 +181,19 @@ int send_packet_and_wait(minisocket_t sending_socket, int hdr_len, char* hdr,
 }
 
 /* Used for sending control packets, when we don't need to wait for an ACK. */
-void send_packet_no_wait(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
+void send_packet_no_wait(minisocket_t sending_socket, char msg_type)
 {
 	mini_header_reliable_t header;
 
-	pack_reliable_header(source_socket->address, source_socket->port_number,
-						 destination_socket->address, destination_socket->port_number,
-						 msg_type, 0, 0);
+	network_address_t destination_address = sending_socket->destination_channel->address;
+	int destination_port = sending_socket->destination_channel->port_number;
+	network_address_t source_address = sending_socket->listening_channel->address;
+	int source_port = sending_socket->listening_channel->port_number;
+	seq_number = sending_socket->seq_number;
+	ack_number = sending_socket->ack_number;
+
+	pack_reliable_header(destination_address, destination_port, source_address, source_port,
+						 msg_type, seq_number, ack_number);
 	// XXX: what happens when &data = NULL in network_send_pkt?
 	network_send_pkt(destination_socket->address, sizeof(header), header, 0, NULL);
 }
@@ -196,7 +208,6 @@ void send_packet_no_wait(char msg_type, socket_port_t source_socket, socket_port
 void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 	int bytes_received;
 	int bytes_sent;
-	socket_channel_t new_sending_port;
 	// header is used for both receiving and sending control packets.
 	mini_header_reliable_t header;
 
@@ -220,23 +231,25 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 
 			// Check to see if the message received was a SYN.
 			if (header->message_type == MSG_SYN) {
-				server->sending_port = new_sending_port;
+				server->destination_channel->address = header->source_address;
+				server->destination_channel->port_number = header->source_port;
 				server->state = HANDSHAKING;
 			}
 		}
 
 		// We received a SYN, so send a SYNACK back.
 		header = pack_header(
-			server->sending_port->address, server->sending_port->port_number,
-			server->destination_socket_channel->address, server->destination_socket_channel->port_number,
-			SYNACK, 0, 0);
+			server->destination_channel->address, server->destination_channel->port_number,
+			server->listening_channel->address, server->listening_channel->port_number,
+			SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
-		bytes_sent = send_packet(server, SYNACK, NULL, &error);
+		bytes_sent = send_packet(server, sizeof(header), header, 0, NULL);
 
 		if (bytes_sent != sizeof(mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to
 			// waiting for clients.
-			server->sending_port = NULL;
+			server->destination_channel->address = NULL;
+			server->destination_channel->port_number = -1;
 			server->state = OPEN_SERVER;
 			continue;
 		} else {
@@ -264,7 +277,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	minisocket_t new_server_socket; 
 	socket_port_t new_listening_port;
 	socket_port_t new_sending_port;
-	semaphore_t new_event_sema;
+	semaphore_t new_available_messages_sema;
 	network_address_t server_address;
 
 	// Check for null input.
@@ -282,7 +295,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 		return NULL;
 	} 
 
-	// Create the server's listening port.
+	// Create the server's listening channel.
 	new_listening_channel = (socket_t)malloc(sizeof(socket_t));
 	new_listening_channel->port_number = port;
 	network_get_my_address(server_address);
@@ -293,21 +306,25 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
     semaphore_initialize(ack_sema, 0);
 
     // Now set up the server's mailbox.
-    new_event_sema = semaphore_create();
-    semaphore_initialize(new_event_sema, 0);
+    new_available_messages_sema = semaphore_create();
+    semaphore_initialize(new_available_messages_sema, 0);
     new_received_messages_q = queue_new();
     
     new_mailbox = (mailbox *)malloc(sizeof(mailbox));
     new_mailbox->port_number = port_number;
-    new_mailbox->event_sema = new_event_sema;
+    new_mailbox->available_messages_sema = new_available_messages_sema;
     new_mailbox->received_messages = new_received_messages_q;
 
 	// Initialize the server socket.
 	new_server = (minisocket_t) malloc(sizeof(minisocket));
 	new_server_socket->socket_type = SERVER;
 	new_server_socket->state = OPEN_SERVER;
-	new_server_socket->listening_port = new_listening_port;
-	new_server_socket->event_sema = new_event_sema;
+	new_server_socket->listening_channel = new_listening_channel;
+	new_server_socket->ack_sema = new_ack_sema;
+	new_server_socket->seq_number = 0;
+	new_server_socket->ack_number = 0;
+	new_server_socket->ack_received = 0;
+	new_server->mailbox = new_mailbox;
 
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
@@ -417,7 +434,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     // V on the semaphore to let threads know that messages are available
-    semaphore_V(destination_socket_port->mailbox->event_sema);
+    semaphore_V(destination_socket_port->mailbox->available_messages_sema);
     
     return;
 }

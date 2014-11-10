@@ -150,7 +150,7 @@ void wait_for_client(minisocket_t server, minisocket_error *error) {
 				// error will be set by minisocket_receive
 				// TODO: return some indication of error.
 				// What is a receive error?? What is proper behavior here?
-				return;
+				continue;
 			}
 
 			// Check to see if the message received was a SYN.
@@ -306,16 +306,10 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // Get the local unbound port number from the message header.
     unpack_reliable_header(&destination_socket_port, &source_socket_port);
 
-    // Make sure the port number is valid.
-    // XXX: is this possible??
-    if (port_number < 0 || port_number > 65535) {
-    	return;
-    }
-
     old_level = set_interrupt_level(DISABLED);
 
     // Find the socket the packet was intended for.
-    if (port_number > 32767) {
+    if (destination_socket_port->port_number > 32767) {
     	destination_socket = client_socket_array[port_number - 32767];
     } else {
     	destination_socket = server_socket_array[port_number];
@@ -341,7 +335,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     // V on the semaphore to let threads know that messages are available
-    semaphore_V(local_unbound_port->port_data.mailbox->available_messages_sema);
+    semaphore_V(destination_socket_port->port_data.mailbox->available_messages_sema);
     
     return;
 }

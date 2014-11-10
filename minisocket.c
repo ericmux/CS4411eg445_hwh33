@@ -109,7 +109,7 @@ void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_c
 /* Copies the payload into the memory location specified. It is assumed that the 
  * given memory location is valid and has enough room.
  */
-void copy_payload(char *buffer, int bytes_to_copy, char *location_to_copy_to)
+void copy_payload(char *location_to_copy_to, char *buffer, int bytes_to_copy)
 {
 	char *payload = &buffer[sizeof(struct mini_header_reliable)];
 	memcpy(location_to_copy_to, payload, bytes_to_copy);
@@ -628,12 +628,11 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 {
 	interrupt_level_t old_level;
 	network_interrupt_arg_t *raw_msg;
-	mini_header_reliable_t header;
-	state_t state;
 	int bytes_received;
 	int queue_empty;
 	int dequeue_result;
 	char *msg_buffer;
+	int bytes_with_new_packet;
 
     // Check for NULL input.
     if (socket == NULL || msg == NULL || error == NULL) {
@@ -665,7 +664,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		return -1;
 	}
 	if (raw_msg->size - sizeof(struct mini_header_reliable) > max_len) {
-		queue_prepend(socket->mailbox->available_messages_sema);
+		queue_prepend(socket->mailbox->received_messages, raw_msg);
 		semaphore_V(socket->mailbox->available_messages_sema);
 		*error = SOCKET_NOERROR;
 		return 0;

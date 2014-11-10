@@ -245,8 +245,8 @@ void minisocket_wait_for_client(minisocket_t server, minisocket_error *error) {
 
 			// Check to see if the message received was a SYN.
 			if (header->message_type == MSG_SYN) {
-				server->destination_channel.address = header.source_address;
-				server->destination_channel.port_number = header.source_port;
+				server->destination_channel.address = header->source_address;
+				server->destination_channel.port_number = header->source_port;
 				server->state = HANDSHAKING;
 			}
 		}
@@ -312,7 +312,6 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 {
 	minisocket_t 		new_server_socket; 
 	socket_channel_t	new_listening_channel;
-	socket_channel_t 	new_sending_channel;
 	semaphore_t 		new_available_messages_sema;
 	semaphore_t 		new_ack_sema;
 	network_address_t 	server_address;
@@ -340,7 +339,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_listening_channel.address = server_address;
 
     // Create the ACK semaphore.
-    new_ack_sema = semaphore_create;
+    new_ack_sema = semaphore_create();
     semaphore_initialize(new_ack_sema, 0);
 
     // Now set up the server's mailbox.
@@ -366,7 +365,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
 	// sending port will be initialized within this function.
-	wait_for_client(new_server_socket);
+	minisocket_wait_for_client(new_server_socket);
 
 	return new_server_socket;
 }

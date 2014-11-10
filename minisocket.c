@@ -148,7 +148,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
 	// sending port will be initialized within this function.
-	minisocket_wait_for_client(new_server_socket, error);
+	minisocket_utils_wait_for_client(new_server_socket, error);
 
 	return new_server_socket;
 }

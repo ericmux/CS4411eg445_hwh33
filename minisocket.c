@@ -24,10 +24,10 @@ typedef enum {
 	CONNECTION_CLOSING 
 } state_t;
 
-typedef struct socket_port_t {
+typedef struct socket_channel_t {
 	int port_number;
 	network_address_t address;
-} socket_port_t;
+} socket_channel_t;
 
 typedef struct mailbox_t {
 	int port_number;
@@ -40,8 +40,8 @@ typedef struct minisocket
 	// Listening ports are unbound ports, sending ports are bound ports
 	socket_t socket_type; // might be unecessary
 	state_t state;
-	socket_port_t listening_port;
-	socket_port_t destination_port;
+	socket_channel_t listening_channel;
+	socket_channel_t destination_channel;
 	int seq_number;
 	int ack_number;
 	mailbox_t mailbox;
@@ -62,7 +62,7 @@ void minisocket_initialize()
 
 mini_header_reliable_t 
 pack_reliable_header(network_address_t source_address, int source_port,
-					 network_address_t destination_address, int destination_port,
+					 network_address_t destination_address, int destination_socket_channel,
 					 char message_type, int seq_number, int ack_number)
 {
 	mini_header_reliable_t new_header = 
@@ -72,7 +72,7 @@ pack_reliable_header(network_address_t source_address, int source_port,
     pack_address(new_header->source_address, source_address);
     pack_unsigned_short(new_header->source_port, (short) source_port);
     pack_address(new_header->destination_address, dest_address);
-    pack_unsigned_short(new_header->destination_port, (short) dest_port);
+    pack_unsigned_short(new_header->destination_socket_channel, (short) dest_port);
     new_header->message_type = message_type;
     pack_unsigned_int(new_header->seq_number, seq_number);
     pack_unsigned_int(new_header->ack_number, ack_number);
@@ -118,7 +118,7 @@ int send_packet(network_address_t dest_address, int hdr_len, char* hdr,
 }
 
 /* Sends a control packet. */
-void send_control_packet(char msg_type, socket_port_t source_socket, socket_port_t destination_socket)
+void send_control_packet(char msg_type, socket_channel_t source_socket, socket_channel_t destination_socket)
 {
 	mini_header_reliable_t header;
 
@@ -139,7 +139,7 @@ void send_control_packet(char msg_type, socket_port_t source_socket, socket_port
 void wait_for_client(minisocket_t server, minisocket_error *error) {
 	int bytes_received;
 	int bytes_sent;
-	socket_port_t new_sending_port;
+	socket_channel_t new_sending_port;
 	// header is used for both receiving and sending control packets.
 	mini_header_reliable_t header;
 
@@ -171,7 +171,7 @@ void wait_for_client(minisocket_t server, minisocket_error *error) {
 		// We received a SYN, so send a SYNACK back.
 		header = pack_header(
 			server->sending_port->address, server->sending_port->port_number,
-			server->destination_port->address, server->destination_port->port_number,
+			server->destination_socket_channel->address, server->destination_socket_channel->port_number,
 			SYNACK, 0, 0);
 		server->state = SENDING;
 		bytes_sent = send_packet(server, SYNACK, NULL, &error);
@@ -205,8 +205,8 @@ void wait_for_client(minisocket_t server, minisocket_error *error) {
 minisocket_t minisocket_server_create(int port, minisocket_error *error)
 {
 	minisocket_t new_server_socket; 
-	socket_port_t new_listening_port;
-	socket_port_t new_sending_port;
+	socket_channel_t new_listening_channel;
+	socket_channel_t new_sending_port;
 	semaphore_t new_available_messages_sema;
 	network_address_t server_address;
 
@@ -226,10 +226,10 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	} 
 
 	// Create the server's listening port.
-	new_listening_port = (socket_t)malloc(sizeof(socket_t));
-	new_listening_port->port_number = port;
+	new_listening_channel = (socket_t)malloc(sizeof(socket_t));
+	new_listening_channel->port_number = port;
 	network_get_my_address(server_address);
-	new_listening_port->address = server_address;
+	new_listening_channel->address = server_address;
 
     // Now set up the server's mailbox.
     new_available_messages_sema = semaphore_create();
@@ -245,7 +245,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_server = (minisocket_t) malloc(sizeof(minisocket));
 	new_server_socket->socket_type = SERVER;
 	new_server_socket->state = OPEN_SERVER;
-	new_server_socket->listening_port = new_listening_port;
+	new_server_socket->listening_channel = new_listening_channel;
 	new_server_socket->available_messages_sema = new_available_messages_sema;
 
 	// Now wait for a client to connect. This function does not return until
@@ -307,23 +307,34 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     int port_number;
     int seq_number;
     int ack_number;
-    socket_port_t destination_socket_port;
-    socket_port_t source_socket_port;
+    socket_channel_t destination_socket_channel;
+    socket_channel_t source_socket_channel;
 
     // Check for NULL input.
     if (raw_packet == NULL) return;
 
     // Get the local unbound port number from the message header.
-    unpack_reliable_header(&destination_socket_port, &source_socket_port, &seq_number, &ack_number);
+    unpack_reliable_header(&destination_socket_channel, &source_socket_channel, &seq_number, &ack_number);
 
     old_level = set_interrupt_level(DISABLED);
 
     // Find the socket the packet was intended for.
+    port_number = destination_socket_channel->port_number;
     destination_socket = current_sockets[port_number];
     
     // If there is no destination socket at the port, drop the packet.
     if (destination_socket == NULL) {
+    	set_interrupt_level(old_level);
         return;
+    }
+    //If the packet was not from its peer, reply MSG_FYN and leave.
+    if(!network_compare_network_addresses(source_socket_channel->address, destination_socket->destination_channel->address)
+    	|| source_socket_channel->port_number != destination_socket->destination_socket_channel->port_number){
+    	
+    	set_interrupt_level(old_level);
+
+    	send_control_packet(MSG_FIN, destination_socket_channel, source_socket_channel);
+    	return;
     }
 
     // Dropoff the message by appending it to the port's message queue.
@@ -337,7 +348,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
     if (raw_packet->size > sizeof(mini_header_reliable)) {
-    	send_control_packet(MSG_ACK, destination_socket_port, source_socket_port);
+    	send_control_packet(MSG_ACK, destination_socket_channel, source_socket_channel);
     }
 
     // V on the semaphore to let threads know that messages are available

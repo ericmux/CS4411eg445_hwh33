@@ -386,8 +386,6 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	minisocket_t 		client_socket;
 	socket_channel_t 	listening_channel;
 	socket_channel_t 	destination_channel;
-	int 				seq_number;
-	int 				ack_number;
 	semaphore_t 		ack_sema;
 	semaphore_t 		available_messages_sema;
 	queue_t 			msg_queue;
@@ -458,19 +456,6 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     *error = SOCKET_NOERROR;
     return client_socket;
 }
-
-
-enum minisocket_error {
-  SOCKET_NOERROR=0,
-  SOCKET_NOMOREPORTS,   /* ran out of free ports */
-  SOCKET_PORTINUSE,     /* server tried to use a port that is already in use */
-  SOCKET_NOSERVER,      /* client tried to connect to a port without a server */
-  SOCKET_BUSY,          /* client tried to connect to a port that is in use */
-  SOCKET_SENDERROR,
-  SOCKET_RECEIVEERROR,
-  SOCKET_INVALIDPARAMS, /* user supplied invalid parameters to the function */
-  SOCKET_OUTOFMEMORY    /* function could not complete because of insufficient memory */
-};
 
 /* 
  * Send a message to the other end of the socket.

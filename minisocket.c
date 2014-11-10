@@ -101,6 +101,15 @@ void unpack_reliable_header(char *packet_buffer, socket_channel_t *destination_c
 	*ack_number = unpack_unsigned_int(header->ack_number);
 }
 
+/* Copies the payload into the memory location specified. It is assumed that the 
+ * given memory location is valid and has enough room.
+ */
+void copy_payload(char *buffer, int bytes_to_copy, char *location_to_copy_to)
+{
+	char *payload = buffer[sizeof(struct mini_header_reliable)];
+	memcpy(location_to_copy_to, payload, bytes_to_copy);
+	return;
+}
 
 /* Waits for the given ACK to come in by calling P on the ACM semaphore. 
  * Returns 1 if the ACK was received and 0 if a timeout occurred.
@@ -538,16 +547,48 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
  */
 int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisocket_error *error)
 {
-	mini_header_reliable header;
-	state_t state;
+	// network_interrupt_arg_t *raw_msg;
+	// mini_header_reliable header;
+	// state_t state;
+	// int bytes_received;
+	// int queue_empty;
+	// int dequeue_result;
+	// minimsg_t new_raw_packet;
 
-	state = socket->state;
-	if (state == HANDSHAKING || state == SERVER_OPEN || state == SENDING) {
-		// return the header in msg
-		return sizeof(mini_header_reliable);
-	}
+ //    // Check for NULL input.
+ //    if (socket == NULL || msg == NULL || error == NULL) {
+ //    	return -1;
+ //    }
 
-	// pull ALL packets off of the queue
+	// // Check for available messages by calling a P on the mailbox's semaphore. If none are
+	// // available, this will cause the thread to block.
+	// semaphore_P(socket->mailbox->available_messages_sema);
+
+	// // Check for closing connection.
+    
+ //    // Pop messages off of the queue until the queue is empty or the total bytes received
+ //    // is greater than max_len.
+ //    queue_empty = 0;
+ //    bytes_received = 0;
+ //    while (!queue_empty && bytes_received < max_len) {
+ //    	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **)&new_raw_packet);
+ //    	if (dequeue_result == -1) {
+ //    		queue_empty = 1;
+ //    	}
+ //    	bytes_with_new_packet = bytes_received + new_raw_packet->buffer->size - sizeof(struct mini_header_reliable);
+ //    	if (bytes_with_new_packet > max_len) {
+ //    		// Put the message back on the queue.
+ //    		queue_prepend(socket->mailbox->received_messages, new_raw_packet);
+ //    	}
+ //    }
+
+	// state = socket->state;
+	// if (state == HANDSHAKING || state == SERVER_OPEN || state == SENDING) {
+	// 	// return the header in msg
+	// 	return sizeof(mini_header_reliable);
+	// }
+
+	// Pop messages off of the queue until
 
 }
 

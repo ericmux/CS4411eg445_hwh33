@@ -6,6 +6,7 @@
 #include "minisocket.h"
 #include "miniheader.h"
 #include "synch.h"
+#include "alarm.h"
 #include "interrupts.h"
 #include "queue.h"
 
@@ -41,7 +42,7 @@ typedef struct mailbox {
 typedef struct minisocket
 {
 	// Listening ports are unbound ports, sending ports are bound ports
-	socket_t socket_type; // might be unecessary
+	socket_t type; // might be unecessary
 	state_t state;
 	socket_channel_t listening_channel;
 	socket_channel_t destination_channel;
@@ -347,16 +348,16 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
     semaphore_initialize(new_available_messages_sema, 0);
     new_received_messages_q = queue_new();
     
-    new_mailbox = (mailbox_t) malloc(sizeof(mailbox));
-    new_mailbox->port_number = port_number;
+    new_mailbox = (mailbox_t) malloc(sizeof(struct mailbox));
     new_mailbox->available_messages_sema = new_available_messages_sema;
     new_mailbox->received_messages = new_received_messages_q;
 
 	// Initialize the server socket.
-	new_server = (minisocket_t) malloc(sizeof(minisocket));
-	new_server_socket->socket_type = SERVER;
+	new_server_socket = (minisocket_t) malloc(sizeof(minisocket));
+	new_server_socket->type = SERVER;
 	new_server_socket->state = OPEN_SERVER;
 	new_server_socket->listening_channel = new_listening_channel;
+	new_server_socket->new_sending_channel = 
 	new_server_socket->ack_sema = new_ack_sema;
 	new_server_socket->seq_number = 0;
 	new_server_socket->ack_number = 0;
@@ -397,7 +398,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	mailbox_t			mailbox;
 
 	network_address_t	netaddr;
-	int valid_port;
+	int 				valid_port;
 
 	mini_header_reliable_t	syn_header;
 

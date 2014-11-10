@@ -492,7 +492,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
  */
 int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_error *error)
 {
-
+	return 0;
 }
 
 void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
@@ -627,6 +627,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	// }
 
 	// Pop messages off of the queue until
+	return 0;
 
 }
 

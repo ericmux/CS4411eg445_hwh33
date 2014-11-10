@@ -768,7 +768,7 @@ void minisocket_close(minisocket_t socket)
 	//free(socket->listening_channel);
 	//free(socket->destination_channel); XXX: how do I free these?
 	semaphore_destroy(socket->ack_sema);
-	semaphore_destory(socket->mailbox->available_messages_sema);
+	semaphore_destroy(socket->mailbox->available_messages_sema);
 	queue_free(socket->mailbox->received_messages);
 
 	free(socket);

@@ -282,22 +282,27 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 	}
 
 	// Construct a header for the packet.
-	header = minisocket_utils_pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
-								  socket->destination_channel.address, socket->destination_channel.port_number,
-								  PROTOCOL_MINISTREAM, socket->seq_number, socket->ack_number);
+	header = minisocket_utils_pack_reliable_header(
+		socket->listening_channel.address, socket->listening_channel.port_number,
+		socket->destination_channel.address, socket->destination_channel.port_number,
+		PROTOCOL_MINISTREAM, socket->seq_number, socket->ack_number);
 
 	// Send the message. If it is too big, break it into fragments and send each one
 	// individually.
 	msg_buffer = (char *)msg;
 	payload_bytes_sent = 0;
 	while (payload_bytes_sent < len) {
+		// Increment the sequence number and set it in the header.
+		pack_unsigned_int(header->seq_number, ++socket->seq_number); 
 		if (len - payload_bytes_sent > MAX_NETWORK_PKT_SIZE) {
-			// We need to fragment our packet. We just send the first MAX_NETWORK_PKT_SIZE bytes in this iteration.
+			// We need to fragment our packet. We just send the first 
+			// MAX_NETWORK_PKT_SIZE bytes in this iteration.
 			frag_size = MAX_NETWORK_PKT_SIZE;
 		} else {
 			frag_size = len - payload_bytes_sent;
 		}
-		frag_bytes_sent = minisocket_utils_send_packet_and_wait(socket, sizeof(header), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
+		frag_bytes_sent = minisocket_utils_send_packet_and_wait(
+			socket, sizeof(header), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
 		if (frag_bytes_sent == -1) {
 			*error = SOCKET_SENDERROR;
 			return payload_bytes_sent;
@@ -407,6 +412,9 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     // that the packet has been picked up by the socket, merely delivery).
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
+    // Our window size is 1, so we can just set the ack number to be the
+    // seq number.
+	destination_socket->ack_number = seq_number;
     minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
 
     // V on the semaphore to let threads know that messages are available
@@ -536,3 +544,4 @@ void minisocket_close(minisocket_t socket)
 
 	free(socket);
 }
+c

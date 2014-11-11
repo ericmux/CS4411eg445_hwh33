@@ -353,8 +353,10 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
         return;
     }
     // If the packet was not from the connected socket, simply send a MSG_FIN.
-    if(!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
-    	|| source_socket_channel.port_number != destination_socket->destination_channel.port_number){
+    if(!destination_socket->state == OPEN_SERVER &&
+    	(!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
+    	|| source_socket_channel.port_number != destination_socket->destination_channel.port_number))
+    {
     	
     	set_interrupt_level(old_level);
 
@@ -386,6 +388,10 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     if (destination_socket->state == CONNECTION_CLOSING) {
     	set_interrupt_level(old_level);
     	return; // not positive about this
+    }
+
+    if (msg_type == MSG_SYN && destination_socket->state == OPEN_SERVER) {
+
     }
 
     if (msg_type == MSG_SYNACK && destination_socket->state == HANDSHAKING
@@ -476,6 +482,13 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		// This indicates that the connection is closing.
 		*error = SOCKET_RECEIVEERROR;
 		return -1;
+	}
+	// If the socket is an open server, we return the message headers to it. The server looks
+	// at each header and responds accordingly.
+	if (socket->state == OPEN_SERVER) {
+		*msg = (mini_header_reliable_t) raw_msg->buffer;
+		*error = SOCKET_NOERROR;
+		return sizeof(mini_header_reliable_t);
 	}
 	if (raw_msg->size - sizeof(struct mini_header_reliable) > max_len) {
 		queue_prepend(socket->mailbox->received_messages, raw_msg);

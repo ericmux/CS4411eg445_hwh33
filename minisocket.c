@@ -146,7 +146,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_server_socket->mailbox = new_mailbox;
 
 	// Add the socket to the array of sockets.
-	current_sockets[port_number] = new_server_socket;
+	current_sockets[port] = new_server_socket;
 
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
@@ -392,7 +392,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
     	// Send an ACK back.
     	destination_socket->ack_number = seq_number;
-	    minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);s
+	    minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
 
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);

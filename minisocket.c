@@ -391,7 +391,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     if (msg_type == MSG_SYN && destination_socket->state == OPEN_SERVER) {
-    	queue_append(destination_socket->mailbox->received_messages, raw_packet);
+    	semaphore_V(destination_socket->ack_sema);
     	set_interrupt_level(old_level);
     	return;
     }
@@ -484,13 +484,6 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		// This indicates that the connection is closing.
 		*error = SOCKET_RECEIVEERROR;
 		return -1;
-	}
-	// If the socket is an open server, we return the message headers to it. The server looks
-	// at each header and responds accordingly.
-	if (socket->state == OPEN_SERVER) {
-		memcpy(msg, raw_msg->buffer, sizeof(struct mini_header_reliable));
-		*error = SOCKET_NOERROR;
-		return sizeof(mini_header_reliable_t);
 	}
 	if (raw_msg->size - sizeof(struct mini_header_reliable) > max_len) {
 		queue_prepend(socket->mailbox->received_messages, raw_msg);

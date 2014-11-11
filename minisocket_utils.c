@@ -178,7 +178,7 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 			// dropoff_msg will recognize that the server is in the OPEN_SERVER state
 			// and V this semaphore.
 			semaphore_P(server->ack_sema);
-			
+
 			server->state = HANDSHAKING;
 		}
 
@@ -192,7 +192,7 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
 
-		bytes_sent = minisocket_utils_send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
+		bytes_sent = minisocket_utils_send_packet_and_wait(server, sizeof(struct mini_header_reliable), (char *) header, 0, NULL);
 
 		if (bytes_sent != sizeof(struct mini_header_reliable)) {
 			// We did not receive an ACK to our SYNACK, so go back to

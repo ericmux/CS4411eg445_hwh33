@@ -396,7 +396,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);
     	network_address_copy(source_socket_channel.address, destination_socket->destination_channel.address);
-    	destination_socket->destination_channel.port = source_socket_channel.port;
+    	destination_socket->destination_channel.port_number = source_socket_channel.port_number;
     	set_interrupt_level(old_level);
     	return;
     }

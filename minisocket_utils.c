@@ -66,12 +66,13 @@ int minisocket_utils_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wa
 	}
 
 	interrupt_level_t old_level;
+	alarm_id timeout_alarm;
 
 	waiting_socket->ack_received = 0;
 
 	// Schedule the timeout alarm. This will wake us up from the P after
 	// timeout_to_wait milliseconds if we have not woken up already.
-	alarm_id timeout_alarm = register_alarm(timeout_to_wait,
+	timeout_alarm = register_alarm(timeout_to_wait,
 								   			semaphore_V_wrapper,
 								   			waiting_socket->ack_sema);
 
@@ -213,7 +214,7 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 			server->listening_channel.address, server->listening_channel.port_number,
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
-		
+
 		bytes_sent = minisocket_utils_send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
 
 		if (bytes_sent != sizeof(struct mini_header_reliable)) {

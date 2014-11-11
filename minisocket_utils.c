@@ -187,8 +187,8 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 		server->ack_number++;
 
 		header = minisocket_utils_pack_reliable_header(
-			server->destination_channel.address, server->destination_channel.port_number,
 			server->listening_channel.address, server->listening_channel.port_number,
+			server->destination_channel.address, server->destination_channel.port_number,
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
 

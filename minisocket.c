@@ -488,7 +488,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	// If the socket is an open server, we return the message headers to it. The server looks
 	// at each header and responds accordingly.
 	if (socket->state == OPEN_SERVER) {
-		memcpy(msg, raw_msg->buffer, sizeof(mini_header_reliable));
+		memcpy(msg, raw_msg->buffer, sizeof(struct mini_header_reliable));
 		*error = SOCKET_NOERROR;
 		return sizeof(mini_header_reliable_t);
 	}

@@ -391,7 +391,9 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     if (msg_type == MSG_SYN && destination_socket->state == OPEN_SERVER) {
-
+    	queue_append(destination_socket->mailbox->received_messages, raw_packet);
+    	set_interrupt_level(old_level);
+    	return;
     }
 
     if (msg_type == MSG_SYNACK && destination_socket->state == HANDSHAKING

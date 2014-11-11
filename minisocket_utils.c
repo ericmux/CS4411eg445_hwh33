@@ -149,8 +149,8 @@ void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_
 	network_address_copy(sending_socket->destination_channel.address, destination_address);
 	network_address_copy(sending_socket->listening_channel.address, source_address);
 
-	header = minisocket_utils_pack_reliable_header(destination_address, destination_port, source_address, source_port,
-						 msg_type, seq_number, ack_number);
+	header = minisocket_utils_pack_reliable_header(
+		source_address, source_port, destination_address, destination_port, msg_type, seq_number, ack_number);
 	// XXX: what happens when &data = NULL in network_send_pkt?
 	network_send_pkt(destination_address, sizeof(struct mini_header_reliable), (char *) header, 0, NULL);
 }

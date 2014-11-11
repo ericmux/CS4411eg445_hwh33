@@ -78,6 +78,8 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 int
 deregister_alarm(alarm_id alarm)
 {
+    interrupt_level_t old_level;
+
     int found_alarm = 0;
     alarm_t p_alarm;
 	alarm_t a = (alarm_t) alarm;

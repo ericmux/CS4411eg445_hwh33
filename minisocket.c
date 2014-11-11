@@ -239,9 +239,15 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     					 client_socket->destination_channel.address, client_socket->destination_channel.port_number,
     					 MSG_SYN, client_socket->seq_number, client_socket->ack_number);
 
-    minisocket_utils_send_packet_and_wait(client_socket, sizeof(struct mini_header_reliable), (char *) syn_header, 0, NULL);
+    bytes_sent = minisocket_utils_send_packet_and_wait(
+    	client_socket, sizeof(struct mini_header_reliable), (char *) syn_header, 0, NULL);
 
+    if (bytes_sent == -1) {
+    	*error = SOCKET_NOSERVER
+    	return NULL;
+    }
 
+    client_socket->state = OPEN_CONNECTION;
 
     *error = SOCKET_NOERROR;
     return client_socket;
@@ -395,20 +401,26 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
 
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);
+
     	network_address_copy(source_socket_channel.address, destination_socket->destination_channel.address);
     	destination_socket->destination_channel.port_number = source_socket_channel.port_number;
+
     	set_interrupt_level(old_level);
     	return;
     }
 
-    if (msg_type == MSG_SYNACK && destination_socket->state == HANDSHAKING
+    if (msg_type == MSG_SYNACK 
+    		&& destination_socket->state == HANDSHAKING || destination_socket->state == OPEN_CONNECTION
     		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
     	// Send an ACK back.
     	destination_socket->ack_number = seq_number;
 	    minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
 
-    	destination_socket->ack_received = 1;
-    	semaphore_V(destination_socket->ack_sema);
+	    if (destination_socket->state == HANDSHAKING) {
+	    	destination_socket->ack_received = 1;
+	    	semaphore_V(destination_socket->ack_sema);
+	    }
+	    
     	set_interrupt_level(old_level);
     	return;
     }

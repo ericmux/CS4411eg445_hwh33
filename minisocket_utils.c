@@ -53,7 +53,7 @@ void minisocket_utils_close_socket(void *socket_ptr) {
         socket->state = CONNECTION_CLOSED;
 }
 
-/* Waits for the given ACK to come in by calling P on the ACM semaphore. 
+/* Waits for the given ACK to come in by calling P on the ACK semaphore. 
  * Returns 1 if the ACK was received and 0 if a timeout occurred.
  */
 int minisocket_utils_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
@@ -66,6 +66,8 @@ int minisocket_utils_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wa
 	}
 
 	interrupt_level_t old_level;
+
+	waiting_socket->ack_received = 0;
 
 	// Schedule the timeout alarm. This will wake us up from the P after
 	// timeout_to_wait milliseconds if we have not woken up already.
@@ -203,13 +205,15 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 		}
 
 		// We received a SYN, so send a SYNACK back.
+		server->seq_number++;
+		server->ack_number++;
+
 		header = minisocket_utils_pack_reliable_header(
 			server->destination_channel.address, server->destination_channel.port_number,
 			server->listening_channel.address, server->listening_channel.port_number,
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
-		server->seq_number++;
-		server->ack_number++;
+		
 		bytes_sent = minisocket_utils_send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
 
 		if (bytes_sent != sizeof(struct mini_header_reliable)) {
@@ -217,6 +221,8 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 			// waiting for clients.
 			network_address_blankify(server->destination_channel.address);
 			server->destination_channel.port_number = -1;
+			server->seq_number = 0;
+			server->ack_number = 0;
 			server->state = OPEN_SERVER;
 			continue;
 		} else {

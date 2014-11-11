@@ -180,6 +180,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
 	semaphore_t 		available_messages_sema;
 	queue_t 			msg_queue;
 	mailbox_t			mailbox;
+	int 				bytes_sent;
 
 	network_address_t	netaddr;
 	int 				valid_port;

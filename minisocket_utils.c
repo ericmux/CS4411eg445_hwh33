@@ -170,34 +170,36 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 
 	while(1) {
 		// First we wait for a SYN.
-		while (!server->state == HANDSHAKING) {
-			bytes_received = minisocket_receive(
-				server,
-				(minimsg_t) header,
-				0,
-				error);
+		while (server->state == OPEN_SERVER) {
+			// bytes_received = minisocket_receive(
+			// 	server,
+			// 	(minimsg_t) header,
+			// 	0,
+			// 	error);
 
-			if (bytes_received == -1) {
-				// error will be set by minisocket_receive
-				// TODO: return some indication of error.
-				// What is a receive error?? What is proper behavior here?
-				continue;
-			}
+			// if (bytes_received == -1) {
+			// 	// error will be set by minisocket_receive
+			// 	// TODO: return some indication of error.
+			// 	// What is a receive error?? What is proper behavior here?
+			// 	continue;
+			// }
 
-			// Check to see if the message received was a SYN.
-			if (header->message_type == MSG_SYN) {
-				socket_channel_t dummy_source;
-				int seq_number;
-				int ack_number;
+			// // Check to see if the message received was a SYN.
+			// if (header->message_type == MSG_SYN) {
+			// 	socket_channel_t dummy_source;
+			// 	int seq_number;
+			// 	int ack_number;
 
-				minisocket_utils_unpack_reliable_header((char * ) header, 
-					&server->destination_channel, &dummy_source, (char * ) &dummy_source,
-					&seq_number, &ack_number);
-				
-				server->seq_number++;
-				server->ack_number++;
-				server->state = HANDSHAKING;
-			}
+			// 	minisocket_utils_unpack_reliable_header((char * ) header, 
+			// 		&server->destination_channel, &dummy_source, (char * ) &dummy_source,
+			// 		&seq_number, &ack_number);
+
+			// We call semaphore_P on the ACK semaphore. When a SYN comes in,
+			// dropoff_msg will recognize that the server is in the OPEN_SERVER state
+			// and V this semaphore.
+			semaphore_P(server->ack_sema);
+			server->state = HANDSHAKING;
+			//}
 		}
 
 		// We received a SYN, so send a SYNACK back.
@@ -206,6 +208,8 @@ void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *err
 			server->listening_channel.address, server->listening_channel.port_number,
 			MSG_SYNACK, server->seq_number, server->ack_number);
 		server->state = SENDING;
+		server->seq_number++;
+		server->ack_number++;
 		bytes_sent = minisocket_utils_send_packet_and_wait(server, sizeof(header), (char *) header, 0, NULL);
 
 		if (bytes_sent != sizeof(struct mini_header_reliable)) {

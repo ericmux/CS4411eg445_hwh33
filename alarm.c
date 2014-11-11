@@ -86,12 +86,6 @@ deregister_alarm(alarm_id alarm)
 
 	if(a == NULL) return 0;
 
-    //It's not in the queue anymore, just free the memory.
-    if(a->executed){
-    	free(a);
-    	return 1;
-    }
-
     //Pop from the queue and free the memory.
     old_level = set_interrupt_level(DISABLED);
 
@@ -113,9 +107,16 @@ deregister_alarm(alarm_id alarm)
     set_interrupt_level(old_level);
 
     //If the alarm was actually in the queue, free its memory.
-    if(found_alarm) free(a);
+    if(found_alarm){
+        free(a);
+        return 0;
+    }
 
-
+    //It's not in the queue anymore, just free the memory.
+    if(a->executed){
+        free(a);
+        return 0;
+    }
 
     return 0;
 }

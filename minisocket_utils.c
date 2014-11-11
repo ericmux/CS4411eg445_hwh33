@@ -160,7 +160,7 @@ void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_
  * for a SYN.
  */ 
 void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *error) {
-	int bytes_received;
+	//int bytes_received;
 	int bytes_sent;
 	// header is used for both receiving and sending control packets.
 	mini_header_reliable_t header;

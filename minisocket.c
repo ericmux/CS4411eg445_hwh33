@@ -244,7 +244,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     	client_socket, sizeof(struct mini_header_reliable), (char *) syn_header, 0, NULL);
 
     if (bytes_sent == -1) {
-    	*error = SOCKET_NOSERVER
+    	*error = SOCKET_NOSERVER;
     	return NULL;
     }
 
@@ -411,7 +411,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     }
 
     if (msg_type == MSG_SYNACK 
-    		&& destination_socket->state == HANDSHAKING || destination_socket->state == OPEN_CONNECTION
+    		&& (destination_socket->state == HANDSHAKING || destination_socket->state == OPEN_CONNECTION)
     		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
     	// Send an ACK back.
     	destination_socket->ack_number = seq_number;

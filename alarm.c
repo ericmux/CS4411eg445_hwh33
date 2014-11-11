@@ -113,10 +113,10 @@ deregister_alarm(alarm_id alarm)
     }
 
     //It's not in the queue anymore, just free the memory.
-    if(a->executed){
-        free(a);
-        return 0;
-    }
+    // if(a->executed){
+    //     free(a);
+    //     return 0;
+    // }
 
     return 0;
 }

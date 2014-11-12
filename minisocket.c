@@ -543,12 +543,16 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	if (dequeue_result == -1) {
 		// This indicates that the connection is closing.
 		*error = SOCKET_RECEIVEERROR;
+
+		set_interrupt_level(old_level);
 		return -1;
 	}
 	if (raw_msg->size - sizeof(struct mini_header_reliable) > max_len) {
 		queue_prepend(socket->mailbox->received_messages, raw_msg);
 		semaphore_V(socket->mailbox->available_messages_sema);
 		*error = SOCKET_NOERROR;
+		
+		set_interrupt_level(old_level);
 		return 0;
 	}
 

@@ -141,11 +141,11 @@ int receive(int* arg) {
     /* test the information received */
     for (i=0; i<received_bytes; i++){
       if (buffer[i]!=(char)( (bytes_received+i)%256 )){
-	printf("The %d'th byte received is wrong.\n",
-	       bytes_received+i);
-	/* close the connection */
-	minisocket_close(socket);
-	return -1;
+        	printf("The %d'th byte received is wrong.\n",
+        	       bytes_received+i);
+        	/* close the connection */
+        	minisocket_close(socket);
+        	return -1;
       }
     }
 	      

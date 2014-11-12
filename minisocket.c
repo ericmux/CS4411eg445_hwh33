@@ -381,7 +381,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	
 	char *msg_buffer;
 	socket_channel_t sc, dc;
-	int msg_type;
+	char msg_type;
 	int msg_ack_number;
 	int msg_seq_number;
 

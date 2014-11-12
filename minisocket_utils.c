@@ -1,24 +1,23 @@
 #include "minisocket.h"
 
 
+/* A wrapper function to pass into an alarm. */
+void semaphore_V_ack_wrapper(void *socket_ptr) {
+	minisocket_t socket = (minisocket_t) socket_ptr;
+    
+    socket->ack_timedout = 1;
+
+    //If it actually fires before the ACK is received, we should allow socket to continue.
+    if(!socket->ack_received){
+    	semaphore_V(socket->ack_sema);
+    }
+}
+
 /* Waits for the given ACK to come in by calling P on the ACK semaphore. 
  * Returns 1 if the ACK was received and 0 if a timeout occurred.
  */
 int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 {
-
-	/* A wrapper function to pass into an alarm. */
-	void semaphore_V_ack_wrapper(void *semaphore_ptr) {
-	        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
-
-	        waiting_socket->ack_timedout = 1;
-
-	        //If it actually fires before the ACK is received, we should allow socket to continue.
-	        if(!waiting_socket->ack_received){
-	        	semaphore_V(semaphore);
-	        }
-	}
-
 	interrupt_level_t old_level;
 	alarm_id timeout_alarm;
 
@@ -27,7 +26,7 @@ int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 	// timeout_to_wait milliseconds if we have not woken up already.
 	waiting_socket->ack_timedout = 0;
 	timeout_alarm = register_alarm(
-			timeout_to_wait, semaphore_V_ack_wrapper, waiting_socket->ack_sema);
+			timeout_to_wait, semaphore_V_ack_wrapper, waiting_socket);
 
 
 	// Check for ACKs by calling P on the ACK semaphore.

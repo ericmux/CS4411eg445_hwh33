@@ -551,7 +551,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		queue_prepend(socket->mailbox->received_messages, raw_msg);
 		semaphore_V(socket->mailbox->available_messages_sema);
 		*error = SOCKET_NOERROR;
-		
+
 		set_interrupt_level(old_level);
 		return 0;
 	}
@@ -612,13 +612,12 @@ void minisocket_close(minisocket_t socket)
     					 socket->destination_channel.address, socket->destination_channel.port_number,
     					 MSG_FIN, socket->seq_number, socket->ack_number);
 
-    minisocket_utils_send_packet_and_wait(socket, sizeof(fin_header), (char *) fin_header, 0, NULL);
+    minisocket_utils_send_packet_and_wait(socket, sizeof(struct mini_header_reliable), (char *) fin_header, 0, NULL);
 
     // Whether we return successfully or not from send_packet_and_wait doesn't
     // matter, we are closing the connection either way.
     // We free all allocated memory.
 	//free(socket->listening_channel);
-	//free(socket->destination_channel); XXX: how do I free these?
 	semaphore_destroy(socket->ack_sema);
 	semaphore_destroy(socket->mailbox->available_messages_sema);
 	queue_free(socket->mailbox->received_messages);

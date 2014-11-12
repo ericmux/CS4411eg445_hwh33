@@ -629,5 +629,5 @@ void minisocket_close(minisocket_t socket)
 	//Remove from sockets array.
 	current_sockets[socket->listening_channel.port_number] = NULL;
 
-	free(socket);
+	// free(socket);
 }

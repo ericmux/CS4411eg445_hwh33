@@ -60,6 +60,7 @@ typedef struct minisocket
 } minisocket;
 
 static int current_client_port_index;
+static int 
 
 minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 
@@ -357,6 +358,7 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
 {
     interrupt_level_t old_level;
+    int *port_number_ptr;
     int port_number;
     int seq_number;
     int ack_number;
@@ -411,7 +413,9 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	}
 
     	destination_socket->state = CONNECTION_CLOSING;
-    	register_alarm(MS_TO_WAIT_TILL_CLOSE, minisocket_utils_close_socket_handler, destination_socket);
+    	port_number_ptr = (int *) malloc(sizeof(int));
+    	*port_number_ptr = destination_socket->listening_channel.port_number;
+    	register_alarm(MS_TO_WAIT_TILL_CLOSE, minisocket_utils_close_socket_handler, port_number_ptr);
     	
     	if (destination_socket->state == SENDING) semaphore_V(destination_socket->ack_sema);
     	else semaphore_V(destination_socket->mailbox->available_messages_sema);
@@ -620,6 +624,9 @@ void minisocket_close(minisocket_t socket)
 	semaphore_destroy(socket->ack_sema);
 	semaphore_destroy(socket->mailbox->available_messages_sema);
 	queue_free(socket->mailbox->received_messages);
+
+	//Remove from sockets array.
+	current_sockets[socket->listening_channel.port_number] = NULL;
 
 	free(socket);
 }

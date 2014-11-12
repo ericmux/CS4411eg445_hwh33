@@ -334,10 +334,10 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 	while (payload_bytes_sent < len) {
 		// Increment the sequence number and set it in the header.
 		pack_unsigned_int(header->seq_number, ++socket->seq_number); 
-		if (len - payload_bytes_sent > MAX_NETWORK_PKT_SIZE) {
+		if (len - payload_bytes_sent > MAX_NETWORK_PKT_SIZE - sizeof(struct mini_header_reliable)) {
 			// We need to fragment our packet. We just send the first 
 			// MAX_NETWORK_PKT_SIZE bytes in this iteration.
-			frag_size = MAX_NETWORK_PKT_SIZE;
+			frag_size = MAX_NETWORK_PKT_SIZE - sizeof(struct mini_header_reliable);
 		} else {
 			frag_size = len - payload_bytes_sent;
 		}

@@ -104,7 +104,6 @@ void minisocket_utils_close_socket_handler(void *port_number_ptr) {
 		}
 
 		//Set state to closed.
-        socket = (minisocket_t) socket;
         socket->state = CONNECTION_CLOSED;
 
 		free(port_number_ptr);

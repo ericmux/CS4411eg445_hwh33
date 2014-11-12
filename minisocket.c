@@ -347,7 +347,7 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 			*error = SOCKET_SENDERROR;
 			return payload_bytes_sent;
 		}
-		payload_bytes_sent += frag_bytes_sent;
+		payload_bytes_sent += frag_bytes_sent - sizeof(struct mini_header_reliable);
 	}
 
 	*error = SOCKET_NOERROR;

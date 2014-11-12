@@ -55,6 +55,7 @@ typedef struct minisocket
 	int ack_number;
 	semaphore_t ack_sema;
 	int ack_received;
+	int ack_timedout;
 	mailbox_t mailbox;
 } minisocket;
 
@@ -166,6 +167,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_server_socket->seq_number = 0;
 	new_server_socket->ack_number = 0;
 	new_server_socket->ack_received = 0;
+	new_server_socket->ack_timedout = 0;
 	new_server_socket->mailbox = new_mailbox;
 
 	// Add the socket to the array of sockets.
@@ -253,6 +255,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     client_socket->ack_number = 0;
     client_socket->ack_sema = ack_sema;
     client_socket->ack_received = 0;
+    client_socket->ack_timedout = 0;
     client_socket->mailbox = mailbox;
 
     current_sockets[valid_port] = client_socket;
@@ -424,7 +427,10 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     		&& !destination_socket->ack_received) {
 
     	destination_socket->ack_received = 1;
-    	semaphore_V(destination_socket->ack_sema);
+    	//V the waiting socket only if the alarm hasn't fired.
+    	if(!destination_socket->ack_timedout){
+    		semaphore_V(destination_socket->ack_sema);
+    	}
 
     	//Set destination channel for the newly created connection.
     	network_address_copy(source_socket_channel.address, destination_socket->destination_channel.address);
@@ -437,23 +443,33 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     if (msg_type == MSG_SYNACK 
     		&& (destination_socket->state == HANDSHAKING || destination_socket->state == OPEN_CONNECTION)
     		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
+
+	    if (destination_socket->state == HANDSHAKING) {
+	    	
+	    	destination_socket->ack_received = 1;
+	    	//V the waiting socket only if the alarm hasn't fired.
+	    	if(!destination_socket->ack_timedout){
+	    		semaphore_V(destination_socket->ack_sema);
+	    	}
+	    }
+	    
+    	set_interrupt_level(old_level);
+
     	// Send an ACK back.
     	destination_socket->ack_number = seq_number;
 	    minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
 
-	    if (destination_socket->state == HANDSHAKING) {
-	    	destination_socket->ack_received = 1;
-	    	semaphore_V(destination_socket->ack_sema);
-	    }
-	    
-    	set_interrupt_level(old_level);
     	return;
     }
 
     if (msg_type == MSG_ACK && destination_socket->state != HANDSHAKING 
     		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
+
     	destination_socket->ack_received = 1;
-    	semaphore_V(destination_socket->ack_sema);
+    	//V the waiting socket only if the alarm hasn't fired.
+    	if(!destination_socket->ack_timedout){
+    		semaphore_V(destination_socket->ack_sema);
+    	}
     }
 
     if (raw_packet->size <= sizeof(struct mini_header_reliable)) {

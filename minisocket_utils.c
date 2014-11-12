@@ -8,9 +8,15 @@ int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 {
 
 	/* A wrapper function to pass into an alarm. */
-	void semaphore_V_wrapper(void *semaphore_ptr) {
+	void semaphore_V_ack_wrapper(void *semaphore_ptr) {
 	        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
-	        semaphore_V(semaphore);
+
+	        waiting_socket->ack_timedout = 1;
+
+	        //If it actually fires before the ACK is received, we should allow socket to continue.
+	        if(!waiting_socket->ack_received){
+	        	semaphore_V(semaphore);
+	        }
 	}
 
 	interrupt_level_t old_level;
@@ -19,8 +25,9 @@ int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 
 	// Schedule the timeout alarm. This will wake us up from the P after
 	// timeout_to_wait milliseconds if we have not woken up already.
+	waiting_socket->ack_timedout = 0;
 	timeout_alarm = register_alarm(
-			timeout_to_wait, semaphore_V_wrapper, waiting_socket->ack_sema);
+			timeout_to_wait, semaphore_V_ack_wrapper, waiting_socket->ack_sema);
 
 
 	// Check for ACKs by calling P on the ACK semaphore.
@@ -30,6 +37,8 @@ int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 	// If an ACK was received, then deregister the alarm and return success.
 	if (waiting_socket->ack_received) {
 		old_level = set_interrupt_level(DISABLED);
+		waiting_socket->ack_received = 0;
+		waiting_socket->ack_timedout = 0;
 		deregister_alarm(timeout_alarm);
 		set_interrupt_level(old_level);
 		return 1;
@@ -178,7 +187,6 @@ void minisocket_utils_server_wait_for_client(minisocket_t server, minisocket_err
 			semaphore_P(server->ack_sema);
 
 			server->state = HANDSHAKING;
-			server->ack_received = 0;
 		}
 
 		// We received a SYN, so send a SYNACK back.

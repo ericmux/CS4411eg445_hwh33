@@ -60,7 +60,6 @@ typedef struct minisocket
 } minisocket;
 
 static int current_client_port_index;
-static int 
 
 minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 

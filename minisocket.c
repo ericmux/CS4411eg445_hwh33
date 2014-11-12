@@ -274,6 +274,8 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     	return NULL;
     }
 
+
+    //The server replied with a SYNACK, so declare connection open and increment the ack_number.
     client_socket->state = OPEN_CONNECTION;
 
     *error = SOCKET_NOERROR;
@@ -445,7 +447,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     		&& destination_socket->seq_number == ack_number && !destination_socket->ack_received) {
 
 	    if (destination_socket->state == HANDSHAKING) {
-	    	
+
 	    	destination_socket->ack_received = 1;
 	    	//V the waiting socket only if the alarm hasn't fired.
 	    	if(!destination_socket->ack_timedout){

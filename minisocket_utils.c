@@ -1,6 +1,43 @@
 #include "minisocket.h"
 
 
+/* Waits for the given ACK to come in by calling P on the ACK semaphore. 
+ * Returns 1 if the ACK was received and 0 if a timeout occurred.
+ */
+int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
+{
+
+	/* A wrapper function to pass into an alarm. */
+	void semaphore_V_wrapper(void *semaphore_ptr) {
+	        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
+	        semaphore_V(semaphore);
+	}
+
+	interrupt_level_t old_level;
+	alarm_id timeout_alarm;
+
+
+	// Schedule the timeout alarm. This will wake us up from the P after
+	// timeout_to_wait milliseconds if we have not woken up already.
+	timeout_alarm = register_alarm(
+			timeout_to_wait, semaphore_V_wrapper, waiting_socket->ack_sema);
+
+
+	// Check for ACKs by calling P on the ACK semaphore.
+	waiting_socket->ack_received = 0;
+	semaphore_P(waiting_socket->ack_sema);
+
+	// If an ACK was received, then deregister the alarm and return success.
+	if (waiting_socket->ack_received) {
+		old_level = set_interrupt_level(DISABLED);
+		deregister_alarm(timeout_alarm);
+		set_interrupt_level(old_level);
+		return 1;
+	}
+
+	return 0;
+}
+
 mini_header_reliable_t 
 minisocket_utils_pack_reliable_header(network_address_t source_address, int source_port,
 					 network_address_t destination_address, int destination_port,
@@ -48,46 +85,9 @@ void minisocket_utils_copy_payload(char *location_to_copy_to, char *buffer, int 
 }
 
 /* Sets a socket's state to closed. Used as an alarm handler. */
-void minisocket_utils_close_socket(void *socket_ptr) {
+void minisocket_utils_close_socket_handler(void *socket_ptr) {
         minisocket_t socket = (minisocket_t) socket;
         socket->state = CONNECTION_CLOSED;
-}
-
-/* Waits for the given ACK to come in by calling P on the ACK semaphore. 
- * Returns 1 if the ACK was received and 0 if a timeout occurred.
- */
-int minisocket_utils_wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
-{
-
-	/* A wrapper function to pass into an alarm. */
-	void semaphore_V_wrapper(void *semaphore_ptr) {
-	        semaphore_t semaphore = (semaphore_t) semaphore_ptr;
-	        semaphore_V(semaphore);
-	}
-
-	interrupt_level_t old_level;
-	alarm_id timeout_alarm;
-
-
-	// Schedule the timeout alarm. This will wake us up from the P after
-	// timeout_to_wait milliseconds if we have not woken up already.
-	timeout_alarm = register_alarm(
-			timeout_to_wait, semaphore_V_wrapper, waiting_socket->ack_sema);
-
-
-	// Check for ACKs by calling P on the ACK semaphore.
-	waiting_socket->ack_received = 0;
-	semaphore_P(waiting_socket->ack_sema);
-
-	// If an ACK was received, then deregister the alarm and return success.
-	if (waiting_socket->ack_received) {
-		old_level = set_interrupt_level(DISABLED);
-		deregister_alarm(timeout_alarm);
-		set_interrupt_level(old_level);
-		return 1;
-	}
-
-	return 0;
 }
 
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 
@@ -111,7 +111,7 @@ int minisocket_utils_send_packet_and_wait(minisocket_t sending_socket, int hdr_l
 		
 		// Wait for an ACK. This function will return 0 if the alarm
 		// goes off before an ACK is received.
-		ack_received = minisocket_utils_wait_for_ack(sending_socket, timeout_to_wait);
+		ack_received = wait_for_ack(sending_socket, timeout_to_wait);
 
 		if (ack_received) {
 			// Success! Return the number of bytes.
@@ -150,7 +150,6 @@ void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_
 
 	header = minisocket_utils_pack_reliable_header(
 		source_address, source_port, destination_address, destination_port, msg_type, seq_number, ack_number);
-	// XXX: what happens when &data = NULL in network_send_pkt?
 	network_send_pkt(destination_address, sizeof(struct mini_header_reliable), (char *) header, 0, NULL);
 }
 
@@ -161,7 +160,7 @@ void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_
  * returns. If no ACK is received, then the server goes back to waiting
  * for a SYN.
  */ 
-void minisocket_utils_wait_for_client(minisocket_t server, minisocket_error *error) {
+void minisocket_utils_server_wait_for_client(minisocket_t server, minisocket_error *error) {
 	//int bytes_received;
 	int bytes_sent;
 	// header is used for both receiving and sending control packets.

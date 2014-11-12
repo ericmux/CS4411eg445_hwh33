@@ -63,7 +63,30 @@ static int current_client_port_index;
 minisocket_t current_sockets[MAX_CLIENT_PORT_NUMBER + 1];
 
 
- //Include util functions.
+/*
+* Minisocket Utils private API:
+*
+* Includes minisocket private utility functions.
+* - Pack/Unpack headers:
+*	- minisocket_utils_pack_reliable_header() 
+*	- minisocket_utils_unpack_reliable_header() 
+*
+* - Copy payload:
+* 	- minisocket_utils_copy_payload()
+*
+* - Send packets through:
+* 	 - minisocket_utils_send_packet_and_wait()
+*	 - minisocket_utils_send_packet_no_wait()
+*
+* - Server blocking call to wait for connections:
+*	- minisocket_utils_server_wait_for_client()
+*
+* - Port retrieval for clients:
+* 	- minisocket_utils_client_get_valid_port()
+* 
+* - Handler to close the connection:
+* 	- minisocket_utils_close_socket_handler()
+*/
 #include "minisocket_utils.c"
 
 
@@ -151,7 +174,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	// Now wait for a client to connect. This function does not return until
 	// handshaking is complete and a connection is established. The server's
 	// sending port will be initialized within this function.
-	minisocket_utils_wait_for_client(new_server_socket, error);
+	minisocket_utils_server_wait_for_client(new_server_socket, error);
 
 	return new_server_socket;
 }
@@ -377,13 +400,14 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
 	    // We register an alarm to close the connection in MS_TO_WAIT_TILL_CLOSE milliseconds and 
 	    // call V on the appropriate semaphore to prevent blocking.
     	if (destination_socket->state == CONNECTION_CLOSING) {
-    		minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
-			set_interrupt_level(old_level);    		
+    		set_interrupt_level(old_level); 
+
+    		minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);   		
     		return;
     	}
 
     	destination_socket->state = CONNECTION_CLOSING;
-    	register_alarm(MS_TO_WAIT_TILL_CLOSE, minisocket_utils_close_socket, destination_socket);
+    	register_alarm(MS_TO_WAIT_TILL_CLOSE, minisocket_utils_close_socket_handler, destination_socket);
     	
     	if (destination_socket->state == SENDING) semaphore_V(destination_socket->ack_sema);
     	else semaphore_V(destination_socket->mailbox->available_messages_sema);

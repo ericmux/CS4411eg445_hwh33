@@ -86,7 +86,7 @@ deregister_alarm(alarm_id alarm)
 
 	if(a == NULL) return 0;
 
-    //Pop from the queue and free the memory.
+    //Pop from the queue.
     old_level = set_interrupt_level(DISABLED);
 
     while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
@@ -112,13 +112,8 @@ deregister_alarm(alarm_id alarm)
         return 0;
     }
 
-    //It's not in the queue anymore, just free the memory.
-    // if(a->executed){
-    //     free(a);
-    //     return 0;
-    // }
-
-    return 0;
+    //this alarm was not in the queue, so it has already fired and was freed.
+    return 1;
 }
 
 alarm_id pop_alarm(){

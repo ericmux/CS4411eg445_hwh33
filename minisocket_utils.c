@@ -95,7 +95,7 @@ void minisocket_utils_copy_payload(char *location_to_copy_to, char *buffer, int 
 
 /* Sets a socket's state to closed. Used as an alarm handler. */
 void minisocket_utils_close_socket_handler(void *port_number_ptr) {
-		minisocket_t socket = current_sockets[*port_number_ptr];
+		minisocket_t socket = current_sockets[*(int *)port_number_ptr];
 
 		//No-op if socket was already freed.
 		if(socket == NULL){
@@ -104,7 +104,7 @@ void minisocket_utils_close_socket_handler(void *port_number_ptr) {
 		}
 
 		//Set state to closed.
-        minisocket_t socket = (minisocket_t) socket;
+        socket = (minisocket_t) socket;
         socket->state = CONNECTION_CLOSED;
 
 		free(port_number_ptr);

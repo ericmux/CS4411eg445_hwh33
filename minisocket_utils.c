@@ -43,6 +43,7 @@ int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 		return 1;
 	}
 
+	waiting_socket->timeout = 0;
 	return 0;
 }
 

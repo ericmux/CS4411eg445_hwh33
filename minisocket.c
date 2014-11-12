@@ -560,7 +560,6 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	msg_buffer = (char *)msg;
 	minisocket_utils_copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
 	bytes_received = raw_msg->size - sizeof(struct mini_header_reliable);
-	free(raw_msg);
     
     // Pop messages off of the queue until the queue is empty or the total bytes received
     // is greater than max_len. We continue calling semaphore_P as the number of P's needs to
@@ -586,11 +585,11 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		// Copy the payload of the packet into msg. We're done with the packet now, so free it.
     	minisocket_utils_copy_payload(&msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
     	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
-		
-		free(raw_msg);
     }
 
     set_interrupt_level(old_level);
+
+    free(raw_msg);
 
     // Now we have filled msg as much as we can, so return the number of bytes we put into it.
     *error = SOCKET_NOERROR;

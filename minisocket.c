@@ -325,7 +325,7 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 	header = minisocket_utils_pack_reliable_header(
 		socket->listening_channel.address, socket->listening_channel.port_number,
 		socket->destination_channel.address, socket->destination_channel.port_number,
-		PROTOCOL_MINISTREAM, socket->seq_number, socket->ack_number);
+		MSG_ACK, socket->seq_number, socket->ack_number);
 
 	// Send the message. If it is too big, break it into fragments and send each one
 	// individually.

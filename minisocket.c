@@ -337,7 +337,7 @@ int minisocket_send(minisocket_t socket, minimsg_t msg, int len, minisocket_erro
 			frag_size = len - payload_bytes_sent;
 		}
 		frag_bytes_sent = minisocket_utils_send_packet_and_wait(
-			socket, sizeof(header), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
+			socket, sizeof(struct mini_header_reliable), (char *) header, frag_size, &msg_buffer[payload_bytes_sent]);
 		if (frag_bytes_sent == -1) {
 			*error = SOCKET_SENDERROR;
 			return payload_bytes_sent;
@@ -382,12 +382,11 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	set_interrupt_level(old_level);
         return;
     }
-    // If the packet was not from the connected socket, simply send a MSG_FIN.
-    if(!destination_socket->state == OPEN_SERVER &&
+    // If the packet was not from the connected socket and it's not destined to an open server, simply send a MSG_FIN.
+    if(destination_socket->state != OPEN_SERVER &&
     	(!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
     	|| source_socket_channel.port_number != destination_socket->destination_channel.port_number))
-    {
-    	
+    {    	
     	set_interrupt_level(old_level);
 
     	minisocket_utils_send_packet_no_wait(destination_socket, MSG_FIN);
@@ -427,6 +426,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet)
     	destination_socket->ack_received = 1;
     	semaphore_V(destination_socket->ack_sema);
 
+    	//Set destination channel for the newly created connection.
     	network_address_copy(source_socket_channel.address, destination_socket->destination_channel.address);
     	destination_socket->destination_channel.port_number = source_socket_channel.port_number;
 

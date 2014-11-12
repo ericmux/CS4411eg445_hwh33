@@ -178,6 +178,7 @@ void minisocket_utils_server_wait_for_client(minisocket_t server, minisocket_err
 			semaphore_P(server->ack_sema);
 
 			server->state = HANDSHAKING;
+			server->ack_received = 0;
 		}
 
 		// We received a SYN, so send a SYNACK back.

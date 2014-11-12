@@ -378,13 +378,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	int bytes_received;
 	int queue_empty;
 	int dequeue_result;
-	
 	char *msg_buffer;
-	socket_channel_t sc, dc;
-	char msg_type;
-	int msg_ack_number;
-	int msg_seq_number;
-
 	int bytes_with_new_packet;
 
     // Check for NULL input.
@@ -423,13 +417,10 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		return 0;
 	}
 
-	// Copy the payload of the packet into msg, if packet hadn't been seen before. Otherwise just drop the packet (NOOP).
+	// Copy the payload of the packet into msg.
 	msg_buffer = (char *)msg;
-	minisocket_utils_unpack_reliable_header(raw_msg->buffer, &dc, &sc, &msg_type, &msg_seq_number, &msg_ack_number);
-	if(msg_seq_number > socket->ack_number){
-		minisocket_utils_copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
-		bytes_received = raw_msg->size - sizeof(struct mini_header_reliable);
-	}
+	minisocket_utils_copy_payload(msg_buffer, raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
+	bytes_received = raw_msg->size - sizeof(struct mini_header_reliable);
     
     // Pop messages off of the queue until the queue is empty or the total bytes received
     // is greater than max_len. We continue calling semaphore_P as the number of P's needs to
@@ -452,12 +443,9 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
     		break;
     	}
 	
-		// Copy the payload of the packet into msg if not yet seen. Otherwise just drop the packet (NOOP).
-		minisocket_utils_unpack_reliable_header(raw_msg->buffer, &dc, &sc, &msg_type, &msg_seq_number, &msg_ack_number);
-		if(msg_seq_number > socket->ack_number){
-			minisocket_utils_copy_payload(&msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
-			bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
-		}
+		// Copy the payload of the packet into msg.
+    	minisocket_utils_copy_payload(&msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
+    	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
     }
 
     set_interrupt_level(old_level);

@@ -129,8 +129,13 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
     	return;
     }
 
-    // Dropoff the message by appending it to the port's message queue.
-    queue_append(destination_socket->mailbox->received_messages, raw_packet);
+    // Dropoff the message by appending it to the port's message queue, if not seen before by this socket.
+    if(seq_number > destination_socket->ack_number){
+        destination_socket->ack_number = seq_number;
+        queue_append(destination_socket->mailbox->received_messages, raw_packet);
+        // V on the semaphore to let threads know that messages are available
+        semaphore_V(destination_socket->mailbox->available_messages_sema);
+    }
  
     set_interrupt_level(old_level);
 
@@ -139,13 +144,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
     // that the packet has been picked up by the socket, merely delivery).
     // We switch destination and source because we are sending from the
     // new packet's intended destination.
-    // Our window size is 1, so we can just set the ack number to be the
-    // seq number.
-	destination_socket->ack_number = seq_number;
     minisocket_utils_send_packet_no_wait(destination_socket, MSG_ACK);
-
-    // V on the semaphore to let threads know that messages are available
-    semaphore_V(destination_socket->mailbox->available_messages_sema);
     
     return;
 }

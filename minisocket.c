@@ -467,7 +467,7 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
  */
 void minisocket_close(minisocket_t socket)
 {
-	int interrupt_level_t old_level;
+	interrupt_level_t old_level;
 	mini_header_reliable_t fin_header;
 
 	// Send a FIN packet to the connected socket to indicate that the connection

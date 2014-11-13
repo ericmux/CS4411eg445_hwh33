@@ -4,13 +4,8 @@
 /* A wrapper function to pass into an alarm. */
 void semaphore_V_ack_wrapper(void *socket_ptr) {
 	minisocket_t socket = (minisocket_t) socket_ptr;
-    
-    socket->ack_timedout = 1;
-
-    //If it actually fires before the ACK is received, we should allow socket to continue.
-    if(!socket->ack_received){
-    	semaphore_V(socket->ack_sema);
-    }
+	socket->ack_received = 0;
+	semaphore_V(socket->ack_sema);
 }
 
 /* Waits for the given ACK to come in by calling P on the ACK semaphore. 
@@ -21,29 +16,22 @@ int wait_for_ack(minisocket_t waiting_socket, int timeout_to_wait)
 	interrupt_level_t old_level;
 	alarm_id timeout_alarm;
 
-
 	// Schedule the timeout alarm. This will wake us up from the P after
 	// timeout_to_wait milliseconds if we have not woken up already.
-	waiting_socket->ack_timedout = 0;
 	timeout_alarm = register_alarm(
 			timeout_to_wait, semaphore_V_ack_wrapper, waiting_socket);
 
-
 	// Check for ACKs by calling P on the ACK semaphore.
-	waiting_socket->ack_received = 0;
 	semaphore_P(waiting_socket->ack_sema);
 
 	// If an ACK was received, then deregister the alarm and return success.
 	if (waiting_socket->ack_received) {
 		old_level = set_interrupt_level(DISABLED);
-		waiting_socket->ack_received = 0;
-		waiting_socket->ack_timedout = 0;
 		deregister_alarm(timeout_alarm);
 		set_interrupt_level(old_level);
 		return 1;
 	}
 
-	waiting_socket->ack_timedout = 0;
 	return 0;
 }
 
@@ -93,19 +81,9 @@ void minisocket_utils_copy_payload(char *location_to_copy_to, char *buffer, int 
 }
 
 /* Sets a socket's state to closed. Used as an alarm handler. */
-void minisocket_utils_close_socket_handler(void *port_number_ptr) {
+void minisocket_utils_close_socket_handler(void *socket_ptr) {
 		minisocket_t socket = current_sockets[*(int *)port_number_ptr];
-
-		//No-op if socket was already freed.
-		if(socket == NULL){
-			free(port_number_ptr);
-			return;
-		}
-
-		
-
-
-		free(port_number_ptr);
+		socket->state = CONNECTION_CLOSED;
 }
 
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 

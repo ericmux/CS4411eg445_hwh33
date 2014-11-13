@@ -9,8 +9,8 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
     int seq_number;
     int ack_number;
     char msg_type;
-    socket_channel_t destination_socket_channel;
-    socket_channel_t source_socket_channel;
+    socket_channel_t destination_channel;
+    socket_channel_t source_channel;
     minisocket_t destination_socket;
 
     // Check for NULL input.

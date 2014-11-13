@@ -78,17 +78,42 @@ register_alarm(int delay, alarm_handler_t alarm, void *arg)
 int
 deregister_alarm(alarm_id alarm)
 {
+    interrupt_level_t old_level;
+
+    int found_alarm = 0;
+    alarm_t p_alarm;
 	alarm_t a = (alarm_t) alarm;
 
 	if(a == NULL) return 0;
 
-    if(a->executed){
-    	free(a);
-    	return 1;
+    //Pop from the queue.
+    old_level = set_interrupt_level(DISABLED);
+
+    while(queue_dequeue(alarm_queue, (void **) &p_alarm) == 0){
+        queue_prepend(buffer_queue, p_alarm);
+
+        if(p_alarm == a){
+            queue_dequeue(buffer_queue, (void **) &p_alarm);
+            found_alarm = 1;
+            break;
+        }
     }
 
+    //Rebuild the rest of the queue.
+    while(queue_dequeue(buffer_queue, (void **) &p_alarm) == 0){
+        queue_prepend(alarm_queue, p_alarm);
+    }
 
-    return 0;
+    set_interrupt_level(old_level);
+
+    //If the alarm was actually in the queue, free its memory.
+    if(found_alarm){
+        free(a);
+        return 0;
+    }
+
+    //this alarm was not in the queue, so it has already fired and was freed.
+    return 1;
 }
 
 alarm_id pop_alarm(){

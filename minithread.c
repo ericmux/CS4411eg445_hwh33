@@ -17,6 +17,7 @@
 #include "alarm.h"
 #include "network.h"
 #include "minimsg.h"
+#include "minisocket.h"
 
 #include <assert.h>
 
@@ -213,7 +214,7 @@ void scheduler_switch(scheduler_t scheduler){
 
 	//There are no threads to be run and the current_thread cannot continue. Reenable interrupts and busy wait.
 	set_interrupt_level(old_level);
-	while(current_thread->state != RUNNING && current_thread != READY);
+	while(current_thread->state != RUNNING);
 	
 }
 
@@ -395,8 +396,8 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minithread_clock_init(MINITHREAD_CLOCK_PERIOD, clock_handler);
 
 	//Initialize network system for remote communication.
-	minimsg_initialize();
-	network_initialize(minimsg_dropoff_message);
+	minisocket_initialize();
+	network_initialize(minisocket_dropoff_packet);
 
 	set_interrupt_level(ENABLED);
 

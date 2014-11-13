@@ -10,7 +10,7 @@ default: all
 #    necessary PortOS code.
 #
 # this would be a good place to add your tests
-all: network1 network2 network3 network4 network5 network6
+all: conn-network1 conn-network2 conn-network3 alarmtest1
 
 
 # running "make clean" will remove all files ignored by git.  To ignore more
@@ -39,6 +39,7 @@ OBJ =                              \
     miniheader.o                   \
     minimsg.o                      \
     multilevel_queue.o             \
+    minisocket.o 				   \
     network.o                      \
     hashtable.o                    \
     linked_list.o

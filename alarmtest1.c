@@ -15,7 +15,7 @@ int thread3(int* arg) {
 }
 
 int thread2(int* arg) {
-  minithread_t thread = minithread_fork(thread3, NULL);
+  minithread_fork(thread3, NULL);
   printf("Thread 2 starts.\n");
 	minithread_sleep_with_timeout(10000); /* ten seconds */
   printf("Thread 2 just woke up and finishes\n");

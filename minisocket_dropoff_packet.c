@@ -12,6 +12,8 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
     socket_channel_t destination_channel;
     socket_channel_t source_channel;
     minisocket_t destination_socket;
+    int addresses_equal;
+    int ports_equal;
 
     // Check for NULL input.
     if (raw_packet == NULL) return;
@@ -37,10 +39,12 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
         return;
     }
 
-    // If the packet was not from the connected socket and it's not destined to an open server, simply send a MSG_FIN.
-    if(destination_socket->state != OPEN_SERVER &&
-        (!network_compare_network_addresses(source_socket_channel.address, destination_socket->destination_channel.address)
-        || source_socket_channel.port_number != destination_socket->destination_channel.port_number))
+    addresses_equal = network_compare_network_addresses(
+        source_channel.address, destination_socket->destination_channel.address);
+    ports_equal = source_socket_channel.port_number == destination_socket->destination_channel.port_number;
+    // If the packet was not from the connected socket and it's not destined to an open server, 
+    // simply send a MSG_FIN.
+    if(destination_socket->state != OPEN_SERVER && (!addresses_equal || !ports_equal))
     {       
         set_interrupt_level(old_level);
 

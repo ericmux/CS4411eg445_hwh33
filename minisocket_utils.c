@@ -90,7 +90,6 @@ void minisocket_utils_copy_payload(char *location_to_copy_to, char *buffer, int 
 {
 	char *payload = &buffer[sizeof(struct mini_header_reliable)];
 	memcpy(location_to_copy_to, payload, bytes_to_copy);
-	return;
 }
 
 /* Sets a socket's state to closed. Used as an alarm handler. */
@@ -103,8 +102,8 @@ void minisocket_utils_close_socket_handler(void *port_number_ptr) {
 			return;
 		}
 
-		//Set state to closed.
-        socket->state = CONNECTION_CLOSED;
+		
+
 
 		free(port_number_ptr);
 }

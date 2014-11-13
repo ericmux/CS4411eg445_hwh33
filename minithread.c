@@ -214,7 +214,7 @@ void scheduler_switch(scheduler_t scheduler){
 
 	//There are no threads to be run and the current_thread cannot continue. Reenable interrupts and busy wait.
 	set_interrupt_level(old_level);
-	while(current_thread->state != RUNNING && current_thread->state != READY);
+	while(current_thread->state != RUNNING);
 	
 }
 

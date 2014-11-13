@@ -61,7 +61,9 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
     	destination_socket->state = CONNECTION_CLOSING;
     	port_number_ptr = (int *) malloc(sizeof(int));
     	*port_number_ptr = destination_socket->listening_channel.port_number;
-    	register_alarm(MS_TO_WAIT_TILL_CLOSE, minisocket_utils_close_socket_handler, port_number_ptr);
+    	destination_socket->mark_for_death_alarm = register_alarm(MS_TO_WAIT_TILL_CLOSE, 
+                                                                  minisocket_utils_close_socket_handler, 
+                                                                  port_number_ptr);
     	
     	if (destination_socket->state == SENDING) semaphore_V(destination_socket->ack_sema);
     	else semaphore_V(destination_socket->mailbox->available_messages_sema);

@@ -57,6 +57,7 @@ typedef struct minisocket
 	int ack_received;
 	int ack_timedout;
 	mailbox_t mailbox;
+	alarm_id mark_for_death_alarm;
 } minisocket;
 
 static int current_client_port_index;
@@ -176,6 +177,7 @@ minisocket_t minisocket_server_create(int port, minisocket_error *error)
 	new_server_socket->ack_received = 0;
 	new_server_socket->ack_timedout = 0;
 	new_server_socket->mailbox = new_mailbox;
+	new_server_socket->mark_for_death_alarm = NULL;
 
 	// Add the socket to the array of sockets.
 	current_sockets[port] = new_server_socket;
@@ -264,6 +266,7 @@ minisocket_t minisocket_client_create(network_address_t addr, int port, minisock
     client_socket->ack_received = 0;
     client_socket->ack_timedout = 0;
     client_socket->mailbox = mailbox;
+    client_socket->mark_for_death_alarm = NULL;
 
     current_sockets[valid_port] = client_socket;
 
@@ -464,22 +467,25 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
  */
 void minisocket_close(minisocket_t socket)
 {
+	int interrupt_level_t old_level;
 	mini_header_reliable_t fin_header;
 
 	// Send a FIN packet to the connected socket to indicate that the connection
-	// is closing.
-	fin_header = minisocket_utils_pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
-    					 socket->destination_channel.address, socket->destination_channel.port_number,
-    					 MSG_FIN, socket->seq_number, socket->ack_number);
+	// is closing if the peer has not done it already.
+	if(socket->state != CONNECTION_CLOSING){
+		fin_header = minisocket_utils_pack_reliable_header(socket->listening_channel.address, socket->listening_channel.port_number,
+	    					 socket->destination_channel.address, socket->destination_channel.port_number,
+	    					 MSG_FIN, socket->seq_number, socket->ack_number);
 
-    minisocket_utils_send_packet_and_wait(socket, sizeof(struct mini_header_reliable), (char *) fin_header, 0, NULL);
+	    minisocket_utils_send_packet_and_wait(socket, sizeof(struct mini_header_reliable), (char *) fin_header, 0, NULL);
+	}
 
     // Whether we return successfully or not from send_packet_and_wait doesn't
     // matter, we are closing the connection either way.
     // We free all allocated memory.
-
-    //Need to find a way to remove all associated alarms before freeing.
-
+	old_level = set_interrupt_level(DISABLED);
+	deregister_alarm(socket->mark_for_death_alarm);
+	set_interrupt_level(old_level);
 	// semaphore_destroy(socket->ack_sema);
 	// semaphore_destroy(socket->mailbox->available_messages_sema);
 	// queue_free(socket->mailbox->received_messages);

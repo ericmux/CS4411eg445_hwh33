@@ -41,7 +41,7 @@ void minisocket_dropoff_packet(network_interrupt_arg_t *raw_packet){
 
     addresses_equal = network_compare_network_addresses(
         source_channel.address, destination_socket->destination_channel.address);
-    ports_equal = source_socket_channel.port_number == destination_socket->destination_channel.port_number;
+    ports_equal = source_channel.port_number == destination_socket->destination_channel.port_number;
     // If the packet was not from the connected socket and it's not destined to an open server, 
     // simply send a MSG_FIN.
     if(destination_socket->state != OPEN_SERVER && (!addresses_equal || !ports_equal))

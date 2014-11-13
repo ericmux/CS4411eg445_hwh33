@@ -101,6 +101,7 @@ int minisocket_utils_send_packet_and_wait(minisocket_t sending_socket, int hdr_l
 	int timeout_to_wait = INITIAL_TIMEOUT_MS;
 	int num_timeouts = 0;
 
+	sending_socket->ack_received = 0;
 	while (num_timeouts < MAX_NUM_TIMEOUTS) {
 		// Send the packet.
 		bytes_sent  = network_send_pkt(sending_socket->destination_channel.address, hdr_len, hdr, data_len, data);

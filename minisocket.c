@@ -401,9 +401,10 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 	semaphore_P(socket->mailbox->available_messages_sema);
 
 	old_level = set_interrupt_level(DISABLED);
-
 	queue_empty = 0;
 	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &raw_msg);
+	set_interrupt_level(old_level);
+
 	if (dequeue_result == -1) {
 		// This indicates that the connection is closing.
 		*error = SOCKET_RECEIVEERROR;
@@ -412,6 +413,8 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		return -1;
 	}
 	if (raw_msg->size - sizeof(struct mini_header_reliable) > max_len) {
+		old_level = set_interrupt_level(DISABLED);
+
 		queue_prepend(socket->mailbox->received_messages, raw_msg);
 		semaphore_V(socket->mailbox->available_messages_sema);
 		*error = SOCKET_NOERROR;
@@ -430,6 +433,9 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
     // reflect the number of dequeues.
     while (!queue_empty && bytes_received < max_len) {
     	semaphore_P(socket->mailbox->available_messages_sema);
+
+    	old_level = set_interrupt_level(DISABLED);
+
     	dequeue_result = queue_dequeue(socket->mailbox->received_messages, (void **) &raw_msg);
     	// Check if the queue was empty.
     	if (dequeue_result == -1) {
@@ -449,6 +455,8 @@ int minisocket_receive(minisocket_t socket, minimsg_t msg, int max_len, minisock
 		// Copy the payload of the packet into msg.
     	minisocket_utils_copy_payload(&msg_buffer[bytes_received], raw_msg->buffer, raw_msg->size - sizeof(struct mini_header_reliable));
     	bytes_received += raw_msg->size - sizeof(struct mini_header_reliable);
+    
+    	set_interrupt_level(old_level);
     }
 
     set_interrupt_level(old_level);

@@ -82,8 +82,8 @@ void minisocket_utils_copy_payload(char *location_to_copy_to, char *buffer, int 
 
 /* Sets a socket's state to closed. Used as an alarm handler. */
 void minisocket_utils_close_socket_handler(void *socket_ptr) {
-		minisocket_t socket = current_sockets[*(int *)port_number_ptr];
-		socket->state = CONNECTION_CLOSED;
+	minisocket_t socket = (minisocket_t) socket_ptr;
+	socket->state = CONNECTION_CLOSED;
 }
 
 /* Sends a packet and waits INITIAL_TIMEOUT_MS milliseconds for an ACK. If no 

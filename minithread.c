@@ -173,11 +173,11 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 						multilevel_queue_enqueue(scheduler->ready_queue, old_queue_level + 1, current_thread);
 					}
 				}
+
+				current_thread->idling = 0;
 			}
 
 			thread_to_run->state = RUNNING;
-
-			current_thread->idling = 0;
 			current_thread = thread_to_run;
 
 			minithread_switch(oldsp_ptr, &(current_thread->sp));

@@ -41,6 +41,7 @@ typedef struct minithread {
 	stack_pointer_t stackbase;
 	stack_pointer_t stacktop;
 	state_t state;
+	int idling;
 } minithread;
 
 //Current running thread.
@@ -166,12 +167,14 @@ int scheduler_switch_dequeue(scheduler_t scheduler){
 					queue_append(scheduler->finished_queue, current_thread);
 				} else if(current_thread->state == RUNNING || current_thread->state == READY){
 
-					//if self-switching, I shouldn't re-enqueue myself.
-					if(current_thread != thread_to_run){
+					//if previously idling, I shouldn't re-enqueue myself.
+					if(current_thread != thread_to_run && !current_thread->idling){
 						current_thread->state = READY;
 						multilevel_queue_enqueue(scheduler->ready_queue, old_queue_level + 1, current_thread);
 					}
 				}
+
+				current_thread->idling = 0;
 			}
 
 			thread_to_run->state = RUNNING;
@@ -213,6 +216,7 @@ void scheduler_switch(scheduler_t scheduler){
 	}
 
 	//There are no threads to be run and the current_thread cannot continue. Reenable interrupts and busy wait.
+	current_thread->idling = 1;
 	set_interrupt_level(old_level);
 	while(current_thread->state != RUNNING);
 	

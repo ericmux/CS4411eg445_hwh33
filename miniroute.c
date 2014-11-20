@@ -11,7 +11,7 @@ void miniroute_initialize()
  */
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
-
+	return 0;
 
 }
 

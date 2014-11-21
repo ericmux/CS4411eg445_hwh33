@@ -66,7 +66,9 @@ void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_add
 
 	path->len = unpack_unsigned_int(rheader->path_len);
 	for(i = 0; i < path->len; i++){
-		unpack_address(rheader->path[i], path->hlist[i]);
+		network_address_t addr;
+		unpack_address(rheader->path[i], addr);
+		pack_address(path->hlist[i], addr);
 	}
 }
 

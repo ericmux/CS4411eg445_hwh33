@@ -1,9 +1,8 @@
 /*
- * A simple "boolean" hashtable which only stores keys
- * This hashtable is useful if we only care that a key 
- * exists in the table.
- *
- */
+* A simple hashtable which stores data pointers
+* by integer keys.
+*
+*/
 
 #include <stdlib.h>
 #include <stdio.h> //TODO: for debugging, remove later
@@ -20,7 +19,7 @@
 // to have. The trade-off is that a large number of
 // initial buckets will mean less initial expanding of
 // the table but longer initialization.  
-#define INITIAL_NUM_BUCKETS 100
+#define DEFAULT_INITIAL_NUM_BUCKETS 100
 
 // Hash function. This was found at:
 // http://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
@@ -64,7 +63,13 @@ hashtable_t hashtable_create_internal(int num_buckets) {
 // This way we ensure that all hashtables are initialized with
 // INITIALIZATION_NUM_BUCKETS.
 hashtable_t hashtable_create() {
-    return hashtable_create_internal(INITIAL_NUM_BUCKETS);
+    return hashtable_create_internal(DEFAULT_INITIAL_NUM_BUCKETS);
+}
+
+// Allows the user to specify how many buckets the hashtable is
+// initialized with.
+hashtable_t hashtable_create_specify_buckets(int initial_num_buckets) {
+    return hashtable_create_internal(initial_num_buckets);
 }
 
 // To be called by hashtable_put when the load factor is exceeded.

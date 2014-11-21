@@ -1,7 +1,6 @@
 /*
-* A simple "boolean" hashtable which only stores keys
-* This hashtable is useful if we only care that a key 
-* exists in the table.
+* A simple hashtable which stores data pointers
+* by integer keys.
 *
 */
 
@@ -13,6 +12,10 @@ typedef struct hashtable* hashtable_t;
 
 // Returns a new hashtable_t representing an empty table.
 extern hashtable_t hashtable_create();
+
+// Allows the user to specify how many buckets the hashtable
+// should be initialized with.
+extern hashtable_t hashtable_create_specify_buckets(int initial_num_buckets);
 
 // hashtable_put(table, key, data_ptr) stores a data pointer 
 // in the table with key k. 

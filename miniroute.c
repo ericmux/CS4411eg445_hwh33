@@ -115,7 +115,7 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
 
 	// Now we send the packet to the first node in the path, which is at index 1.
-	unpack_address(new_path[1], dest_address);
+	unpack_address(new_path->hlist[1], dest_address);
 	network_send_pkt(dest_address, sizeof(struct routing_header), header, MAX_ROUTE_LENGTH, NULL);
 }
 
@@ -172,7 +172,7 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
-	unpack_address(new_path[next_node_idx], dest_address);
+	unpack_address(new_path->hlist[next_node_idx], dest_address);
 	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
 }
 
@@ -186,7 +186,7 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 	header = pack_routing_header(ROUTING_DATA, dest_address, 0, 0, path);
 
 	// We send the data packet to the first node in the path, which is at index 1;
-	unpack_address(new_path[1], dest_address);
+	unpack_address(new_path->hlist[1], dest_address);
 	network_send_pkt(dest_address, sizeof(struct routing_header), routing_header, packet_len, packet);
 }
 
@@ -226,7 +226,7 @@ int data_route_fwd_to(network_address_t dest_address, routing_header_t header, c
 
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
-	unpack_address(new_path[next_node_idx], dest_address);
+	unpack_address(new_path->hlist[next_node_idx], dest_address);
 	network_send_pkt(dest_address, sizeof(struct routing_header), header, packet_len, packet);
 
 	return 0;

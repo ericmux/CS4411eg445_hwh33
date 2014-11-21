@@ -3,6 +3,7 @@
  */
 #include <stdlib.h>
 
+#include "miniroute.h"
 #include "minisocket.h"
 #include "miniheader.h"
 #include "synch.h"

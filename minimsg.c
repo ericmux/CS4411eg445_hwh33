@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #include "minimsg.h"
+#include "miniroute.h"
 #include "hashtable.h"
 #include "interrupts.h"  //TODO: protect shared data by disabling interrupts
 #include "network.h" 
@@ -302,7 +303,7 @@ minimsg_send(miniport_t local_unbound_port, miniport_t local_bound_port, minimsg
     // Now we send our message. network_send_pkt returns the number of
     // bytes it was able to send and -1 on failure.
     // XXX: check casting of msg_header
-    bytes_sent = network_send_pkt(
+    bytes_sent = miniroute_send_pkt(
         destination_address, sizeof(struct mini_header), (char *)msg_header, len, msg);  
 
     if (bytes_sent == -1) return 0;

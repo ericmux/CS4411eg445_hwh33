@@ -170,10 +170,21 @@ int data_route_fwd_to(network_address_t dest_address){
 }
 
 
+/* Performs any initialization of the miniroute layer, if required. */
+void miniroute_initialize()
+{
+	route_table = hashtable_create();
+
+	route_table_access_sema = semaphore_create();
+	semaphore_initialize(route_table_access_sema, 1);
+
+	reply_sema_table = hashtable_create();
+}
+
 /*
 * Performs the unwrapping of the raw_pkt and handles it accordingly, calling one of the functions above.
 */
-void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
+int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
 		routing_header_t rheader;
 		char pkt_type;
 		network_address_t dest_address;
@@ -212,37 +223,48 @@ void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg
 		return 0;
 }
 
+void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
+	network_interrupt_arg_t *data_pkt;
+	char protocol;
+	int handle_payload = 0;
+	
+	handle_payload = miniroute_route_pkt(raw_pkt, data_pkt);
 
+	if(!handle_payload || data_pkt == NULL || data_pkt->size == 0) return;
 
+	protocol = data_pkt->buffer[0];
+	if(protocol == PROTOCOL_MINIDATAGRAM){
+		minimsg_dropoff_message(data_pkt);
+		return;
+	}
+	if(protocol == PROTOCOL_MINISTREAM){
+		minisocket_dropoff_packet(data_pkt);
+		return;
+	}
 
-/* Performs any initialization of the miniroute layer, if required. */
-void miniroute_initialize()
-{
-	route_table = hashtable_create();
-
-	route_table_access_sema = semaphore_create();
-	semaphore_initialize(route_table_access_sema, 1);
-
-	reply_sema_table = hashtable_create();
 }
+
 
 /* sends a miniroute packet, automatically discovering the path if necessary. See description in the
  * .h file.
  */
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
-	path_t src_dst_path;
 
-	if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
-		//No fresh route was found, so trigger the route discovery protocol.
-		semaphore_P(route_table_access_sema);
+	return network_send_pkt(dest_address,hdr_len, hdr,data_len,data);
+
+	// path_t src_dst_path;
+
+	// if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
+	// 	//No fresh route was found, so trigger the route discovery protocol.
+	// 	semaphore_P(route_table_access_sema);
 
 
-		semaphore_V(route_table_access_sema);
-	}
+	// 	semaphore_V(route_table_access_sema);
+	// }
 
 
-	return 0;
+	// return 0;
 
 }
 

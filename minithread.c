@@ -16,6 +16,7 @@
 #include "synch.h"
 #include "alarm.h"
 #include "network.h"
+#include "miniroute.h"
 #include "minimsg.h"
 #include "minisocket.h"
 
@@ -401,7 +402,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Initialize network system for remote communication.
 	minisocket_initialize();
-	network_initialize(minisocket_dropoff_packet);
+	network_initialize(miniroute_network_handler);
 
 	set_interrupt_level(ENABLED);
 

@@ -330,7 +330,7 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 
 	path_t src_dst_path;
 
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 	if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
 		set_interrupt_level(old_level);		
 
@@ -341,7 +341,7 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 
 		semaphore_V(route_table_access_sema);
 
-		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		old_level = set_interrupt_level(DISABLED);
 		if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
 			set_interrupt_level(old_level);	
 			return -1;

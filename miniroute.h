@@ -70,6 +70,6 @@ void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg
 * Network layer's interrupt handler. Routes the packet following the protocol and
 * hands the payload to the upper layer if necessary.
 */
-void miniroute_network_handler(network_interrupt_arg_t *raw_pkt);
+extern void miniroute_network_handler(network_interrupt_arg_t *raw_pkt);
 
 #endif /* _MINIROUTE_H_ */

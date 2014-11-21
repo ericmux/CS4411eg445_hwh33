@@ -320,22 +320,38 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
 	//Add network hdr in front of the hdr.
+	routing_header_t network_hdr;
+	network_address_t next_hop_addr;
+	int discovery_result = 0;
 
+	path_t src_dst_path;
 
-	return network_send_pkt(dest_address,hdr_len, hdr,data_len,data);
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
+		set_interrupt_level(old_level);		
 
-	// path_t src_dst_path;
+		//No fresh route was found, so trigger the route discovery protocol.
+		semaphore_P(route_table_access_sema);
 
-	// if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
-	// 	//No fresh route was found, so trigger the route discovery protocol.
-	// 	semaphore_P(route_table_access_sema);
+		discover_route_to(dest_address);
 
+		semaphore_V(route_table_access_sema);
 
-	// 	semaphore_V(route_table_access_sema);
-	// }
+		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
+			set_interrupt_level(old_level);	
+			return -1;
+		}
 
+	}
 
-	// return 0;
+	unpack_address(src_dst_path->hlist[1], next_hop_addr);
+
+	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	network_hdr = pack_routing_header(ROUTING_DATA, next_hop_addr, current_request_id, MAX_ROUTE_LENGTH, src_dst_path);
+	set_interrupt_level(old_level);
+
+	return network_send_pkt(next_hop_addr,sizeof(struct routing_header), network_hdr, data_len + hdr_len, hdr);
 
 }
 

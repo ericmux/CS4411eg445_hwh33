@@ -22,7 +22,7 @@ void route_expiration_handler(void* dest_address){
 
 }
 
-//Used by either the original caller host to find
+//Used by either the original host to find
 //routes to the passed in host through bcast. Blocking call.
 void discover_route_to(network_address_t dest_address){
 
@@ -39,11 +39,25 @@ void reply_route_to(network_address_t src_address){
 }
 
 
-//Used by the intermediary hosts to 
-void 
+//Used by the intermediary hosts to further unicast until the origin host is reached.
+void reply_route_fwd_to(network_address_t src_address){
+
+}
+
+//Used by the original host send a data packet to the endpoint.
+void data_route_to(network_address_t dest_address){
+
+}
+
+//Used by the intermediary hosts further unicast send a data packet to the endpoint.
+void data_route_fwd_to(network_address_t dest_address){
+
+}
 
 
-
+/*
+* Performs the unwrapping of the raw_pkt and handles it accordingly, calling one of the functions above.
+*/
 void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
 
 }

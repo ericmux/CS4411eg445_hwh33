@@ -125,7 +125,7 @@ int minisocket_utils_send_packet_and_wait(minisocket_t sending_socket, int hdr_l
 
 	while (num_timeouts < MAX_NUM_TIMEOUTS) {
 		// Send the packet.
-		bytes_sent  = network_send_pkt(sending_socket->destination_channel.address, hdr_len, hdr, data_len, data);
+		bytes_sent  = miniroute_send_pkt(sending_socket->destination_channel.address, hdr_len, hdr, data_len, data);
 		
 		// Wait for an ACK. This function will return 0 if the alarm
 		// goes off before an ACK is received.
@@ -168,7 +168,7 @@ void minisocket_utils_send_packet_no_wait(minisocket_t sending_socket, char msg_
 
 	header = minisocket_utils_pack_reliable_header(
 		source_address, source_port, destination_address, destination_port, msg_type, seq_number, ack_number);
-	network_send_pkt(destination_address, sizeof(struct mini_header_reliable), (char *) header, 0, NULL);
+	miniroute_send_pkt(destination_address, sizeof(struct mini_header_reliable), (char *) header, 0, NULL);
 }
 
 /* Sets the server's state to OPEN_SERVER and waits for a SYN from a client.

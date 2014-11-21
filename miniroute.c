@@ -326,7 +326,6 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 	routing_header_t network_hdr;
 	network_address_t next_hop_addr;
 	interrupt_level_t old_level;
-	int discovery_result = 0;
 
 	path_t src_dst_path;
 

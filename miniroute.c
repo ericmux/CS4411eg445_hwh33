@@ -22,12 +22,12 @@ semaphore_t route_table_access_sema;
 //Pack/unpack routing headers.
 routing_header_t pack_routing_header(char pkt_type, network_address_t dest_address, int id, 
 									 int ttl, path_t path){
-
+	return NULL;
 }
 
 void unpack_routing_header(char *pkt_type, network_address_t dest_address, int *id, 
 									 int *ttl, path_t path){
-	
+
 }
 
 

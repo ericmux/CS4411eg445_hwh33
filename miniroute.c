@@ -18,6 +18,21 @@ hashtable_t route_table;
 //Semaphore for mutual exclusion on the access to the route table.
 semaphore_t route_table_access_sema;
 
+
+//Pack/unpack routing headers.
+routing_header_t pack_routing_header(char pkt_type, network_address_t dest_address, int id, 
+									 int ttl, path_t path){
+
+}
+
+void unpack_routing_header(char *pkt_type, network_address_t dest_address, int *id, 
+									 int *ttl, path_t path){
+	
+}
+
+
+
+
 void route_expiration_handler(void* dest_address){
 
 }

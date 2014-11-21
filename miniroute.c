@@ -116,12 +116,12 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 
 	// Now we send the packet to the first node in the path, which is at index 1.
 	unpack_address(new_path->hlist[1], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), header, MAX_ROUTE_LENGTH, NULL);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, MAX_ROUTE_LENGTH, NULL);
 }
 
 
 //Used by the intermediary hosts to further unicast until the origin host is reached.
-void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
+void reply_route_fwd_to(routing_header_t header){
 	char pkt_type;
 	network_address_t dest_address;
 	int id;
@@ -132,6 +132,7 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	interrupt_level_t old_level;
 	int i;
 	int next_node_idx;
+	network_address_t dummy;
 
 	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
@@ -165,15 +166,16 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	// after the node corresponding to ourselves.
 	next_node_idx = -1;
 	for (i = 0; i < path->len; i++) {
-		if (network_compare_network_addresses(my_address, path->hlist[i])) {
+		unpack_address(path->hlist[i], dummy);
+		if (network_compare_network_addresses(my_address, dummy)) {
 			next_node_idx = i + 1;
 		}
 	}
 
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
-	unpack_address(new_path->hlist[next_node_idx], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
+	unpack_address(path->hlist[next_node_idx], dest_address);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, 0, NULL);
 }
 
 //Used by the original host send a data packet to the endpoint.
@@ -186,13 +188,13 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 	header = pack_routing_header(ROUTING_DATA, dest_address, 0, 0, path);
 
 	// We send the data packet to the first node in the path, which is at index 1;
-	unpack_address(new_path->hlist[1], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), routing_header, packet_len, packet);
+	unpack_address(path->hlist[1], dest_address);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, packet_len, packet);
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.
 //Returns 1 if this node is the inteded destination and 0 otherwise.
-int data_route_fwd_to(network_address_t dest_address, routing_header_t header, char *packet, int packet_len){
+int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 	char pkt_type;
 	network_address_t dest_address;
 	int id;
@@ -201,8 +203,9 @@ int data_route_fwd_to(network_address_t dest_address, routing_header_t header, c
 	network_address_t my_address;
 	int i;
 	int next_node_idx;
+	network_address_t dummy;
 
-	unpack_routing_header(&pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
 	// Check if we are the intended destination of this reply, and if so return 1.
 	network_get_my_address(my_address);
@@ -219,15 +222,16 @@ int data_route_fwd_to(network_address_t dest_address, routing_header_t header, c
 	// after the node corresponding to ourselves.
 	next_node_idx = -1;
 	for (i = 0; i < path->len; i++) {
-		if (network_compare_network_addresses(my_address, path->hlist[i])) {
+		unpack_address(path->hlist[i], dummy);
+		if (network_compare_network_addresses(my_address, dummy)) {
 			next_node_idx = i + 1;
 		}
 	}
 
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
-	unpack_address(new_path->hlist[next_node_idx], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), header, packet_len, packet);
+	unpack_address(path->hlist[next_node_idx], dest_address);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, packet_len, packet);
 
 	return 0;
 }

@@ -2,6 +2,8 @@
 
 #include "miniheader.h"
 #include "miniroute.h"
+#include "minisocket.h"
+#include "minimsg.h"
 #include "hashtable.h"
 #include "alarm.h"
 #include "synch.h"
@@ -34,6 +36,7 @@ semaphore_t reply_sema;
 routing_header_t pack_routing_header(char pkt_type, network_address_t dest_address, int id, 
 									 int ttl, path_t path){
 	routing_header_t rheader;
+	int i;
 
 	rheader = (routing_header_t) malloc(sizeof(struct routing_header));
 	rheader->routing_packet_type = pkt_type;
@@ -54,13 +57,15 @@ routing_header_t pack_routing_header(char pkt_type, network_address_t dest_addre
 
 void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_address_t dest_address, int *id, 
 									 int *ttl, path_t path){
+	int i;
+
 	*pkt_type = rheader->routing_packet_type;
 	unpack_address(rheader->destination, dest_address);
 	*id = unpack_unsigned_int(rheader->id);
 	*ttl = unpack_unsigned_int(rheader->ttl);
 
 	path->len = unpack_unsigned_int(rheader->path_len);
-	for(int i = 0; i < path->len; i++){
+	for(i = 0; i < path->len; i++){
 		unpack_address(rheader->path[i], path->hlist[i]);
 	}
 }
@@ -73,13 +78,13 @@ void route_expiration_handler(void* dest_address){
 
 //Used by either the original host to find
 //routes to the passed in host through bcast. Blocking call.
-void discover_route_to(network_address_t dest_address,){
-	routing_header_t rheader;
-	char pkt_type;
-	network_address_t dest_address;
-	int id;
-	int ttl; 
-	path_t path;
+void discover_route_to(network_address_t dest_address){
+	// routing_header_t rheader;
+	// char pkt_type;
+	// network_address_t dest_address;
+	// int id;
+	// int ttl; 
+	// path_t path;
 
 
 }
@@ -95,9 +100,10 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 	int i, j;
 	path_t new_path;
 	routing_header_t header;
+	network_address_t dest_address;
 
 	// Reverse the path.
-	new_path = (path_t) malloc(sizeof(path));
+	new_path = (path_t) malloc(sizeof(struct path));
 	for (i = discovery_path->len-1, j = 0; i >= 0; i--, j++) {
 		network_address_copy(discovery_path->hlist[i], new_path->hlist[j]);
 	}
@@ -105,7 +111,8 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
 
 	// Now we send the packet to the first node in the path, which is at index 1.
-	network_send_pkt(new_path[1], sizeof(struct routing_header), header, MAX_ROUTE_LENGTH, NULL);
+	network_address_copy(dest_address, new_path[1]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, MAX_ROUTE_LENGTH, NULL);
 }
 
 
@@ -122,7 +129,7 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	int i;
 	int next_node_idx;
 
-	unpack_routing_header(&pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
 	// Check if we are the intended destination of this reply.
 	network_get_my_address(my_address);
@@ -161,7 +168,8 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
-	network_send_pkt(path[next_node_idx], sizeof(struct routing_header), header, 0, NULL);
+	network_address_copy(dest_address, path[next_node_idx]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
 }
 
 //Used by the original host send a data packet to the endpoint.
@@ -170,11 +178,12 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 	routing_header_t header;
 
 	// Get the path from the route table and use it to construct the header.
-	hashtable_get(route_table, hash_address(dest_address), &path);
+	hashtable_get(route_table, hash_address(dest_address), (void **) &path);
 	header = pack_routing_header(ROUTING_DATA, dest_address, 0, 0, path);
 
 	// We send the data packet to the first node in the path, which is at index 1;
-	network_send_pkt(path[1], sizeof(struct routing_header), routing_header, packet_len, packet);
+	network_address_copy(dest_address, path[1]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), routing_header, packet_len, packet);
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.
@@ -213,7 +222,8 @@ int data_route_fwd_to(network_address_t dest_address, routing_header_t header, c
 
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
-	network_send_pkt(path[next_node_idx], sizeof(struct routing_header), header, packet_len, packet);
+	network_address_copy(dest_address, path[next_node_idx]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, packet_len, packet);
 
 	return 0;
 }
@@ -227,7 +237,8 @@ void miniroute_initialize()
 	route_table_access_sema = semaphore_create();
 	semaphore_initialize(route_table_access_sema, 1);
 
-	reply_sema_table = hashtable_create();
+	reply_sema = semaphore_create();
+	semaphore_initialize(reply_sema, 0);
 }
 
 /*
@@ -248,13 +259,13 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 
 		if(pkt_type == ROUTING_DATA){
 			int fwd_result = 0;
-			fwd_result = data_route_fwd_to(dest_address, rheader);
+			fwd_result = data_route_fwd_to(dest_address);
 
 			if(fwd_result){
 				//Copy raw_pkt with network header ripped off.
 				data_pkt = (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
 				network_address_copy(raw_pkt->sender, data_pkt->sender);
-				data_pkt->size = raw_pkt->size - sizeof(struct routing_header));
+				data_pkt->size = raw_pkt->size - sizeof(struct routing_header);
 				memcpy(data_pkt->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], data_pkt->size);
 			}
 
@@ -299,6 +310,8 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
  */
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
+	//Add network hdr in front of the hdr.
+
 
 	return network_send_pkt(dest_address,hdr_len, hdr,data_len,data);
 

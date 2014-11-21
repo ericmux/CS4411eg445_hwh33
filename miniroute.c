@@ -2,6 +2,8 @@
 
 #include "miniheader.h"
 #include "miniroute.h"
+#include "minisocket.h"
+#include "minimsg.h"
 #include "hashtable.h"
 #include "alarm.h"
 #include "synch.h"
@@ -34,6 +36,7 @@ semaphore_t reply_sema;
 routing_header_t pack_routing_header(char pkt_type, network_address_t dest_address, int id, 
 									 int ttl, path_t path){
 	routing_header_t rheader;
+	int i;
 
 	rheader = (routing_header_t) malloc(sizeof(struct routing_header));
 	rheader->routing_packet_type = pkt_type;
@@ -54,13 +57,15 @@ routing_header_t pack_routing_header(char pkt_type, network_address_t dest_addre
 
 void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_address_t dest_address, int *id, 
 									 int *ttl, path_t path){
+	int i;
+
 	*pkt_type = rheader->routing_packet_type;
 	unpack_address(rheader->destination, dest_address);
 	*id = unpack_unsigned_int(rheader->id);
 	*ttl = unpack_unsigned_int(rheader->ttl);
 
-	path->len = unpack_unsigned_int(rheader->path_len);
-	for(int i = 0; i < path->len; i++){
+	path->len = unpack_unsigned_int((unsigned int *) rheader->path_len);
+	for(i = 0; i < path->len; i++){
 		unpack_address(rheader->path[i], path->hlist[i]);
 	}
 }
@@ -95,6 +100,7 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 	int i, j;
 	path_t new_path;
 	routing_header_t header;
+	network_address_t dest_address;
 
 	// Reverse the path.
 	new_path = (path_t) malloc(sizeof(struct path));
@@ -104,8 +110,10 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 
 	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
 
+	network_address_copy(dest_address, new_path[1]);
+
 	// Now we send the packet to the first node in the path, which is at index 1.
-	network_send_pkt(new_path[1], sizeof(struct routing_header), header, 0, NULL);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
 }
 
 
@@ -157,7 +165,7 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 	routing_header_t header;
 
 	// Get the path from the route table and use it to construct the header.
-	hashtable_get(route_table, hash_address(dest_address), &path);
+	hashtable_get(route_table, hash_address(dest_address), (void **) &path);
 	header = pack_routing_header(ROUTING_DATA, dest_address, 0, 0, path);
 
 	// We send the data packet to the first node in the path, which is at index 1;
@@ -178,7 +186,8 @@ void miniroute_initialize()
 	route_table_access_sema = semaphore_create();
 	semaphore_initialize(route_table_access_sema, 1);
 
-	reply_sema_table = hashtable_create();
+	reply_sema = semaphore_create();
+	semaphore_initialize(reply_sema, 0);
 }
 
 /*

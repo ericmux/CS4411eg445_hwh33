@@ -20,6 +20,10 @@ hashtable_t route_table;
 //Semaphore for mutual exclusion on the access to the route table.
 semaphore_t route_table_access_sema;
 
+//Hash table to track semaphores for route replies.
+//Indexed by the hash of the destination address the reply is coming from.
+hashtable_t reply_sema_table;
+
 
 //Pack/unpack routing headers.
 routing_header_t pack_routing_header(char pkt_type, network_address_t dest_address, int id, 
@@ -51,8 +55,21 @@ void discover_route_fwd_to(network_address_t dest_address){
 }
 
 //Used by the endpoint to send a unicast packet back to the source.
-void reply_route_to(network_address_t src_address){
+//discovery_path is the path the discovery packet took to this node.
+void reply_route_to(network_address_t src_address, path_t discovery_path, int id){
+	int i, j;
+	path_t new_path;
+	routing_header_t header;
 
+	// Reverse the path.
+	new_path = (path_t) malloc(sizeof(path));
+	for (i = discovery_path->len-1, j = 0; i >= 0; i--, j++) {
+		new_path->hlist[j] = discovery_path->hlist[i];
+	}
+
+	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
+
+	network_send_pkt(src_address, sizeof(struct routing_header), header, 0, NULL);
 }
 
 

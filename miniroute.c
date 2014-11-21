@@ -80,14 +80,13 @@ void miniroute_initialize()
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
 	path_t src_dst_path;
-	semaphore_t route_access_sema;
 
 	if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
 		//No fresh route was found, so trigger the route discovery protocol.
-		semaphore_P(route_access_sema);
+		semaphore_P(route_table_access_sema);
 
 
-		semaphore_V(route_access_sema);
+		semaphore_V(route_table_access_sema);
 	}
 
 

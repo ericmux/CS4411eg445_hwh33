@@ -352,7 +352,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 			return 0;
 		}
 		if(pkt_type == ROUTING_ROUTE_REPLY){
-			reply_route_fwd_to(dest_address, rheader);
+			reply_route_fwd_to(rheader);
 			return 0;
 		} 
 		
@@ -389,11 +389,11 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 	//Add network hdr in front of the hdr.
 	routing_header_t network_hdr;
 	network_address_t next_hop_addr;
-	int discovery_result = 0;
+	interrupt_level_t old_level;
 
 	path_t src_dst_path;
 
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 	if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
 		set_interrupt_level(old_level);		
 
@@ -404,7 +404,7 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 
 		semaphore_V(route_table_access_sema);
 
-		interrupt_level_t old_level = set_interrupt_level(DISABLED);
+		old_level = set_interrupt_level(DISABLED);
 		if(hashtable_get(route_table,hash_address(dest_address),(void **) &src_dst_path) != 0){
 			set_interrupt_level(old_level);	
 			return -1;
@@ -414,11 +414,11 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 
 	unpack_address(src_dst_path->hlist[1], next_hop_addr);
 
-	interrupt_level_t old_level = set_interrupt_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 	network_hdr = pack_routing_header(ROUTING_DATA, next_hop_addr, current_request_id, MAX_ROUTE_LENGTH, src_dst_path);
 	set_interrupt_level(old_level);
 
-	return network_send_pkt(next_hop_addr,sizeof(struct routing_header), network_hdr, data_len + hdr_len, hdr);
+	return network_send_pkt(next_hop_addr,sizeof(struct routing_header), (char *) network_hdr, data_len + hdr_len, hdr);
 
 }
 

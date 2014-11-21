@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #include "minimsg.h"
+#include "miniroute.h"
 #include "hashtable.h"
 #include "interrupts.h"  //TODO: protect shared data by disabling interrupts
 #include "network.h" 

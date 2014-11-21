@@ -64,7 +64,7 @@ void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_add
 	*id = unpack_unsigned_int(rheader->id);
 	*ttl = unpack_unsigned_int(rheader->ttl);
 
-	path->len = unpack_unsigned_int((unsigned int *) rheader->path_len);
+	path->len = unpack_unsigned_int(rheader->path_len);
 	for(i = 0; i < path->len; i++){
 		unpack_address(rheader->path[i], path->hlist[i]);
 	}
@@ -78,7 +78,7 @@ void route_expiration_handler(void* dest_address){
 
 //Used by either the original host to find
 //routes to the passed in host through bcast. Blocking call.
-void discover_route_to(network_address_t dest_address,){
+void discover_route_to(network_address_t dest_address){
 	// routing_header_t rheader;
 	// char pkt_type;
 	// network_address_t dest_address;

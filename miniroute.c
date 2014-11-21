@@ -4,6 +4,7 @@
 #include "hashtable.h"
 #include "alarm.h"
 #include "synch.h"
+#include "interrupts.h"
 
 
 struct path {
@@ -69,13 +70,53 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 
 	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
 
-	network_send_pkt(src_address, sizeof(struct routing_header), header, 0, NULL);
+	// Now we send the packet to the first node in the path, which is at index 1.
+	network_send_pkt(new_path[1], sizeof(struct routing_header), header, 0, NULL);
 }
 
 
 //Used by the intermediary hosts to further unicast until the origin host is reached.
-void reply_route_fwd_to(network_address_t src_address){
+void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
+	char pkt_type;
+	network_address_t dest_address;
+	int id;
+	int ttl;
+	path_t path;
+	network_address_t my_address;
+	semaphore_t reply_sema;
+	network_address_t reply_source;
+	interrupt_level_t old_level;
 
+	unpack_routing_header(&pkt_type, dest_address, &id, &ttl, path);
+
+	// Check if we are the intended destination of this reply.
+	network_get_my_address(my_address);
+	if (network_compare_network_addresses(my_address, dest_address)) {
+		
+		old_level = set_interrupt_level(DISABLED);
+
+		// If we have already received a reply to this discovery, then drop the packet.
+		if (current_request_id > id) {
+			set_interrupt_level(old_level);
+			return;
+		}
+
+		// We have received a reply to our discovery. V the appropriate semaphore
+		// and return.
+		current_request_id++;
+		network_address_copy(path->hlist[0], reply_source);
+		hashtable_get(reply_sema_table, hash_address(reply_source), *reply_sema);
+		semaphore_V(reply_sema);
+		set_interrupt_level(old_level);
+		return; 
+	}
+	
+	// If we are not the target, we increment ttl and forward the
+	// packet to the next node in the path, which is at index ttl+1.
+	ttl++;
+	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
+
+	network_send_pkt(path[ttl+1], sizeof(struct routing_header), header, 0, NULL);
 }
 
 //Used by the original host send a data packet to the endpoint.

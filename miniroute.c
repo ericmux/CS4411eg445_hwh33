@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "miniheader.h"
 #include "miniroute.h"
 #include "hashtable.h"
 #include "alarm.h"
@@ -20,18 +21,44 @@ hashtable_t route_table;
 //Semaphore for mutual exclusion on the access to the route table.
 semaphore_t route_table_access_sema;
 
+//Current request id.
+static int current_request_id = 0;
+
 
 //Pack/unpack routing headers.
 routing_header_t pack_routing_header(char pkt_type, network_address_t dest_address, int id, 
 									 int ttl, path_t path){
-	return NULL;
+	routing_header_t rheader;
+
+	rheader = (routing_header_t) malloc(sizeof(struct routing_header));
+	rheader->routing_packet_type = pkt_type;
+	pack_address(rheader->destination, dest_address);
+	pack_unsigned_int(rheader->id, id);
+	pack_unsigned_int(rheader->ttl, ttl);
+	pack_unsigned_int(rheader->path_len, path->len);
+
+	for(i = 0; i < path->len; i++){
+		network_address_t hostaddr;
+		unpack_address(path->hlist[i], hostaddr);
+
+		pack_address(rheader->path[i], hostaddr);
+	}
+
+	return rheader;
 }
 
-void unpack_routing_header(char *pkt_type, network_address_t dest_address, int *id, 
+void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_address_t dest_address, int *id, 
 									 int *ttl, path_t path){
+	*pkt_type = rheader->routing_packet_type;
+	unpack_address(rheader->destination, dest_address);
+	*id = unpack_unsigned_int(rheader->id);
+	*ttl = unpack_unsigned_int(rheader->ttl);
 
+	path->len = unpack_unsigned_int(rheader->path_len);
+	for(int i = 0; i < path->len; i++){
+		unpack_address(rheader->path[i], path->hlist[i]);
+	}
 }
-
 
 
 
@@ -41,7 +68,14 @@ void route_expiration_handler(void* dest_address){
 
 //Used by either the original host to find
 //routes to the passed in host through bcast. Blocking call.
-void discover_route_to(network_address_t dest_address){
+void discover_route_to(network_address_t dest_address,){
+	routing_header_t rheader;
+	char pkt_type;
+	network_address_t dest_address;
+	int id;
+	int ttl; 
+	path_t path;
+
 
 }
 
@@ -67,8 +101,8 @@ void data_route_to(network_address_t dest_address){
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.
-void data_route_fwd_to(network_address_t dest_address){
-
+int data_route_fwd_to(network_address_t dest_address){
+	return 1;
 }
 
 
@@ -76,7 +110,42 @@ void data_route_fwd_to(network_address_t dest_address){
 * Performs the unwrapping of the raw_pkt and handles it accordingly, calling one of the functions above.
 */
 void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
+		routing_header_t rheader;
+		char pkt_type;
+		network_address_t dest_address;
+		int id;
+		int ttl; 
+		path_t path;
 
+		if(raw_pkt == NULL || raw_pkt->size < sizeof(struct routing_header)) return 0;
+
+		rheader = (routing_header_t) raw_pkt->buffer;
+		unpack_routing_header(rheader, &pkt_type, dest_address, &id, &ttl, path);
+
+		if(pkt_type == ROUTING_DATA){
+			int fwd_result = 0;
+			fwd_result = data_route_fwd_to(dest_address, rheader);
+
+			if(fwd_result){
+				//Copy raw_pkt with network header ripped off.
+				data_pkt = (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
+				network_address_copy(raw_pkt->sender, data_pkt->sender);
+				data_pkt->size = raw_pkt->size - sizeof(struct routing_header));
+				memcpy(data_pkt->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], data_pkt->size);
+			}
+
+			return fwd_result;
+		}
+		if(pkt_type == ROUTING_ROUTE_DISCOVERY){
+			discover_route_fwd_to(dest_address, rheader);
+			return 0;
+		}
+		if(pkt_type == ROUTING_ROUTE_REPLY){
+			reply_route_fwd_to(dest_address, rheader);
+			return 0;
+		} 
+		
+		return 0;
 }
 
 

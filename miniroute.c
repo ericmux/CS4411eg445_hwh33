@@ -74,12 +74,12 @@ void route_expiration_handler(void* dest_address){
 //Used by either the original host to find
 //routes to the passed in host through bcast. Blocking call.
 void discover_route_to(network_address_t dest_address,){
-	routing_header_t rheader;
-	char pkt_type;
-	network_address_t dest_address;
-	int id;
-	int ttl; 
-	path_t path;
+	// routing_header_t rheader;
+	// char pkt_type;
+	// network_address_t dest_address;
+	// int id;
+	// int ttl; 
+	// path_t path;
 
 
 }
@@ -97,7 +97,7 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 	routing_header_t header;
 
 	// Reverse the path.
-	new_path = (path_t) malloc(sizeof(path));
+	new_path = (path_t) malloc(sizeof(struct path));
 	for (i = discovery_path->len-1, j = 0; i >= 0; i--, j++) {
 		new_path->hlist[j] = discovery_path->hlist[i];
 	}
@@ -121,7 +121,7 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	network_address_t reply_source;
 	interrupt_level_t old_level;
 
-	unpack_routing_header(&pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
 	// Check if we are the intended destination of this reply.
 	network_get_my_address(my_address);
@@ -193,13 +193,13 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 
 		if(pkt_type == ROUTING_DATA){
 			int fwd_result = 0;
-			fwd_result = data_route_fwd_to(dest_address, rheader);
+			fwd_result = data_route_fwd_to(dest_address);
 
 			if(fwd_result){
 				//Copy raw_pkt with network header ripped off.
 				data_pkt = (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
 				network_address_copy(raw_pkt->sender, data_pkt->sender);
-				data_pkt->size = raw_pkt->size - sizeof(struct routing_header));
+				data_pkt->size = raw_pkt->size - sizeof(struct routing_header);
 				memcpy(data_pkt->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], data_pkt->size);
 			}
 
@@ -244,6 +244,8 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
  */
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
+	//Add network hdr in front of the hdr.
+
 
 	return network_send_pkt(dest_address,hdr_len, hdr,data_len,data);
 

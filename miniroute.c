@@ -56,7 +56,7 @@ routing_header_t pack_routing_header(char pkt_type, network_address_t dest_addre
 }
 
 void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_address_t dest_address, int *id, 
-									 int *ttl, path_t path){
+									 int *ttl, path_t *path){
 	int i;
 
 	*pkt_type = rheader->routing_packet_type;
@@ -64,11 +64,14 @@ void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_add
 	*id = unpack_unsigned_int(rheader->id);
 	*ttl = unpack_unsigned_int(rheader->ttl);
 
-	path->len = unpack_unsigned_int(rheader->path_len);
-	for(i = 0; i < path->len; i++){
+	*path = (path_t) malloc(sizeof(struct path));
+	path_t p = *path;
+
+	p->len = unpack_unsigned_int(rheader->path_len);
+	for(i = 0; i < p->len; i++){
 		network_address_t addr;
 		unpack_address(rheader->path[i], addr);
-		pack_address(path->hlist[i], addr);
+		pack_address(p->hlist[i], addr);
 	}
 }
 
@@ -117,9 +120,7 @@ void reply_route_fwd_to(routing_header_t header){
 	network_address_t dummy;
 	network_address_t source_address;
 
-	path = NULL;
-
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, &path);
 
 	// Check if we are the intended destination of this reply.
 	network_get_my_address(my_address);
@@ -200,7 +201,7 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 
 	path = NULL;
 
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, &path);
 
 	// Check if we are the intended destination of this packet, and if so return 1.
 	network_get_my_address(my_address);
@@ -279,7 +280,7 @@ void discover_route_fwd_to(routing_header_t header){
 	network_address_t my_address;
 	network_address_t source_address;
 
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, &path);
 
 	// Add ourselves to the path.
 	network_get_my_address(my_address);
@@ -332,7 +333,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 		if(raw_pkt == NULL || raw_pkt->size < sizeof(struct routing_header)) return 0;
 
 		rheader = (routing_header_t) raw_pkt->buffer;
-		unpack_routing_header(rheader, &pkt_type, dest_address, &id, &ttl, path);
+		unpack_routing_header(rheader, &pkt_type, dest_address, &id, &ttl, &path);
 
 		if(pkt_type == ROUTING_DATA){
 			int fwd_result = 0;

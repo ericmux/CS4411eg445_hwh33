@@ -107,15 +107,14 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 	// Reverse the path.
 	new_path = (path_t) malloc(sizeof(struct path));
 	for (i = discovery_path->len-1, j = 0; i >= 0; i--, j++) {
-		new_path->hlist[j] = discovery_path->hlist[i];
+		network_address_copy(discovery_path->hlist[i], new_path->hlist[j]);
 	}
 
 	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
 
-	network_address_copy(dest_address, new_path[1]);
-
 	// Now we send the packet to the first node in the path, which is at index 1.
-	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
+	network_address_copy(dest_address, new_path[1]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, MAX_ROUTE_LENGTH, NULL);
 }
 
 
@@ -128,8 +127,9 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	path_t path;
 	network_address_t my_address;
 	semaphore_t reply_sema;
-	network_address_t reply_source;
 	interrupt_level_t old_level;
+	int i;
+	int next_node_idx;
 
 	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
@@ -153,12 +153,25 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 		return; 
 	}
 	
-	// If we are not the target, we increment ttl and forward the
-	// packet to the next node in the path, which is at index ttl+1.
-	ttl++;
-	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
+	// If we are not the target, we decrement ttl. If ttl == 0, then the packet 
+	// has exceeded its time to live, so we drop it. This shouldn't happen in 
+	// replies, but we include this check for sanity purposes.
+	ttl--;
+	if (ttl == 0) return;
 
-	network_send_pkt(path[ttl+1], sizeof(struct routing_header), header, 0, NULL);
+	// Now we need to find the next node in the path. This is simply the node
+	// after the node corresponding to ourselves.
+	next_node_idx = -1;
+	for (i = 0; i < path->len; i++) {
+		if (network_compare_network_addresses(my_address, path->hlist[i])) {
+			next_node_idx = i + 1;
+		}
+	}
+
+	// Now we pack the header with the new ttl and forward to the next node.
+	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
+	network_address_copy(dest_address, path[next_node_idx]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
 }
 
 //Used by the original host send a data packet to the endpoint.
@@ -171,12 +184,50 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 	header = pack_routing_header(ROUTING_DATA, dest_address, 0, 0, path);
 
 	// We send the data packet to the first node in the path, which is at index 1;
-	network_send_pkt(path[1], sizeof(struct routing_header), routing_header, packet_len, packet);
+	network_address_copy(dest_address, path[1]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), routing_header, packet_len, packet);
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.
-int data_route_fwd_to(network_address_t dest_address){
-	return 1;
+//Returns 1 if this node is the inteded destination and 0 otherwise.
+int data_route_fwd_to(network_address_t dest_address, routing_header_t header, char *packet, int packet_len){
+	char pkt_type;
+	network_address_t dest_address;
+	int id;
+	int ttl;
+	path_t path;
+	network_address_t my_address;
+	int i;
+	int next_node_idx;
+
+	unpack_routing_header(&pkt_type, dest_address, &id, &ttl, path);
+
+	// Check if we are the intended destination of this reply, and if so return 1.
+	network_get_my_address(my_address);
+	if (network_compare_network_addresses(my_address, dest_address)) {
+		return 1;
+	}
+
+	// If we are not the target, we decrement ttl. If ttl == 0, then the packet 
+	// has exceeded its time to live, so we drop it. 
+	ttl--;
+	if (ttl == 0) return 0;
+
+	// Now we need to find the next node in the path. This is simply the node
+	// after the node corresponding to ourselves.
+	next_node_idx = -1;
+	for (i = 0; i < path->len; i++) {
+		if (network_compare_network_addresses(my_address, path->hlist[i])) {
+			next_node_idx = i + 1;
+		}
+	}
+
+	// Now we pack the header with the new ttl and forward to the next node.
+	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
+	network_address_copy(dest_address, path[next_node_idx]);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, packet_len, packet);
+
+	return 0;
 }
 
 

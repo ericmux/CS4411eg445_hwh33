@@ -348,7 +348,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 				payload->size = raw_pkt->size - sizeof(struct routing_header);
 				memcpy(payload->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], payload->size);
 
-				*data_pkt = payload;
+				*data_pkt_ptr = payload;
 
 				free(raw_pkt);
 			}
@@ -356,7 +356,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 			return fwd_result;
 		}
 		if(pkt_type == ROUTING_ROUTE_DISCOVERY){
-			discover_route_fwd_to(dest_address);
+			discover_route_fwd_to(rheader);
 			return 0;
 		}
 		if(pkt_type == ROUTING_ROUTE_REPLY){

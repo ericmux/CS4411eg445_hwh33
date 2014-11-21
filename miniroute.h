@@ -55,4 +55,14 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
  */
 unsigned short hash_address(network_address_t address);
 
+/*
+* tries to handle the intercepted packet and route it properly. 
+* If the host is not the destination, it just redirects it through the ad hoc network.
+* Otherwise, it consumes the packet, triggering the reply in case of a ROUTE_DISCOVERY 
+* packet, simply caching the result in case of a ROUTE_REPLY or simply unwrapping the 
+* payload for the upper layer to use, returning a network_interrupt_arg_t with the network
+* header stripped.
+*/
+void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt);
+
 #endif /* _MINIROUTE_H_ */

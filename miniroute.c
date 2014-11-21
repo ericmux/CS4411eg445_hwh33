@@ -56,8 +56,8 @@ void miniroute_initialize()
 {
 	route_table = hashtable_create();
 
-	route_access_semas = semaphore_create();
-	semaphore_initialize(route_access_sema, 1);
+	route_table_access_sema = semaphore_create();
+	semaphore_initialize(route_table_access_sema, 1);
 }
 
 /* sends a miniroute packet, automatically discovering the path if necessary. See description in the

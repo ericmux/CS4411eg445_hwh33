@@ -371,6 +371,8 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
 	network_interrupt_arg_t *data_pkt;
 	char protocol;
 	int handle_payload = 0;
+
+	data_pkt = NULL;
 	
 	handle_payload = miniroute_route_pkt(raw_pkt, &data_pkt);
 

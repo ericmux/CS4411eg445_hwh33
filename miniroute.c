@@ -355,7 +355,7 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 	network_hdr = pack_routing_header(ROUTING_DATA, next_hop_addr, current_request_id, MAX_ROUTE_LENGTH, src_dst_path);
 	set_interrupt_level(old_level);
 
-	return network_send_pkt(next_hop_addr,sizeof(struct routing_header), network_hdr, data_len + hdr_len, hdr);
+	return network_send_pkt(next_hop_addr,sizeof(struct routing_header), (char *) network_hdr, data_len + hdr_len, hdr);
 
 }
 

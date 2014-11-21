@@ -81,19 +81,74 @@ void route_expiration_handler(void* dest_address){
 //Used by either the original host to find
 //routes to the passed in host through bcast. Blocking call.
 void discover_route_to(network_address_t dest_address){
-	// routing_header_t rheader;
-	// char pkt_type;
-	// network_address_t dest_address;
-	// int id;
-	// int ttl; 
-	// path_t path;
+	routing_header_t header;
+	path_t path;
+	void *dummy_ptr;
+	network_address_t my_address;
 
+	// It's possible that the call to discover_route_to was made shortly after a
+	// route to the destination was discovered by another thread on this machine.
+	// In this case, we just return.
+	if (hashtable_get(route_table, hash_address(dest_address), dummy_ptr) == 0) {
+		return;
+	}
 
+	// We initialize the path with an array with only one valid entry; our own address.
+	network_get_my_address(my_address);
+	path = (path_t) malloc(sizeof(struct path));
+	path->len = 1;
+	pack_address(path->hlist[0], my_address);
+
+	// Send a broadcast out on the network and wait for a reply by calling P on the
+	// reply semaphore.
+	header = pack_routing_header(
+		ROUTING_ROUTE_DISCOVERY, dest_address, current_request_id, MAX_ROUTE_LENGTH, path);
+
+	network_bcast_pkt(sizeof(struct routing_header), header, 0, NULL);
+
+	// TODO: Set an alarm to wake us up in the case of discovery timeout.
+
+	semaphore_P(reply_sema);
+
+	// When we come back from the reply semaphore, either the timeout alarm has gone
+	// off or the route has been put into the route table. Either way, just return.
+	// XXX: shouldn't we return some signal upon failure?
+	return;
 }
 
 //Used by intermediary hosts further bcast until the endhost is reached.
-void discover_route_fwd_to(network_address_t dest_address){
+void discover_route_fwd_to(routing_header_t header){
+	char pkt_type;
+	network_address_t dest_address;
+	int id;
+	int ttl;
+	path_t path;
+	network_address_t source_address;
 
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+
+	// Add ourselves to the path.
+	network_get_my_address(my_address);
+	pack_address(path->hlist[path->len], my_address);
+	path->len++;
+
+	// Check if we are the intended target of this discovery.
+	if (network_compare_network_addresses(my_address, dest_address)) {
+		// If we are the intended target then we need to send a reply to the source.
+		// The source is the first address in the path.
+		unpack_address(path->hlist[0], source_address);
+		reply_route_to(source_address, path, id);
+	}
+
+	// We decrement ttl. If ttl == 0, then the packet has exceeded its time to live, 
+	// so we drop it.
+	ttl--;
+	if (ttl == 0) return;
+
+	// If the packet still has hops to make, we broadcast it.
+	// XXX: bouning discovery packets??
+	header = pack_routing_header(ROUTING_ROUTE_DISCOVERY, dest_address, id, ttl, path);
+	network_bcast_pkt(sizeof(struct routing_header), header, 0, NULL);
 }
 
 //Used by the endpoint to send a unicast packet back to the source.
@@ -133,6 +188,7 @@ void reply_route_fwd_to(routing_header_t header){
 	int i;
 	int next_node_idx;
 	network_address_t dummy;
+	network_address_t source_address;
 
 	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
@@ -148,8 +204,16 @@ void reply_route_fwd_to(routing_header_t header){
 			return;
 		}
 
-		// We have received a reply to our discovery. V the appropriate semaphore
-		// and return.
+		// We have received a reply to our discovery. Put the path in the route table,
+		// V the appropriate semaphore, and return.
+
+		// Get the end of the route (the first entry in the path) and put the route in
+		// the hash table.
+		pack_address(path->hlist[0], source_address, );
+		route_table = hashtable_put(route_table, hash_address(source_address), path);
+		
+		// TODO: set an alarm to remove the path from the table when it becomes stale.
+		
 		current_request_id++;
 		semaphore_V(reply_sema);
 		set_interrupt_level(old_level);
@@ -207,7 +271,7 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 
 	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
-	// Check if we are the intended destination of this reply, and if so return 1.
+	// Check if we are the intended destination of this packet, and if so return 1.
 	network_get_my_address(my_address);
 	if (network_compare_network_addresses(my_address, dest_address)) {
 		return 1;

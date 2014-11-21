@@ -63,7 +63,7 @@ unsigned short hash_address(network_address_t address);
 * payload for the upper layer to use, returning a network_interrupt_arg_t with the network
 * header stripped.
 */
-void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt);
+extern void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt);
 
 
 /*

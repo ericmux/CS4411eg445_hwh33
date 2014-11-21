@@ -223,7 +223,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 			return fwd_result;
 		}
 		if(pkt_type == ROUTING_ROUTE_DISCOVERY){
-			discover_route_fwd_to(dest_address, rheader);
+			discover_route_fwd_to(dest_address);
 			return 0;
 		}
 		if(pkt_type == ROUTING_ROUTE_REPLY){

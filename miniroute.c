@@ -58,6 +58,7 @@ routing_header_t pack_routing_header(char pkt_type, network_address_t dest_addre
 void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_address_t dest_address, int *id, 
 									 int *ttl, path_t *path){
 	int i;
+	path_t p;
 
 	*pkt_type = rheader->routing_packet_type;
 	unpack_address(rheader->destination, dest_address);
@@ -65,7 +66,7 @@ void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_add
 	*ttl = unpack_unsigned_int(rheader->ttl);
 
 	*path = (path_t) malloc(sizeof(struct path));
-	path_t p = *path;
+	p = *path;
 
 	p->len = unpack_unsigned_int(rheader->path_len);
 	for(i = 0; i < p->len; i++){

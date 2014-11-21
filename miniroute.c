@@ -178,7 +178,7 @@ void miniroute_initialize()
 /*
 * Performs the unwrapping of the raw_pkt and handles it accordingly, calling one of the functions above.
 */
-void miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
+int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
 		routing_header_t rheader;
 		char pkt_type;
 		network_address_t dest_address;

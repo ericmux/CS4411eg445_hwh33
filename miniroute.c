@@ -267,8 +267,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 
 		if(pkt_type == ROUTING_DATA){
 			int fwd_result = 0;
-			fwd_result = data_route_fwd_to(dest_address, 
-										   rheader, 
+			fwd_result = data_route_fwd_to(rheader, 
 										   &raw_pkt->buffer[sizeof(struct routing_header)],
 										   raw_pkt->size - sizeof(struct routing_header));
 

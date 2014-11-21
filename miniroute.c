@@ -288,7 +288,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 			return 0;
 		}
 		if(pkt_type == ROUTING_ROUTE_REPLY){
-			reply_route_fwd_to(dest_address, rheader);
+			reply_route_fwd_to(rheader);
 			return 0;
 		} 
 		

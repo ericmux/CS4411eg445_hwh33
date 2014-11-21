@@ -16,7 +16,7 @@ typedef struct routing_header *routing_header_t;
 hashtable_t route_table;
 
 //Semaphore for mutual exclusion on the access to the route table.
-semaphore_t route_table_acess_sema;
+semaphore_t route_table_access_sema;
 
 void route_expiration_handler(void* dest_address){
 

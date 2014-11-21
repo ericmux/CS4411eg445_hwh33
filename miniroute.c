@@ -111,12 +111,13 @@ void reply_route_fwd_to(routing_header_t header){
 	int ttl;
 	path_t path;
 	network_address_t my_address;
-	semaphore_t reply_sema;
 	interrupt_level_t old_level;
 	int i;
 	int next_node_idx;
 	network_address_t dummy;
 	network_address_t source_address;
+
+	path = NULL;
 
 	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
@@ -196,6 +197,8 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 	int i;
 	int next_node_idx;
 	network_address_t dummy;
+
+	path = NULL;
 
 	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
@@ -317,13 +320,13 @@ void miniroute_initialize()
 /*
 * Performs the unwrapping of the raw_pkt and handles it accordingly, calling one of the functions above.
 */
-int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t *data_pkt){
+int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_t **data_pkt_ptr){
 		routing_header_t rheader;
 		char pkt_type;
 		network_address_t dest_address;
 		int id;
 		int ttl; 
-		path_t path;
+		path_t path = NULL;
 
 		if(raw_pkt == NULL || raw_pkt->size < sizeof(struct routing_header)) return 0;
 
@@ -338,10 +341,13 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 
 			if(fwd_result){
 				//Copy raw_pkt with network header ripped off.
-				data_pkt = (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
-				network_address_copy(raw_pkt->sender, data_pkt->sender);
-				data_pkt->size = raw_pkt->size - sizeof(struct routing_header);
-				memcpy(data_pkt->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], data_pkt->size);
+				network_interrupt_arg_t *payload;
+				payload = (network_interrupt_arg_t *) malloc(sizeof(network_interrupt_arg_t));
+				network_address_copy(raw_pkt->sender, payload->sender);
+				payload->size = raw_pkt->size - sizeof(struct routing_header);
+				memcpy(payload->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], payload->size);
+
+				*data_pkt = payload;
 
 				free(raw_pkt);
 			}
@@ -365,7 +371,7 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
 	char protocol;
 	int handle_payload = 0;
 	
-	handle_payload = miniroute_route_pkt(raw_pkt, data_pkt);
+	handle_payload = miniroute_route_pkt(raw_pkt, &data_pkt);
 
 	if(!handle_payload || data_pkt == NULL || data_pkt->size == 0) return;
 

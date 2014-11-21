@@ -263,7 +263,9 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 
 		if(pkt_type == ROUTING_DATA){
 			int fwd_result = 0;
-			fwd_result = data_route_fwd_to(dest_address);
+			fwd_result = data_route_fwd_to(dest_address, 
+										   rheader, raw_pkt->size - sizeof(struct routing_header), 
+										   &raw_pkt->buffer[sizeof(struct routing_header)]);
 
 			if(fwd_result){
 				//Copy raw_pkt with network header ripped off.
@@ -271,6 +273,8 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 				network_address_copy(raw_pkt->sender, data_pkt->sender);
 				data_pkt->size = raw_pkt->size - sizeof(struct routing_header);
 				memcpy(data_pkt->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], data_pkt->size);
+
+				free(raw_pkt);
 			}
 
 			return fwd_result;

@@ -232,7 +232,7 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
 		return;
 	}
 	if(protocol == PROTOCOL_MINISTREAM){
-		minimsg_dropoff_message(data_pkt);
+		minisocket_dropoff_packet(data_pkt);
 		return;
 	}
 

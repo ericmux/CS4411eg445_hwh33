@@ -121,7 +121,7 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 
 
 //Used by the intermediary hosts to further unicast until the origin host is reached.
-void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
+void reply_route_fwd_to(routing_header_t header){
 	char pkt_type;
 	network_address_t dest_address;
 	int id;
@@ -167,7 +167,7 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	next_node_idx = -1;
 	for (i = 0; i < path->len; i++) {
 		unpack_address(path->hlist[i], dummy);
-		if (network_compare_network_addresses(my_address, dummy) {
+		if (network_compare_network_addresses(my_address, dummy)) {
 			next_node_idx = i + 1;
 		}
 	}
@@ -175,7 +175,7 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 	// Now we pack the header with the new ttl and forward to the next node.
 	header = pack_routing_header(pkt_type, dest_address, id, ttl, path);
 	unpack_address(path->hlist[next_node_idx], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), header, 0, NULL);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, 0, NULL);
 }
 
 //Used by the original host send a data packet to the endpoint.
@@ -189,12 +189,12 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 
 	// We send the data packet to the first node in the path, which is at index 1;
 	unpack_address(path->hlist[1], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), routing_header, packet_len, packet);
+	network_send_pkt(dest_address, sizeof(struct routing_header), header, packet_len, packet);
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.
 //Returns 1 if this node is the inteded destination and 0 otherwise.
-int data_route_fwd_to(network_address_t dest_address, routing_header_t header, char *packet, int packet_len){
+int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 	char pkt_type;
 	network_address_t dest_address;
 	int id;

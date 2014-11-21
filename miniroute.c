@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "miniroute.h"
 #include "hashtable.h"
 #include "alarm.h"

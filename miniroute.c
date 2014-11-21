@@ -138,7 +138,7 @@ void reply_route_fwd_to(routing_header_t header){
 
 		// Get the end of the route (the first entry in the path) and put the route in
 		// the hash table.
-		pack_address(path->hlist[0], source_address, );
+		pack_address(path->hlist[0], source_address);
 		route_table = hashtable_put(route_table, hash_address(source_address), path);
 		
 		// TODO: set an alarm to remove the path from the table when it becomes stale.

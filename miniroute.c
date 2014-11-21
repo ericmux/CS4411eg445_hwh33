@@ -27,7 +27,7 @@ static int current_request_id = 0;
 
 //Hash table to track semaphores for route replies.
 //Indexed by the hash of the destination address the reply is coming from.
-hashtable_t reply_sema_table;
+semaphore_t reply_sema;
 
 
 //Pack/unpack routing headers.
@@ -138,8 +138,6 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 		// We have received a reply to our discovery. V the appropriate semaphore
 		// and return.
 		current_request_id++;
-		network_address_copy(path->hlist[0], reply_source);
-		hashtable_get(reply_sema_table, hash_address(reply_source), *reply_sema);
 		semaphore_V(reply_sema);
 		set_interrupt_level(old_level);
 		return; 
@@ -154,8 +152,16 @@ void reply_route_fwd_to(network_address_t src_address, routing_header_t header){
 }
 
 //Used by the original host send a data packet to the endpoint.
-void data_route_to(network_address_t dest_address){
+void data_route_to(network_address_t dest_address, char *packet, int packet_len){
+	path_t path;
+	routing_header_t header;
 
+	// Get the path from the route table and use it to construct the header.
+	hashtable_get(route_table, hash_address(dest_address), &path);
+	header = pack_routing_header(ROUTING_DATA, dest_address, 0, 0, path);
+
+	// We send the data packet to the first node in the path, which is at index 1;
+	network_send_pkt(path[1], sizeof(struct routing_header), routing_header, packet_len, packet);
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.

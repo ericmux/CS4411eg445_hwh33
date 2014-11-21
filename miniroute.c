@@ -258,42 +258,6 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, packet_len, packet);
 }
 
-//Used by intermediary hosts further bcast until the endhost is reached.
-void discover_route_fwd_to(routing_header_t header){
-	char pkt_type;
-	network_address_t dest_address;
-	int id;
-	int ttl;
-	path_t path;
-	network_address_t my_address;
-	network_address_t source_address;
-
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
-
-	// Add ourselves to the path.
-	network_get_my_address(my_address);
-	pack_address(path->hlist[path->len], my_address);
-	path->len++;
-
-	// Check if we are the intended target of this discovery.
-	if (network_compare_network_addresses(my_address, dest_address)) {
-		// If we are the intended target then we need to send a reply to the source.
-		// The source is the first address in the path.
-		unpack_address(path->hlist[0], source_address);
-		reply_route_to(source_address, path, id);
-	}
-
-	// We decrement ttl. If ttl == 0, then the packet has exceeded its time to live, 
-	// so we drop it.
-	ttl--;
-	if (ttl == 0) return;
-
-	// If the packet still has hops to make, we broadcast it.
-	// XXX: bouning discovery packets??
-	header = pack_routing_header(ROUTING_ROUTE_DISCOVERY, dest_address, id, ttl, path);
-	network_bcast_pkt(sizeof(struct routing_header), (char *) header, 0, NULL);
-}
-
 /* Performs any initialization of the miniroute layer, if required. */
 void miniroute_initialize()
 {

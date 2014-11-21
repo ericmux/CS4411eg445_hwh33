@@ -189,7 +189,7 @@ void data_route_to(network_address_t dest_address, char *packet, int packet_len)
 
 	// We send the data packet to the first node in the path, which is at index 1;
 	unpack_address(path->hlist[1], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), header, packet_len, packet);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, packet_len, packet);
 }
 
 //Used by the intermediary hosts further unicast send a data packet to the endpoint.
@@ -203,8 +203,9 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 	network_address_t my_address;
 	int i;
 	int next_node_idx;
+	network_address_t dummy;
 
-	unpack_routing_header(&pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
 
 	// Check if we are the intended destination of this reply, and if so return 1.
 	network_get_my_address(my_address);
@@ -221,7 +222,8 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 	// after the node corresponding to ourselves.
 	next_node_idx = -1;
 	for (i = 0; i < path->len; i++) {
-		if (network_compare_network_addresses(my_address, path->hlist[i])) {
+		unpack_address(path->hlist[i], dummy);
+		if (network_compare_network_addresses(my_address, dummy) {
 			next_node_idx = i + 1;
 		}
 	}

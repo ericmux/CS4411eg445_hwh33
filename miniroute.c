@@ -56,19 +56,23 @@ routing_header_t pack_routing_header(char pkt_type, network_address_t dest_addre
 }
 
 void unpack_routing_header(routing_header_t rheader, char *pkt_type, network_address_t dest_address, int *id, 
-									 int *ttl, path_t path){
+									 int *ttl, path_t *path){
 	int i;
+	path_t p;
 
 	*pkt_type = rheader->routing_packet_type;
 	unpack_address(rheader->destination, dest_address);
 	*id = unpack_unsigned_int(rheader->id);
 	*ttl = unpack_unsigned_int(rheader->ttl);
 
-	path->len = unpack_unsigned_int(rheader->path_len);
-	for(i = 0; i < path->len; i++){
+	*path = (path_t) malloc(sizeof(struct path));
+	p = *path;
+
+	p->len = unpack_unsigned_int(rheader->path_len);
+	for(i = 0; i < p->len; i++){
 		network_address_t addr;
 		unpack_address(rheader->path[i], addr);
-		pack_address(path->hlist[i], addr);
+		pack_address(p->hlist[i], addr);
 	}
 }
 
@@ -117,9 +121,7 @@ void reply_route_fwd_to(routing_header_t header){
 	network_address_t dummy;
 	network_address_t source_address;
 
-	path = NULL;
-
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, &path);
 
 	// Check if we are the intended destination of this reply.
 	network_get_my_address(my_address);
@@ -200,7 +202,7 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 
 	path = NULL;
 
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, &path);
 
 	// Check if we are the intended destination of this packet, and if so return 1.
 	network_get_my_address(my_address);
@@ -231,7 +233,7 @@ int data_route_fwd_to(routing_header_t header, char *packet, int packet_len){
 	return 0;
 }
 
-//Used by either the original host to find
+//Used by the original host to find
 //routes to the passed in host through bcast. Blocking call.
 void discover_route_to(network_address_t dest_address){
 	routing_header_t header;
@@ -242,7 +244,7 @@ void discover_route_to(network_address_t dest_address){
 	// It's possible that the call to discover_route_to was made shortly after a
 	// route to the destination was discovered by another thread on this machine.
 	// In this case, we just return.
-	if (hashtable_get(route_table, hash_address(dest_address), dummy_ptr) == 0) {
+	if (hashtable_get(route_table, hash_address(dest_address), (void **) &dummy_ptr) == 0) {
 		return;
 	}
 
@@ -279,7 +281,7 @@ void discover_route_fwd_to(routing_header_t header){
 	network_address_t my_address;
 	network_address_t source_address;
 
-	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, path);
+	unpack_routing_header(header, &pkt_type, dest_address, &id, &ttl, &path);
 
 	// Add ourselves to the path.
 	network_get_my_address(my_address);
@@ -304,6 +306,7 @@ void discover_route_fwd_to(routing_header_t header){
 	header = pack_routing_header(ROUTING_ROUTE_DISCOVERY, dest_address, id, ttl, path);
 	network_bcast_pkt(sizeof(struct routing_header), (char *) header, 0, NULL);
 }
+
 
 /* Performs any initialization of the miniroute layer, if required. */
 void miniroute_initialize()
@@ -331,7 +334,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 		if(raw_pkt == NULL || raw_pkt->size < sizeof(struct routing_header)) return 0;
 
 		rheader = (routing_header_t) raw_pkt->buffer;
-		unpack_routing_header(rheader, &pkt_type, dest_address, &id, &ttl, path);
+		unpack_routing_header(rheader, &pkt_type, dest_address, &id, &ttl, &path);
 
 		if(pkt_type == ROUTING_DATA){
 			int fwd_result = 0;
@@ -347,7 +350,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 				payload->size = raw_pkt->size - sizeof(struct routing_header);
 				memcpy(payload->buffer, &raw_pkt->buffer[sizeof(struct routing_header)], payload->size);
 
-				*data_pkt = payload;
+				*data_pkt_ptr = payload;
 
 				free(raw_pkt);
 			}
@@ -355,7 +358,7 @@ int miniroute_route_pkt(network_interrupt_arg_t *raw_pkt, network_interrupt_arg_
 			return fwd_result;
 		}
 		if(pkt_type == ROUTING_ROUTE_DISCOVERY){
-			discover_route_fwd_to(dest_address);
+			discover_route_fwd_to(rheader);
 			return 0;
 		}
 		if(pkt_type == ROUTING_ROUTE_REPLY){
@@ -370,6 +373,8 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
 	network_interrupt_arg_t *data_pkt;
 	char protocol;
 	int handle_payload = 0;
+
+	data_pkt = NULL;
 	
 	handle_payload = miniroute_route_pkt(raw_pkt, &data_pkt);
 

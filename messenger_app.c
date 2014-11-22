@@ -88,7 +88,7 @@ int wait_for_partner() {
 	printf("Waiting for partner...\n");
 	server_socket = minisocket_server_create(port, &error);
 
-	if (error != SOCKET_NOERROR) return 0;
+	//if (error != SOCKET_NOERROR) return 0;
 
 	printf("Connected!\n");
 
@@ -109,7 +109,7 @@ int start_chat() {
 
 	printf("Please give the hostname to connect to:\n");
 	// how many bytes to take in??
-	hostname = get_input(20);
+	hostname = get_input(50);
 	network_translate_hostname(hostname, target_address);
 	printf("Please give the port to connect to:\n");
 	target_port = atoi(get_input(5));
@@ -117,7 +117,7 @@ int start_chat() {
 	printf("Connecting to target.\n");
 	client_socket = minisocket_client_create(target_address, target_port, &error);
 
-	if (error != SOCKET_NOERROR) return 0;
+	//if (error != SOCKET_NOERROR) return 0;
 
 	printf("Connected!\n");
 

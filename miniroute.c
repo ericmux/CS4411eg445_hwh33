@@ -294,6 +294,8 @@ void discover_route_fwd_to(routing_header_t header){
 		// The source is the first address in the path.
 		unpack_address(path->hlist[0], source_address);
 		reply_route_to(source_address, path, id);
+
+		return;
 	}
 
 	// We decrement ttl. If ttl == 0, then the packet has exceeded its time to live, 

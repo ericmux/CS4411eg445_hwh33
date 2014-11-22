@@ -33,7 +33,7 @@ void trim(char *str) {
 char* get_input(int input_size) {
 	char *user_input = (char *)malloc(input_size);
 	miniterm_read(user_input, input_size);
-	//trim(user_input);
+	trim(user_input);
 	return user_input;
 }
 
@@ -139,7 +139,7 @@ int start_server(int *arg) {
 	printf("If you would like to wait for a chat partner, please enter 'wait'\n");
 	decision_made = 0;
 	while (!decision_made) {
-		user_input = get_input(4);
+		user_input = get_input(5);
 		printf("%s\n", user_input);
 		if (strncmp(user_input, "chat", 4) == 0) {
 			decision_made = 1;

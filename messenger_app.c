@@ -49,7 +49,6 @@ int send_messages(int* socket_ptr) {
 			// need to kill receive thread
 			return 0;
 		}
-		//printf("%s: %s\n", username, user_input);
 
 		minisocket_send(socket, user_input, strlen(user_input), &error);
 	}
@@ -82,15 +81,11 @@ int wait_for_partner() {
 	int port;
 	minisocket_t server_socket;
 	minisocket_error error;	
-	interrupt_level_t old_level;
-
-	old_level = set_interrupt_level(DISABLED);
 
 	printf("Please specify a port to use:\n");
 	port = atoi(get_input(5));
 
 	printf("Waiting for partner...\n");
-	set_interrupt_level(old_level);
 	server_socket = minisocket_server_create(port, &error);
 
 	if (error != SOCKET_NOERROR) return 0;

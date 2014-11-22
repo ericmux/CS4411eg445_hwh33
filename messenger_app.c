@@ -11,6 +11,8 @@
 #include "network.h"
 #include "synch.h"
 #include "minithread.h"
+#include "read.h"
+#include "interrupts.h"
 
 // This isn't actually the maximum message size; there is none. It just
 // defines the number of bytes each segment of the message contains.
@@ -30,7 +32,7 @@ void trim(char *str) {
 
 char* get_input(int input_size) {
 	char *user_input = (char *)malloc(input_size);
-	fgets(user_input, input_size+1, stdin);
+	miniterm_read(user_input, input_size);
 	trim(user_input);
 	return user_input;
 }
@@ -47,7 +49,6 @@ int send_messages(int* socket_ptr) {
 			// need to kill receive thread
 			return 0;
 		}
-		//printf("%s: %s\n", username, user_input);
 
 		minisocket_send(socket, user_input, strlen(user_input), &error);
 	}
@@ -79,7 +80,7 @@ void start_session(minisocket_t socket) {
 int wait_for_partner() {
 	int port;
 	minisocket_t server_socket;
-	minisocket_error error;
+	minisocket_error error;	
 
 	printf("Please specify a port to use:\n");
 	port = atoi(get_input(5));
@@ -133,7 +134,8 @@ int start_server(int *arg) {
 	printf("If you would like to wait for a chat partner, please enter 'wait'\n");
 	decision_made = 0;
 	while (!decision_made) {
-		user_input = get_input(4);
+		user_input = get_input(5);
+		printf("%s\n", user_input);
 		if (strncmp(user_input, "chat", 4) == 0) {
 			decision_made = 1;
 			start_chat();
@@ -149,6 +151,7 @@ int start_server(int *arg) {
 
 int main() {
 
+	miniterm_initialize();
 	minithread_system_initialize(start_server, NULL);
 
 	return 0;

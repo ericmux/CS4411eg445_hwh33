@@ -6,7 +6,11 @@
  * are copied. Otherwise, the entire input inclusive of the newline character
  * is copied into the buffer. In both cases, the byte following the last input
  * character will be set to NULL, so the buffer contents will be a valid string.
- *
+ */
+
+int miniterm_initialize();
+
+/*
  * Returns the length of the string copied into the buffer.
  */
 int miniterm_read(char* buffer, int len);

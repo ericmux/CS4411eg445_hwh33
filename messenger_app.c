@@ -12,6 +12,7 @@
 #include "synch.h"
 #include "minithread.h"
 #include "read.h"
+#include "interrupts.h"
 
 // This isn't actually the maximum message size; there is none. It just
 // defines the number of bytes each segment of the message contains.
@@ -82,10 +83,13 @@ int wait_for_partner() {
 	minisocket_t server_socket;
 	minisocket_error error;
 
+	old_level = set_interrupts_level(DISABLED);
+
 	printf("Please specify a port to use:\n");
 	port = atoi(get_input(5));
 
 	printf("Waiting for partner...\n");
+	set_interrupts_level(old_level);
 	server_socket = minisocket_server_create(port, &error);
 
 	if (error != SOCKET_NOERROR) return 0;
@@ -107,6 +111,7 @@ int start_chat() {
 	int target_port;
 	char *hostname;
 
+	old_level = set_interrupts_level(DISABLED);
 	printf("Please give the hostname to connect to:\n");
 	// how many bytes to take in??
 	hostname = get_input(20);
@@ -115,6 +120,7 @@ int start_chat() {
 	target_port = atoi(get_input(5));
 
 	printf("Connecting to target.\n");
+	set_interrupts_level(old_level);
 	client_socket = minisocket_client_create(target_address, target_port, &error);
 
 	if (error != SOCKET_NOERROR) return 0;

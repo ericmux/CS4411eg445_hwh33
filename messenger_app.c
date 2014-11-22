@@ -104,10 +104,12 @@ int start_chat() {
 	minisocket_error error;
 	network_address_t target_address;
 	int target_port;
+	char *hostname;
 
 	printf("Please give the hostname to connect to:\n");
 	// how many bytes to take in??
-	network_translate_hostname(get_input(20), target_address);
+	hostname = get_input(20);
+	network_translate_hostname(hostname, target_address);
 	printf("Please give the port to connect to:\n");
 	target_port = atoi(get_input(5));
 

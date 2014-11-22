@@ -84,13 +84,13 @@ int wait_for_partner() {
 	minisocket_error error;	
 	interrupt_level_t old_level;
 
-	old_level = set_interrupts_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 
 	printf("Please specify a port to use:\n");
 	port = atoi(get_input(5));
 
 	printf("Waiting for partner...\n");
-	set_interrupts_level(old_level);
+	set_interrupt_level(old_level);
 	server_socket = minisocket_server_create(port, &error);
 
 	if (error != SOCKET_NOERROR) return 0;
@@ -113,7 +113,7 @@ int start_chat() {
 	char *hostname;
 	interrupt_level_t old_level;
 
-	old_level = set_interrupts_level(DISABLED);
+	old_level = set_interrupt_level(DISABLED);
 	printf("Please give the hostname to connect to:\n");
 	// how many bytes to take in??
 	hostname = get_input(20);
@@ -122,7 +122,7 @@ int start_chat() {
 	target_port = atoi(get_input(5));
 
 	printf("Connecting to target.\n");
-	set_interrupts_level(old_level);
+	set_interrupt_level(old_level);
 	client_socket = minisocket_client_create(target_address, target_port, &error);
 
 	if (error != SOCKET_NOERROR) return 0;

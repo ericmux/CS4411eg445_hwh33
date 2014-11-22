@@ -103,7 +103,7 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 
 	// Now we send the packet to the first node in the path, which is at index 1.
 	unpack_address(new_path->hlist[1], dest_address);
-	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, MAX_ROUTE_LENGTH, NULL);
+	network_send_pkt(dest_address, sizeof(struct routing_header), (char *) header, 0, NULL);
 }
 
 

@@ -402,6 +402,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 
 	//Initialize network system for remote communication.
 	minisocket_initialize();
+	miniroute_initialize();
 	network_initialize(miniroute_network_handler);
 
 	set_interrupt_level(ENABLED);

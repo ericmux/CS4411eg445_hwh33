@@ -105,9 +105,10 @@ int start_chat() {
 	network_address_t target_address;
 	int target_port;
 
-	printf("Please give the target address:\n");
-	//get_input
-	printf("Please give the target port:\n");
+	printf("Please give the hostname to connect to:\n");
+	// how many bytes to take in??
+	network_translate_hostname(get_input(20), target_address);
+	printf("Please give the port to connect to:\n");
 	target_port = atoi(get_input(5));
 
 	printf("Connecting to target.\n");
@@ -124,12 +125,8 @@ int start_chat() {
 
 
 int main() {
-	char *username;
 	char *user_input;
 	int decision_made;
-
-	printf("Enter your username (10 characters or less):\n");
-	username = get_input(10);
 
 	printf("If you would like to initiate a chat, please enter 'chat'.\n");
 	printf("If you would like to wait for a chat partner, please enter 'wait'\n");

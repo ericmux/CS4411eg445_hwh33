@@ -79,7 +79,7 @@ int wait_for_partner() {
 	port = atoi(get_input(5));
 
 	printf("Waiting for partner...\n");
-	mini_socket_server_create(port, error);
+	minisocket_server_create(port, error);
 
 	if (error != NULL) return 0;
 
@@ -101,7 +101,7 @@ int start_chat() {
 	printf("Please give the target address:\n");
 	//get_input
 	printf("Please give the target port:\n");
-	target_port = (int) get_input(5);
+	target_port = atoi(get_input(5));
 
 	printf("Connecting to target.\n");
 	client_socket = minisocket_client_create(target_address, target_port, error);

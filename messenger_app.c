@@ -67,7 +67,7 @@ void receive_messages(minisocket_t socket) {
 }
 
 void start_session(minisocket_t socket) {
-	minithread_fork(send_messages, socket);
+	minithread_fork(send_messages, (int *)socket);
 	receive_messages(socket);
 }
 

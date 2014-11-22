@@ -91,6 +91,7 @@ int wait_for_partner() {
 
 	start_session(server_socket);
 
+	return 1;
 }
 
 /* Start a chat by connecting to a waiting messenger. This messenger
@@ -115,6 +116,8 @@ int start_chat() {
 	printf("Connected!\n");
 
 	start_session(client_socket);
+
+	return 1;
 }
 
 
@@ -140,4 +143,5 @@ int main() {
 		}
 	}
 
+	return 0;
 }

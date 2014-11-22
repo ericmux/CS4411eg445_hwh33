@@ -401,6 +401,7 @@ void miniroute_network_handler(network_interrupt_arg_t *raw_pkt){
  */
 int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, int data_len, char* data)
 {
+	int bytes_sent;
 	//Add network hdr in front of the hdr.
 	routing_header_t network_hdr;
 	network_address_t next_hop_addr;
@@ -436,7 +437,11 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 	network_hdr = pack_routing_header(ROUTING_DATA, next_hop_addr, current_request_id, MAX_ROUTE_LENGTH, src_dst_path);
 	set_interrupt_level(old_level);
 
-	return network_send_pkt(next_hop_addr,sizeof(struct routing_header), (char *) network_hdr, data_len + hdr_len, hdr);
+	bytes_sent = network_send_pkt(next_hop_addr,sizeof(struct routing_header), (char *) network_hdr, data_len + hdr_len, hdr);
+
+	if(bytes_sent < sizeof(struct routing_header)) return 0;
+
+	return bytes_sent - sizeof(struct routing_header);
 
 }
 

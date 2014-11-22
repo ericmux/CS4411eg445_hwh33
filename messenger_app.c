@@ -57,10 +57,12 @@ int send_messages(int* socket_ptr) {
 
 void receive_messages(minisocket_t socket) {
 	minimsg_t msg;
-	minisocket_error *error;
+	minisocket_error error;
+
+	msg = (minimsg_t) malloc(MINIMSG_MAX_MSG_SIZE);
 
 	while (1) {
-		minisocket_receive(socket, msg, MINIMSG_MAX_MSG_SIZE, error);
+		minisocket_receive(socket, msg, MINIMSG_MAX_MSG_SIZE, &error);
 
 		printf("%s\n", msg);
 	}

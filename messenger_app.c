@@ -33,7 +33,7 @@ void trim(char *str) {
 char* get_input(int input_size) {
 	char *user_input = (char *)malloc(input_size);
 	miniterm_read(user_input, input_size);
-	trim(user_input);
+	//trim(user_input);
 	return user_input;
 }
 

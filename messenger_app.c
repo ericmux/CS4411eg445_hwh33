@@ -128,6 +128,8 @@ int main() {
 	char *user_input;
 	int decision_made;
 
+	minithread_system_initialize();
+
 	printf("If you would like to initiate a chat, please enter 'chat'.\n");
 	printf("If you would like to wait for a chat partner, please enter 'wait'\n");
 	decision_made = 0;

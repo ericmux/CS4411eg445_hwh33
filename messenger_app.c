@@ -140,6 +140,7 @@ int start_server(int *arg) {
 	decision_made = 0;
 	while (!decision_made) {
 		user_input = get_input(4);
+		printf("%s\n", user_input);
 		if (strncmp(user_input, "chat", 4) == 0) {
 			decision_made = 1;
 			start_chat();

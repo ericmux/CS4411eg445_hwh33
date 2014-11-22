@@ -428,6 +428,8 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 		set_interrupt_level(old_level);
 	}
 
+	set_interrupt_level(old_level);
+
 	unpack_address(src_dst_path->hlist[1], next_hop_addr);
 
 	old_level = set_interrupt_level(DISABLED);

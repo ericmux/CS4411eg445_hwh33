@@ -37,7 +37,7 @@ char* get_input(int input_size) {
 
 int send_messages(int* socket_ptr) {
 	char *user_input;
-	minisocket_error *error;
+	minisocket_error error;
 	minisocket_t socket;
 
 	socket = (minisocket_t) socket_ptr;
@@ -49,7 +49,7 @@ int send_messages(int* socket_ptr) {
 		}
 		//printf("%s: %s\n", username, user_input);
 
-		minisocket_send(socket, user_input, strlen(user_input), error);
+		minisocket_send(socket, user_input, strlen(user_input), &error);
 	}
 
 	return 0;
@@ -79,13 +79,13 @@ void start_session(minisocket_t socket) {
 int wait_for_partner() {
 	int port;
 	minisocket_t server_socket;
-	minisocket_error *error;
+	minisocket_error error;
 
 	printf("Please specify a port to use:\n");
 	port = atoi(get_input(5));
 
 	printf("Waiting for partner...\n");
-	minisocket_server_create(port, error);
+	server_socket = minisocket_server_create(port, &error);
 
 	if (error != NULL) return 0;
 
@@ -101,7 +101,7 @@ int wait_for_partner() {
  */
 int start_chat() {
 	minisocket_t client_socket;
-	minisocket_error *error;
+	minisocket_error error;
 	network_address_t target_address;
 	int target_port;
 
@@ -111,7 +111,7 @@ int start_chat() {
 	target_port = atoi(get_input(5));
 
 	printf("Connecting to target.\n");
-	client_socket = minisocket_client_create(target_address, target_port, error);
+	client_socket = minisocket_client_create(target_address, target_port, &error);
 
 	if (error != NULL) return 0;
 

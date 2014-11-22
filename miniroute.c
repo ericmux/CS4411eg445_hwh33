@@ -140,7 +140,7 @@ void reply_route_fwd_to(routing_header_t header){
 
 		// Get the end of the route (the first entry in the path) and put the route in
 		// the hash table.
-		pack_address(path->hlist[0], source_address);
+		unpack_address(path->hlist[0], source_address);
 		route_table = hashtable_put(route_table, hash_address(source_address), path);
 		
 		// TODO: set an alarm to remove the path from the table when it becomes stale.
@@ -424,6 +424,7 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 			return -1;
 		}
 
+		set_interrupt_level(old_level);
 	}
 
 	unpack_address(src_dst_path->hlist[1], next_hop_addr);

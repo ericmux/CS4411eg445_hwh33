@@ -438,9 +438,15 @@ int miniroute_send_pkt(network_address_t dest_address, int hdr_len, char* hdr, i
 	network_hdr = pack_routing_header(ROUTING_DATA, next_hop_addr, current_request_id, MAX_ROUTE_LENGTH, src_dst_path);
 	set_interrupt_level(old_level);
 
-	payload = (char *) malloc(sizeof(data_len + hdr_len));
-	memcpy(payload, hdr, hdr_len);
-	memcpy(&payload[hdr_len], data, data_len);
+	payload = NULL;
+
+	if(hdr_len > 0){
+		payload = (char *) malloc(sizeof(data_len + hdr_len));
+		memcpy(payload, hdr, hdr_len);
+		if(data_len > 0){
+			memcpy(&payload[hdr_len], data, data_len);
+		}
+	}
 
 	bytes_sent = network_send_pkt(next_hop_addr,sizeof(struct routing_header), (char *) network_hdr, data_len + hdr_len, payload);
 

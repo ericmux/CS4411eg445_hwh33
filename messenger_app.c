@@ -123,13 +123,7 @@ int start_chat() {
 	return 1;
 }
 
-
-int main() {
-	char *user_input;
-	int decision_made;
-
-	minithread_system_initialize();
-
+void start_server(int *arg) {
 	printf("If you would like to initiate a chat, please enter 'chat'.\n");
 	printf("If you would like to wait for a chat partner, please enter 'wait'\n");
 	decision_made = 0;
@@ -143,6 +137,16 @@ int main() {
 			wait_for_partner();
 		}
 	}
+}
+
+
+int main() {
+	char *user_input;
+	int decision_made;
+
+	minithread_system_initialize(start_server, NULL);
+
+	
 
 	return 0;
 }

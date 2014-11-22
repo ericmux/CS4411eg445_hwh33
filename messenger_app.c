@@ -87,7 +87,7 @@ int wait_for_partner() {
 	printf("Waiting for partner...\n");
 	server_socket = minisocket_server_create(port, &error);
 
-	if (error != NULL) return 0;
+	if (error != SOCKET_NOERROR) return 0;
 
 	printf("Connected!\n");
 
@@ -113,7 +113,7 @@ int start_chat() {
 	printf("Connecting to target.\n");
 	client_socket = minisocket_client_create(target_address, target_port, &error);
 
-	if (error != NULL) return 0;
+	if (error != SOCKET_NOERROR) return 0;
 
 	printf("Connected!\n");
 

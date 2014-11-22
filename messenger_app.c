@@ -81,7 +81,8 @@ void start_session(minisocket_t socket) {
 int wait_for_partner() {
 	int port;
 	minisocket_t server_socket;
-	minisocket_error error;
+	minisocket_error error;	
+	interrupt_level_t old_level;
 
 	old_level = set_interrupts_level(DISABLED);
 
@@ -110,6 +111,7 @@ int start_chat() {
 	network_address_t target_address;
 	int target_port;
 	char *hostname;
+	interrupt_level_t old_level;
 
 	old_level = set_interrupts_level(DISABLED);
 	printf("Please give the hostname to connect to:\n");

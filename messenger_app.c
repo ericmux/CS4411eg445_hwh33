@@ -35,11 +35,12 @@ char* get_input(int input_size) {
 	return user_input;
 }
 
-void send_messages(int* socket) {
+void send_messages(int* socket_ptr) {
 	char *user_input;
 	minisocket_error *error;
+	minisocket_t socket;
 
-	socket = (minisocket_t) socket;
+	socket = (minisocket_t) socket_ptr;
 	while (1) {
 		user_input = get_input(MSG_SIZE);
 		if (user_input[0] == '.' && user_input[1] == '\0') {

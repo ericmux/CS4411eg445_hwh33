@@ -158,6 +158,7 @@ int start_server(int *arg) {
 
 int main() {
 
+	miniterm_initialize();
 	minithread_system_initialize(start_server, NULL);
 
 	return 0;

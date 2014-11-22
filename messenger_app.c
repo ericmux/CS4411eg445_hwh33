@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "miniroute.h"
+#include "minisocket.h"
 #include "network.h"
 #include "synch.h"
 #include "minithread.h"
@@ -75,7 +75,7 @@ int wait_for_partner() {
 	minisocket_t server_socket;
 	minisocket_error *error;
 
-	printf("Please specify a port:\n");
+	printf("Please specify a port to use:\n");
 	port = (int) get_input(5);
 
 	printf("Waiting for partner...\n");

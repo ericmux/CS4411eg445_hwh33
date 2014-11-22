@@ -98,6 +98,7 @@ void reply_route_to(network_address_t src_address, path_t discovery_path, int id
 		unpack_address(discovery_path->hlist[i], dummy);
 		pack_address(new_path->hlist[j], dummy);
 	}
+	new_path->len = discovery_path->len;
 
 	header = pack_routing_header(ROUTING_ROUTE_REPLY, src_address, id, 0, new_path);
 

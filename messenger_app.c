@@ -123,7 +123,7 @@ int start_chat() {
 	return 1;
 }
 
-void start_server(int *arg) {
+int start_server(int *arg) {
 	char *user_input;
 	int decision_made;
 
@@ -140,11 +140,13 @@ void start_server(int *arg) {
 			wait_for_partner();
 		}
 	}
+
+	return 0;
 }
 
 
 int main() {
-	
+
 	minithread_system_initialize(start_server, NULL);
 
 	return 0;

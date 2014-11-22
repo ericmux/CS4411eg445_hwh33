@@ -35,7 +35,7 @@ char* get_input(int input_size) {
 	return user_input;
 }
 
-void send_messages(int* socket_ptr) {
+int send_messages(int* socket_ptr) {
 	char *user_input;
 	minisocket_error *error;
 	minisocket_t socket;
@@ -45,12 +45,14 @@ void send_messages(int* socket_ptr) {
 		user_input = get_input(MSG_SIZE);
 		if (user_input[0] == '.' && user_input[1] == '\0') {
 			// need to kill receive thread
-			return;
+			return 0;
 		}
 		//printf("%s: %s\n", username, user_input);
 
 		minisocket_send(socket, user_input, strlen(user_input), error);
 	}
+
+	return 0;
 }
 
 void receive_messages(minisocket_t socket) {

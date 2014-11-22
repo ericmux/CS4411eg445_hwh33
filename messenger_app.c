@@ -40,7 +40,7 @@ void send_messages(minisocket_t socket) {
 	minisocket_error *error;
 
 	while (1) {
-		user_input = get_input();
+		user_input = get_input(MSG_SIZE);
 		if (user_input[0] == '.' && user_input[1] == '\0') {
 			// need to kill receive thread
 			return;
@@ -63,7 +63,7 @@ void receive_messages(minisocket_t socket) {
 }
 
 void start_session(minisocket_t socket) {
-	minithread_fork(send_messages, NULL);
+	minithread_fork(send_messages, socket);
 	receive_messages(socket);
 }
 
@@ -76,7 +76,7 @@ int wait_for_partner() {
 	minisocket_error *error;
 
 	printf("Please specify a port to use:\n");
-	port = (int) get_input(5);
+	port = atoi(get_input(5));
 
 	printf("Waiting for partner...\n");
 	mini_socket_server_create(port, error);
@@ -101,7 +101,7 @@ int start_chat() {
 	printf("Please give the target address:\n");
 	//get_input
 	printf("Please give the target port:\n");
-	port = (int) get_input(5);
+	target_port = (int) get_input(5);
 
 	printf("Connecting to target.\n");
 	client_socket = minisocket_client_create(target_address, target_port, error);
@@ -117,8 +117,6 @@ int start_chat() {
 int main() {
 	char *username;
 	char *user_input;
-	char *recipient;
-	int username_len;
 	int decision_made;
 
 	printf("Enter your username (10 characters or less):\n");

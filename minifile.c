@@ -5,6 +5,12 @@
 #include "minifile_utils.h"
 #include "disk.h"
 
+#define INODE_FRACTION_OF_DISK 0.1
+#define DIRECT_PTRS_PER_INODE 11
+#define MAX_CHARS_IN_FNAME 256
+#define INODE_MAPS_PER_BLOCK 15
+#define DIRECT_BLOCKS_PER_INDIRECT 1022
+
 typedef enum {
 	FILE = 0,
 	DIRECTORY = 1
@@ -20,24 +26,77 @@ struct minifile {
   int current_num_rws;
 };
 
-struct inode {
-	int inode_type;
-	int inode_number;
-	int block_number;
-	inode *next_free_inode
-	int blocknums[12]; // the last element is the blocknum of the indirect block
-};
-
 typedef struct superblock {
-	int first_free_inode_datablock;
-	int first_free_datablock;
-	int root_inode_datablock;
+	union {
+
+		struct {
+			char magic_number[4];
+			char disk_size[4];
+
+			char root_inode[4];
+
+			char first_free_inode[4];
+			char first_free_datablock[4];
+		} data;
+
+		char padding[DISK_BLOCK_SIZE]
+	}
 } superblock_t;
+
+struct inode {
+	union {
+
+		struct {
+			char inode_type;
+			char size[4];
+			
+			char direct_ptrs[DIRECT_PTRS_PER_INODE][4];
+			char indirect_ptr[4];
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+	}
+};
 
 // A mapping of a single file or directory to an inode number.
 struct inode_mapping {
-	char filename[256];
-	int inode_number;
+	char filename[MAX_CHARS_IN_FNAME];
+	char inode_number[4];
+};
+
+struct directory_data_block {
+	union {
+
+		struct {
+			// There are MAX_CHARS_IN_FNAME + 4 bytes in an inode mapping.
+			char inode_map[INODE_MAPS_PER_BLOCK][MAX_CHARS_IN_FNAME + 4];
+			char num_maps[4];
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+	}
+};
+
+struct free_data_block {
+	union {
+
+		char next_free_block[4];
+
+		char padding [DISK_BLOCK_SIZE];
+	}
+};
+
+struct indirect_data_block {
+	union {
+
+		struct {
+			char direct_blocks[DIRECT_BLOCKS_PER_INDIRECT][4];
+			char indirect_ptr[4];
+			char num_direct_blocks[4];
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+	}
 };
 
 disk_t *disk;
@@ -54,6 +113,8 @@ inode *current_inode;
 int current_inode_number;
 
 int current_datablock_number;
+
+hashtable_t thread_cd_map
 
 // called by mkfs?
 void minifile_init() {
@@ -90,8 +151,6 @@ minifile_t minifile_creat(char *filename){
 	next_inode = current_inode->next_free_inode;
 	next_inode->inode_type = FILE;
 	next_inode->next_free_inode = //??
-
-
 
 }
 

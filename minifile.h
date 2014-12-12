@@ -24,6 +24,11 @@ typedef struct minifile* minifile_t;
  *     All functions should return NULL or -1 to signal an error.
  */
 
+/* Initializes the minifile system from input_disk. Returns 0 on 
+ * success and -1 on error.
+ */
+int minifile_init(dist_t *input_disk);
+
 /* 
  * Create a file. If the file exists its contents are truncated.
  * If the file doesn't exist it is created in the current directory.

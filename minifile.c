@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "hashtable.h"
 #include "minifile.h"
 #include "disk.h"
 #include "synch.h"

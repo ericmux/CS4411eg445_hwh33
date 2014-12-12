@@ -147,6 +147,10 @@ semaphore_t *metadata_locks;
 // Maps process IDs to current working directories represented by dir_data structures.
 hashtable_t thread_cd_map;
 
+
+//Include util functions.
+#include "minifile_utils.c"
+
 int minifile_init(disk_t *input_disk) {
 	// int INIT_NUM_BUCKETS = 10;
 

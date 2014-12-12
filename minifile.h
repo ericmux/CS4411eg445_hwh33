@@ -1,6 +1,7 @@
 #ifndef __MINIFILE_H__
 #define __MINIFILE_H__
 
+#include "disk.h"
 #include "defs.h"
 
 /*

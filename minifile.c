@@ -43,7 +43,7 @@ typedef struct superblock {
 
 		char padding[DISK_BLOCK_SIZE]
 
-	}
+	};
 } superblock_t;
 
 struct inode {

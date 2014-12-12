@@ -41,12 +41,12 @@ typedef struct superblock {
 			int first_free_datablock;
 		} data;
 
-		char padding[DISK_BLOCK_SIZE]
+		char padding[DISK_BLOCK_SIZE];
 
 	};
 } superblock_t;
 
-struct inode {
+typedef struct inode {
 	union {
 
 		struct {
@@ -60,9 +60,9 @@ struct inode {
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} inode_t;
 
-struct free_inode {
+typedef struct free_inode {
 	union {
 
 		int next_free_inode;
@@ -70,28 +70,28 @@ struct free_inode {
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} free_inode_t;
 
 // A mapping of a single file or directory to an inode number.
-struct inode_mapping {
+typedef struct inode_mapping {
 	char filename[MAX_CHARS_IN_FNAME];
 	int inode_number;
-};
+} inode_mapping_t;
 
-struct directory_data_block {
+typedef struct directory_data_block {
 	union {
 
 		struct {
-			inode_mapping inode_map[INODE_MAPS_PER_BLOCK];
+			inode_mapping_t inode_map[INODE_MAPS_PER_BLOCK];
 			int num_maps;
 		} data;
 
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} directory_data_block_t;
 
-struct free_data_block {
+typedef struct free_data_block {
 	union {
 
 		int next_free_block;
@@ -99,9 +99,9 @@ struct free_data_block {
 		char padding [DISK_BLOCK_SIZE];
 
 	};
-};
+} free_data_block_t;
 
-struct indirect_data_block {
+typedef struct indirect_data_block {
 	union {
 
 		struct {
@@ -113,7 +113,7 @@ struct indirect_data_block {
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} indirect_data_block_t;
 
 disk_t *disk;
 

@@ -21,8 +21,8 @@ typedef enum {
 } disk_request_return_val;
 
 typedef enum {
-	FILE = 0,
-	DIRECTORY = 1
+	FILE_INODE 		= 0,
+	DIRECTORY_INODE = 1
 } inode_type_t;
 
 /*
@@ -52,7 +52,7 @@ typedef struct superblock {
 
 		char padding[DISK_BLOCK_SIZE]
 
-	}
+	};
 } superblock_t;
 
 struct inode {
@@ -68,7 +68,7 @@ struct inode {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 // A mapping of a single file or directory to an inode number.
@@ -87,7 +87,7 @@ struct directory_data_block {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 struct free_block {
@@ -97,7 +97,7 @@ struct free_block {
 
 		char padding [DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 struct indirect_data_block {
@@ -111,7 +111,7 @@ struct indirect_data_block {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 // Represents important data about the directory a process is currently in.

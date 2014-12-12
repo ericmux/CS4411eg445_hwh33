@@ -46,7 +46,7 @@ unsigned int increment_op_counter(unsigned int op_count) {
  * 'name' can refer to a file or directory, but it must
  * be a direct child of the directory to which dir_inode corresponds.
  */
-int get_inode_num(inode *dir_inode, char *name) {
+int get_inode_num(inode_t *dir_inode, char *name) {
 	// Implement me
 	return -1;
 }

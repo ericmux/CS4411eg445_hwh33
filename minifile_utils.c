@@ -31,7 +31,7 @@ char* get_absolute_path(char *filename, char *current_directory) {
 /* Strips off all but the local filename. */
 char* get_local_name(char *filename) {
 	// Implement me
-	return 'implement me'
+	return NULL;
 }
 
 /* Increments op_counter and handles rollover. */

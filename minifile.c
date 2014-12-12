@@ -14,8 +14,8 @@
 #define NULL_PTR -1
 
 typedef enum {
-	FILE = 0,
-	DIRECTORY = 1
+	FILE_INODE 		= 0,
+	DIRECTORY_INODE = 1
 } inode_type_t;
 
 /*
@@ -59,7 +59,7 @@ struct inode {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 struct free_inode {
@@ -69,7 +69,7 @@ struct free_inode {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 // A mapping of a single file or directory to an inode number.
@@ -88,7 +88,7 @@ struct directory_data_block {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 struct free_data_block {
@@ -98,7 +98,7 @@ struct free_data_block {
 
 		char padding [DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 struct indirect_data_block {
@@ -112,7 +112,7 @@ struct indirect_data_block {
 
 		char padding[DISK_BLOCK_SIZE];
 
-	}
+	};
 };
 
 disk_t *disk;

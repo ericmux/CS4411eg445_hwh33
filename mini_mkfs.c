@@ -8,7 +8,11 @@ disk_t *fresh_disk;
 
 semaphore_t disk_request_sema;
 
-void mkfs_disk_handler(disk_t* disk, disk_request_t disk_request, disk_reply_t disk_reply){
+void mkfs_disk_handler(void *interrupt_arg){
+
+	disk_interrupt_arg_t* disk_interrupt;
+	disk_interrupt = (disk_interrupt *) interrupt_arg; 
+
 	kprintf("Request received!\n");
 
 }
@@ -23,7 +27,7 @@ void mkfs(int dsk_siz){
 
 	// Setting disk's global variables.
 	use_existing_disk = 0;
-	strcpy(disk_name, DISK_NAME);
+	disk_name = DISK_NAME;
 	disk_flags = DISK_READWRITE;
 	disk_size = dsk_siz;
 

@@ -11,7 +11,7 @@ semaphore_t disk_request_sema;
 void mkfs_disk_handler(void *interrupt_arg){
 
 	disk_interrupt_arg_t* disk_interrupt;
-	disk_interrupt = (disk_interrupt *) interrupt_arg; 
+	disk_interrupt = (disk_interrupt_arg_t *) interrupt_arg; 
 
 	kprintf("Request received!\n");
 

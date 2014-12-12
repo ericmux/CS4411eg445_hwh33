@@ -15,8 +15,6 @@
 int mkfs_thread(int *arg){
 
 	int dsk_siz;
-	char cmd[BUFFER_SIZE];
-
 	dsk_siz = *arg;
 
 	kprintf("mkfs with %d blocks.\n", dsk_siz);

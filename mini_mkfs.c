@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "mkfs.h"
+#include "mini_mkfs.h"
 #include "synch.h"
 
 

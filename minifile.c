@@ -70,7 +70,7 @@ struct free_inode {
 		char padding[DISK_BLOCK_SIZE];
 
 	}
-}
+};
 
 // A mapping of a single file or directory to an inode number.
 struct inode_mapping {

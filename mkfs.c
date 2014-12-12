@@ -9,12 +9,15 @@
 #include "mini_mkfs.h"
 
 #define BUFFER_SIZE 256
+#define DEFAULT_MINIFILESYSTEM_SIZE 100
 
 
 int mkfs_thread(int *arg){
 
 	int dsk_siz;
 	char cmd[BUFFER_SIZE];
+
+	dsk_siz = *arg;
 
 	gets(cmd);
 	sscanf(cmd,"%d",&dsk_siz);
@@ -29,6 +32,16 @@ int mkfs_thread(int *arg){
 
 
 int main(int argc, char** argv) {
-    minithread_system_initialize(mkfs_thread, NULL);
+
+	int *dsk_siz_ptr;
+	dsk_siz_ptr = (int *) malloc(sizeof(int));
+
+	if(argc > 1){
+		sscanf(argv[1], "%d", dsk_siz_ptr);
+	} else {
+		*dsk_siz_ptr = DEFAULT_MINIFILESYSTEM_SIZE;
+	}
+
+    minithread_system_initialize(mkfs_thread, dsk_siz_ptr);
     return -1;
 }

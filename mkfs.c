@@ -19,9 +19,6 @@ int mkfs_thread(int *arg){
 
 	dsk_siz = *arg;
 
-	gets(cmd);
-	sscanf(cmd,"%d",&dsk_siz);
-
 	kprintf("mkfs with %d blocks.\n", dsk_siz);
 
 	mkfs(dsk_siz);

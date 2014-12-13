@@ -125,6 +125,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 	indirect_data_block_t *current_indirect_block;
 	directory_data_block_t *current_dir_block;
 	char *current_inode_name;
+	int inode_number;
 	
 	int request_result;
 	int total_mappings;

@@ -5,14 +5,6 @@
 #include "disk.h"
 #include "synch.h"
 
-#define SUPERBLOCK_MAGIC_NUM 8675309
-#define INODE_FRACTION_OF_DISK 0.1
-#define DIRECT_PTRS_PER_INODE 11 // should be able to have more
-#define MAX_CHARS_IN_FNAME 256
-#define INODE_MAPS_PER_BLOCK 15
-#define DIRECT_BLOCKS_PER_INDIRECT 1023
-#define NULL_PTR -1
-#define MINIMUM_DISK_SIZE 20
 
 // Return values from disk requests.
 typedef enum {

@@ -67,7 +67,6 @@ void minifile_disk_handler(void *interrupt_arg){
 int minifile_init(disk_t *input_disk) {
 
 	int i;
-	int num_blocks;
 	int request_result;
 
 	//Initialize disk, using the existing one provided by mkfs.
@@ -88,7 +87,7 @@ int minifile_init(disk_t *input_disk) {
 		semaphore_initialize(block_locks[i],1);
 
 		block_op_finished_semas[i] = semaphore_create();
-		semaphore_initialize(block_op_finished_semas, 0);
+		semaphore_initialize(block_op_finished_semas[i], 0);
 	}
 
 	//Initialize thread directory map.

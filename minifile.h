@@ -114,7 +114,10 @@ typedef struct free_block {
 typedef struct dir_data {
 	char *absolute_path;
 	int inode_number;
-} dir_data;
+} dir_data_t;
+
+// Pointer to disk.
+disk_t *minifile_disk;
 
 /* 
  * General requiremens:

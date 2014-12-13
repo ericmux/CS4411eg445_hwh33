@@ -5,6 +5,7 @@
 #include "disk.h"
 #include "synch.h"
 
+#define MAX_NUM_THREADS  0xffff
 
 // Return values from disk requests.
 typedef enum {
@@ -29,8 +30,6 @@ typedef struct minifile {
 	int current_num_rws;
 } minifile;
 
-// Pointer to disk.
-disk_t *disk;
 
 // Version of superblock in memory.
 superblock_t superblock;
@@ -43,7 +42,7 @@ semaphore_t op_count_mutex;
 semaphore_t *metadata_locks;
 
 // Maps process IDs to current working directories represented by dir_data structures.
-char *thread_cd_map[100];
+dir_data_t thread_cd_map[MAX_NUM_THREADS];
 
 
 //Include util functions.

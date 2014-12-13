@@ -10,6 +10,6 @@
 #define DISK_NAME "MINIFILESYSTEM"
 
 /*
-* Formats the filesystem, creating a disk with disk_size blocks named DISK_NAME.
+* Formats the filesystem, creating a disk with dsk_siz blocks named DISK_NAME.
 */
 void mkfs(int dsk_siz);

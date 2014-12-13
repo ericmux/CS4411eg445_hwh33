@@ -3,9 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-
 #include "minithread.h"
-#include "synch.h"
 #include "mini_mkfs.h"
 
 #define BUFFER_SIZE 256

@@ -15,6 +15,95 @@
 
 typedef struct minifile* minifile_t;
 
+//Block definitions.
+
+//Superblock: Starting point in disk for the FS.
+typedef struct superblock {
+	union {
+
+		struct {
+			int magic_number;
+			int disk_size;
+
+			int root_inode;
+
+			int first_free_inode;
+			int first_free_data_block;
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+
+	};
+} superblock_t;
+
+//A block representing either a file or a directory.
+typedef struct inode {
+	union {
+
+		struct {
+			int inode_type;
+			int size;
+		
+			int indirect_ptr;
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+
+	};
+} inode_t;
+
+// A mapping of a single file or directory to an inode number.
+typedef struct inode_mapping {
+	char filename[MAX_CHARS_IN_FNAME];
+	int inode_number;
+} inode_mapping_t;
+
+//A data block containing a mapping between name and child inodes in the parent directory.
+typedef struct directory_data_block {
+	union {
+
+		struct {
+			inode_mapping_t inode_map[INODE_MAPS_PER_BLOCK];
+			int num_maps;
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+
+	};
+} directory_data_block_t;
+
+//A data block containing a mapping to the rest of the file and another indirect block.
+typedef struct indirect_data_block {
+	union {
+
+		struct {
+			int direct_ptrs[DIRECT_BLOCKS_PER_INDIRECT];
+			int indirect_ptr;
+		} data;
+
+		char padding[DISK_BLOCK_SIZE];
+
+	};
+} indirect_data_block_t;
+
+//A block interepreted as free by the FS to overwrite with either data or make an inode out of it.
+typedef struct free_block {
+	union {
+
+		int next_free_block;
+
+		char padding [DISK_BLOCK_SIZE];
+
+	};
+} free_block_t;
+
+
+// Represents important data about the directory a process is currently in.
+typedef struct dir_data {
+	char *absolute_path;
+	int inode_number;
+} dir_data;
+
 /* 
  * General requiremens:
  *     If filenames and/or dirnames begin with a "/" they are absolute
@@ -118,6 +207,15 @@ char **minifile_ls(char *path);
  * directory. The caller has the responsibility to free up this buffer when done.
  */
 char* minifile_pwd(void);
+
+
+//Block API.
+
+/*
+* Creates a superblock with the proper magic number.
+*/
+superblock_t *minifile_create_superblock(int dsk_siz);
+
 
 
 #endif /* __MINIFILE_H__ */

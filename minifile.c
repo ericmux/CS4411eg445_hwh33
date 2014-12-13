@@ -12,6 +12,7 @@
 #define INODE_MAPS_PER_BLOCK 15
 #define DIRECT_BLOCKS_PER_INDIRECT 1023
 #define NULL_PTR -1
+#define MINIMUM_DISK_SIZE 20
 
 // Return values from disk requests.
 typedef enum {
@@ -35,89 +36,6 @@ typedef struct minifile {
 	int cursor_position;
 	int current_num_rws;
 } minifile;
-
-typedef struct superblock {
-	union {
-
-		struct {
-			int magic_number;
-			int disk_size;
-			unsigned int last_op_written;
-
-			int root_inode;
-
-			int first_free_inode;
-			int first_free_datablock;
-		} data;
-
-		char padding[DISK_BLOCK_SIZE];
-
-	};
-} superblock_t;
-
-typedef struct inode {
-	union {
-
-		struct {
-			int inode_type;
-			int size;
-		
-			int indirect_ptr;
-		} data;
-
-		char padding[DISK_BLOCK_SIZE];
-
-	};
-} inode_t;
-
-// A mapping of a single file or directory to an inode number.
-typedef struct inode_mapping {
-	char filename[MAX_CHARS_IN_FNAME];
-	int inode_number;
-} inode_mapping_t;
-
-typedef struct directory_data_block {
-	union {
-
-		struct {
-			inode_mapping_t inode_map[INODE_MAPS_PER_BLOCK];
-			int num_maps;
-		} data;
-
-		char padding[DISK_BLOCK_SIZE];
-
-	};
-} directory_data_block_t;
-
-typedef struct indirect_data_block {
-	union {
-
-		struct {
-			int direct_ptrs[DIRECT_BLOCKS_PER_INDIRECT];
-			int indirect_ptr;
-		} data;
-
-		char padding[DISK_BLOCK_SIZE];
-
-	};
-} indirect_data_block_t;
-
-typedef struct free_block {
-	union {
-
-		int next_free_block;
-
-		char padding [DISK_BLOCK_SIZE];
-
-	};
-} free_block_t;
-
-
-// Represents important data about the directory a process is currently in.
-typedef struct dir_data {
-	char *absolute_path;
-	int inode_number;
-} dir_data;
 
 // Pointer to disk.
 disk_t *disk;
@@ -269,4 +187,29 @@ char **minifile_ls(char *path){
 char* minifile_pwd(void){
 
 	return NULL;
+}
+
+
+superblock_t *minifile_create_superblock(int dsk_siz){
+
+	superblock_t superblock;
+	int first_free_data_block; 
+
+	if(dsk_siz < MINIMUM_DISK_SIZE){
+		kprintf("Chosen disk size less than minimum of %d. Fail.", MINIMUM_DISK_SIZE);
+		return NULL;
+	}
+
+	superblock = (superblock_t *) malloc(sizeof(superblock_t));
+	superblock->magic_number = SUPERBLOCK_MAGIC_NUM;
+	superblock->disk_size = dsk_siz;
+	superblock->root_inode = 1;
+	superblock->first_free_inode = 2;
+
+	first_free_data_block = ((int)INODE_FRACTION_OF_DISK*dsk_siz) + 1;
+
+	superblock->first_free_data_block = first_free_data_block;
+
+	return superblock;
+
 }

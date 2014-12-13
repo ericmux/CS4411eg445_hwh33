@@ -72,7 +72,6 @@ int minifile_init(disk_t *input_disk) {
 
 	int i;
 	int request_result;
-	int old_level;
 
 	//Initialize disk, using the existing one provided by mkfs.
 	use_existing_disk = 1;

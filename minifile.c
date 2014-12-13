@@ -43,7 +43,7 @@ semaphore_t op_count_mutex;
 semaphore_t *metadata_locks;
 
 // Maps process IDs to current working directories represented by dir_data structures.
-hashtable_t thread_cd_map;
+char *thread_cd_map[100];
 
 
 //Include util functions.

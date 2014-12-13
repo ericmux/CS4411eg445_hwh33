@@ -13,7 +13,8 @@
  */
 char* get_absolute_path(char *filename, char *parent_path) {
 
-	char *current_directory; //get it from thread_cd_map.
+	char *current_directory; 
+	strcpy(current_directory, thread_cd_map[minithread_id()]);
 
 	if (filename[0] != '/') {
 		char *path_separator = "/";

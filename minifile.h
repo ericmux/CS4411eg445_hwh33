@@ -50,9 +50,12 @@ typedef struct inode {
 	union {
 
 		struct {
-			int inode_type;
+			int idx;
+			int type;
 			int size;
+			int parent_inode;
 		
+			int direct_ptrs[DIRECT_BLOCKS_PER_INODE];
 			int indirect_ptr;
 		} data;
 
@@ -224,6 +227,11 @@ char* minifile_pwd(void);
 * Creates a superblock with the proper magic number.
 */
 superblock_t *minifile_create_superblock(int dsk_siz);
+
+/*
+* Creates the root inode with no data blocks.
+*/
+inode_t *minifile_create_root_inode();
 
 
 

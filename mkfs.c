@@ -15,7 +15,7 @@ int mkfs_thread(int *arg){
 	int dsk_siz;
 	dsk_siz = *arg;
 
-	kprintf("mkfs with %d blocks.\n", dsk_siz);
+	kprintf("Initiating mkfs with %d blocks.\n", dsk_siz);
 
 	mkfs(dsk_siz);
 

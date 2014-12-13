@@ -207,3 +207,17 @@ superblock_t *minifile_create_superblock(int dsk_siz){
 	return superblock;
 
 }
+
+inode_t *minifile_create_root_inode(){
+	inode_t *root_inode;
+
+	root_inode = (inode_t *) malloc(sizeof(inode_t));
+	root_inode->data.idx = 1;
+	root_inode->data.type = DIRECTORY_INODE;
+	root_inode->data.size = 0;
+	root_inode->data.parent_inode = NULL_PTR;
+	memset(root_inode->data.direct_ptrs, NULL_PTR, DIRECT_PTRS_PER_INODE);
+	root_inode->data.indirect_ptr = NULL_PTR;
+
+	return root_inode;
+}

@@ -26,6 +26,8 @@ void mkfs(int dsk_siz){
 	superblock_t *superblock;
 	superblock_t *superblock_in_disk;
 
+	inode_t *root_inode;
+
 	disk_request_sema = semaphore_create();
 	semaphore_initialize(disk_request_sema,0);
 
@@ -48,19 +50,22 @@ void mkfs(int dsk_siz){
 	superblock = minifile_create_superblock(disk_size);
 	disk_write_block(fresh_disk,0, (char *) superblock);
 
-	kprintf("Creating superblock... ");
+	kprintf("Writing superblock... ");
 	semaphore_P(disk_request_sema);
-
 	if(disk_reply != DISK_REPLY_OK){
-		kprintf("Superblock write din't work. Fail.\n");
+		kprintf("Superblock write failed. Fail.\n");
 		return;
 	}
 	kprintf("OK.\n");
 
-	//Read from disk just to make sure.
+	//Read from disk just to make sure the superblock in disk matches what we have.
 	superblock_in_disk = (superblock_t *) malloc(sizeof(superblock_t));
 	disk_read_block(fresh_disk,0,(char *) superblock_in_disk);
 	semaphore_P(disk_request_sema);
+	if(disk_reply != DISK_REPLY_OK){
+		kprintf("Read failed. Fail.\n");
+		return;
+	}
 
 	if(superblock_in_disk->data.magic_number 				!= superblock->data.magic_number 
 		|| superblock_in_disk->data.disk_size				!= superblock->data.disk_size
@@ -70,6 +75,18 @@ void mkfs(int dsk_siz){
 		return;
 	}
 	kprintf("Disk and memory superblock match.\n");
+
+	//Create root inode.
+	root_inode = minifile_create_root_inode();
+	disk_write_block(fresh_disk,root_inode->data.idx,(char *) root_inode);
+
+	kprintf("Writing root inode...");
+	semaphore_P(disk_request_sema);
+	if(disk_reply != DISK_REPLY_OK){
+		kprintf("Root inode write failed. Fail.\n");
+		return;
+	}
+	kprintf("OK.\n");	
 
 
 

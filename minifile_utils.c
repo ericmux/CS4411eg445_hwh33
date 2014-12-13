@@ -161,7 +161,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 			// Load the current directory block.
 			request_result = reliable_read_block(
-				minifile_disk, current_indirect_block->direct_ptr[i], (char *)current_dir_block);
+				minifile_disk, current_indirect_block->direct_ptrs[i], (char *)current_dir_block);
 			if (request_result == -1) {
 				// If there was an error loading that block, we have to quit.
 				return -1;
@@ -188,7 +188,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 		// Load the next indirect block.
 		request_result = reliable_read_block(
-			minifile_disk, current_indirect_block->indirect_ptr, (char *)current_indirect_block);
+			minifile_disk, current_indirect_block->data.indirect_ptr, (char *)current_indirect_block);
 		if (request_result == -1) {
 			// If there was an error loading that block, we have to quit.
 			free(current_indirect_block);
@@ -211,7 +211,7 @@ int get_inode_num(char *absolute_path) {
 	char **splits;
 	char *filename;
 	int i;
-	inode *current_inode;
+	inode_t *current_inode;
 	int current_inode_number;
 	int request_result;
 

@@ -122,13 +122,13 @@ int minifile_init(disk_t *input_disk) {
 }
 
 minifile_t minifile_creat(char *filename){
-	char *parent_path;
-	inode *new_inode;
-	int file_inode_number;
-	minifile_t new_minifile;
+	// char *parent_path;
+	// inode_t *new_inode;
+	// int file_inode_number;
+	// minifile_t new_minifile;
 
-	int i;
-	int request_result;
+	// int i;
+	// int request_result;
 
 	// // Get the file's parent directory.
 	// parent_path = get_parent_path(filename, thread_cd_map);

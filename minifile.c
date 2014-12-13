@@ -175,6 +175,8 @@ minifile_t minifile_creat(char *filename){
 	int i;
 	int request_result;
 
+	// XXX: WORKING DIRECTORY IS NOT ALWAYS PARENT OF FILE!!
+
 	// Get the process's current working directory.
 	hashtable_get(thread_cd_map, minithread_id(), &cd_data);
 

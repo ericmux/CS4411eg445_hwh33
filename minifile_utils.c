@@ -24,6 +24,7 @@ char* get_absolute_path(char *filename, char *current_directory) {
 
 char* get_local_name(char *filename) {
 	// Implement me
+	// NOTE: maybe this should take in an absolute path?
 	return 'implement me'
 }
 

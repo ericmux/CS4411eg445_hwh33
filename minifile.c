@@ -7,6 +7,7 @@
 #include "interrupts.h"
 
 #define MAX_NUM_THREADS  0xffff
+#define ROOT_INODE_NUM 1
 
 // Return values from disk requests.
 typedef enum {
@@ -122,7 +123,7 @@ int minifile_init(disk_t *input_disk) {
 
 minifile_t minifile_creat(char *filename){
 	// char *parent_path;
-	// inode *new_inode;
+	// inode_t *new_inode;
 	// int file_inode_number;
 	// minifile_t new_minifile;
 

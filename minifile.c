@@ -58,7 +58,7 @@ void minifile_disk_handler(void *interrupt_arg){
 
 	disk_request = disk_interrupt->request;
 
-	blocknum = request->blocknum;
+	blocknum = disk_request->blocknum;
 	semaphore_V(block_op_finished_semas[blocknum]);
 }
 
@@ -69,8 +69,6 @@ int minifile_init(disk_t *input_disk) {
 	int i;
 	int num_blocks;
 	int request_result;
-
-	disk = input_disk;
 
 	//Initialize disk, using the existing one provided by mkfs.
 	use_existing_disk = 1;

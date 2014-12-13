@@ -14,6 +14,7 @@
 char* get_absolute_path(char *filename) {
 
 	char *abs_path;
+	char *path_separator;
 	char current_directory[MAX_CHARS_IN_FNAME];
 
 	abs_path = (char *) malloc(MAX_CHARS_IN_FNAME);
@@ -26,8 +27,7 @@ char* get_absolute_path(char *filename) {
 
 	strcpy(current_directory, thread_cd_map[minithread_id()].absolute_path);
 
-	char *path_separator = "/";
-
+	path_separator = "/";
 	strcpy(abs_path,"");
 	strcat(abs_path, current_directory);
 	strcat(abs_path, path_separator);

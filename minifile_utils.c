@@ -133,12 +133,12 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 	int i_stop;
 	int j_stop;
 
-	current_indirect_block = (indirect_data_block *)malloc(sizeof(struct indirect_data_block));
-	current_dir_block = (directory_data_block *)malloc(sizeof(struct directory_data_block));
+	current_indirect_block = (indirect_data_block_t *)malloc(sizeof(struct indirect_data_block));
+	current_dir_block = (directory_data_block_t *)malloc(sizeof(struct directory_data_block));
 
 	// Load the first indirect block.
 	request_result = reliable_read_block(
-		minifile_disk, parent_inode->data->indirect_ptr, (char *)current_indirect_block);
+		minifile_disk, parent_inode->data.indirect_ptr, (char *)current_indirect_block);
 	if (request_result == -1) {
 		// If there was an error loading that block, we have to quit.
 		return -1;
@@ -148,11 +148,11 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 	// Middle loop iterates through all direct pointers.
 	// Innermost loop iterates through all mappings.
 	total_mappings = 0;
-	while (total_mappings < parent_inode->data->size) {
+	while (total_mappings < parent_inode->data.size) {
 
 		// Determine how many direct pointers we can safely loop over.
-		if ((parent_inode->data->size - total_mappings) < DIRECT_BLOCKS_PER_INDIRECT) { 
-			i_stop = parent_inode->data->size - total_mappings;
+		if ((parent_inode->data.size - total_mappings) < DIRECT_BLOCKS_PER_INDIRECT) { 
+			i_stop = parent_inode->data.size - total_mappings;
 		} else {
 			i_stop = DIRECT_BLOCKS_PER_INDIRECT;
 		}
@@ -168,17 +168,17 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 			}
 
 			// Determine how many mappings we can safely loop over.
-			if ((parent_inode->data->size - total_mappings) < INODE_MAPS_PER_BLOCK) { 
-				j_stop = parent_inode->data->size - total_mappings;
+			if ((parent_inode->data.size - total_mappings) < INODE_MAPS_PER_BLOCK) { 
+				j_stop = parent_inode->data.size - total_mappings;
 			} else {
 				j_stop = INODE_MAPS_PER_BLOCK;
 			}
 
 			for (j = 0; j < j_stop; j++, total_mappings++) {
-				current_inode_name = current_dir_block->data->inode_map[j]->filename;
+				current_inode_name = current_dir_block->data.inode_map[j].filename;
 				if strcmp(name_to_find, current_inode_name) {
 					// We found the inode we were looking for.
-					inode_number = current_dir_block->data->inode_map[j]->inode_number;
+					inode_number = current_dir_block->data.inode_map[j].inode_number;
 					free(current_indirect_block);
 					free(current_dir_block);
 					return inode_number;

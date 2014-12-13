@@ -42,6 +42,8 @@ void mkfs(int dsk_siz){
 
 
 	//Create superblock.
+	//Create free inode list.
+	//Create free datablock list.
 
 	//Request shutdown.
 	disk_shutdown(fresh_disk);

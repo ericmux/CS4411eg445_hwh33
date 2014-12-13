@@ -10,7 +10,7 @@
 #define DIRECT_PTRS_PER_INODE 11 // should be able to have more
 #define MAX_CHARS_IN_FNAME 256
 #define INODE_MAPS_PER_BLOCK 15
-#define DIRECT_BLOCKS_PER_INDIRECT 1022
+#define DIRECT_BLOCKS_PER_INDIRECT 1023
 #define NULL_PTR -1
 
 // Return values from disk requests.
@@ -42,7 +42,7 @@ typedef struct superblock {
 		struct {
 			int magic_number;
 			int disk_size;
-			int last_op_written;
+			unsigned int last_op_written;
 
 			int root_inode;
 
@@ -61,8 +61,7 @@ typedef struct inode {
 		struct {
 			int inode_type;
 			int size;
-			
-			int direct_ptrs[DIRECT_PTRS_PER_INODE];
+		
 			int indirect_ptr;
 		} data;
 
@@ -96,7 +95,6 @@ typedef struct indirect_data_block {
 		struct {
 			int direct_ptrs[DIRECT_BLOCKS_PER_INDIRECT];
 			int indirect_ptr;
-			char num_direct_ptrs[4];
 		} data;
 
 		char padding[DISK_BLOCK_SIZE];
@@ -116,10 +114,10 @@ typedef struct free_block {
 
 
 // Represents important data about the directory a process is currently in.
-struct dir_data {
+typedef struct dir_data {
 	char *absolute_path;
 	int inode_number;
-};
+} dir_data;
 
 // Pointer to disk.
 disk_t *disk;
@@ -129,6 +127,7 @@ superblock_t superblock;
 
 // Current operation number; rolls back over to zero when UINT_MAX is reached.
 unsigned int current_op;
+semaphore_t op_count_mutex;
 
 // Each block gets a lock to protect its metadata.
 semaphore_t *metadata_locks;
@@ -156,11 +155,14 @@ int minifile_init(disk_t *input_disk) {
 		return -1;
 	}
 
-	// Initialize the current_op counter.
+	// Initialize the current_op counter and its mutex.
 	current_op = increment_op_counter(superblock->data->last_op_written);
+	sempahore_create(op_count_mutex);
+	semaphore_initialize(op_count_mutex, 1);
 
 	// Initialize the metadata locks.
 	num_blocks = superblock->data->disk_size;
+	// XXX: need to get number of INODES, not blocks (then +1 for superblock)
 	metadata_locks = (semaphore_t *)malloc(num_blocks * sizeof(semaphore_t));
 	for (i = 0; i < num_blocks; i++) {
 		metadata_locks[i] = sempahore_create();
@@ -183,7 +185,7 @@ minifile_t minifile_creat(char *filename){
 	int request_result;
 
 	// Get the file's parent directory.
-	parent_path = get_parent_path(filename);
+	parent_path = get_parent_path(filename, thread_cd_map);
 
 	// Create the file's inode.
 	new_inode = (inode *)malloc(sizeof(struct inode));
@@ -196,7 +198,7 @@ minifile_t minifile_creat(char *filename){
 
 	// Check to see if this file exists in the current directory. If so, we'll overwrite 
 	// that inode block with our new one. If not, get the number of the first free inode.
-	file_inode_number = get_inode_num(parent_path, filename);
+	file_inode_number = get_inode_num(get_absolute_path(filename, parent_path));
 	if (file_inode_number == -1) {
 		file_inode_number = get_free_inode();
 	}

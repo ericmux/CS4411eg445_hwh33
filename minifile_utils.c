@@ -161,7 +161,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 			// Load the current directory block.
 			request_result = reliable_read_block(
-				minifile_disk, current_indirect_block->direct_ptrs[i], (char *)current_dir_block);
+				minifile_disk, current_indirect_block->data.direct_ptrs[i], (char *)current_dir_block);
 			if (request_result == -1) {
 				// If there was an error loading that block, we have to quit.
 				return -1;
@@ -209,7 +209,6 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 int get_inode_num(char *absolute_path) {
 	int num_substrings;
 	char **splits;
-	char *filename;
 	int i;
 	inode_t *current_inode;
 	int current_inode_number;
@@ -219,7 +218,7 @@ int get_inode_num(char *absolute_path) {
 	splits = str_split(absolute_path, '/', &num_substrings);
 
 	// The first inode will be the root inode.
-	current_inode = (inode *)malloc(sizeof(struct inode));
+	current_inode = (inode_t *)malloc(sizeof(struct inode_t));
 	current_inode_number = ROOT_INODE_NUM;
 
 	// We iterate through the path as defined by splits. For each member of splits,

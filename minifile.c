@@ -186,7 +186,7 @@ char* minifile_pwd(void){
 
 superblock_t *minifile_create_superblock(int dsk_siz){
 
-	superblock_t superblock;
+	superblock_t *superblock;
 	int first_free_data_block; 
 
 	if(dsk_siz < MINIMUM_DISK_SIZE){

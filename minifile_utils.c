@@ -33,13 +33,6 @@ char* get_absolute_path(char *filename, char *parent_path) {
 	}
 }
 
-/* Strips off all but the local filename. */
-char* get_local_name(char *filename) {
-	// Implement me
-	// NOTE: maybe this should take in an absolute path?
-	return NULL;
-}
-
 /* Returns the path to the file's parent. */
 char* get_parent_path(char *filename) {
 
@@ -51,16 +44,17 @@ unsigned int increment_op_counter(unsigned int op_count) {
 	return -1;
 }
 
-/* Searches for name in dir_inode. If found, the inode number is returned.
- * Else, returns -1. 
- * 'name' can refer to a file or directory, but it must
- * be a direct child of the directory to which dir_inode corresponds.
+/* Searches for name in the given parent directory. If found, the inode 
+ * number is returned. Else, returns -1. 
+ * 'name' can refer to a file or directory and it can be local or absolute, 
+ * but it must be a direct child of the given parent directory.
  */
 int get_inode_num(char *parent_path, char *name) {
 	// Implement me
 	return -1;
 }
 
+// XXX: necessary?
 /* Returns the inode corresponding to the given inode number. */
 inode* get_inode(int inode_number) {
 	// Implement me

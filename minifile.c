@@ -175,20 +175,15 @@ int minifile_init(disk_t *input_disk) {
 
 minifile_t minifile_creat(char *filename){
 	char *parent_path;
-	char *abs_filename;
-	dir_data *parent_dir_data;
 	inode *new_inode;
-	inode *parent_inode;
 	int file_inode_number;
 	minifile_t new_minifile;
 
 	int i;
 	int request_result;
 
-	// Get the file's parent directory and the file's absolute path (if
-	// the path is already absolute, abs_filename will equal filename).
+	// Get the file's parent directory.
 	parent_path = get_parent_path(filename);
-	abs_filename = get_absolute_path(filename, parent_path);
 
 	// Create the file's inode.
 	new_inode = (inode *)malloc(sizeof(struct inode));

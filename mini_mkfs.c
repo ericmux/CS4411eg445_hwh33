@@ -28,6 +28,10 @@ void mkfs(int dsk_siz){
 
 	inode_t *root_inode;
 
+	int first_free_inode;
+	int first_free_data_block;
+	int i;
+
 	disk_request_sema = semaphore_create();
 	semaphore_initialize(disk_request_sema,0);
 
@@ -75,6 +79,7 @@ void mkfs(int dsk_siz){
 		return;
 	}
 	kprintf("Disk and memory superblock match.\n");
+	free(superblock_in_disk);
 
 	//Create root inode.
 	root_inode = minifile_create_root_inode();
@@ -89,14 +94,52 @@ void mkfs(int dsk_siz){
 	kprintf("OK.\n");	
 
 
-
-
-
-
+	first_free_inode = superblock->data.first_free_inode;
+	first_free_data_block = superblock->data.first_free_data_block;
+	
 	//Create free inode list.
+	for(i = first_free_inode; i < first_free_data_block; i++){
+		free_block_t *free_block;
+		int nxt;
+
+		if(i == first_free_data_block - 1) nxt = NULL_PTR;
+		else nxt = i+1;
+
+		free_block = minifile_create_free_block(nxt);
+		disk_write_block(fresh_disk,i,(char *) free_block);
+
+		kprintf("Writing free inode block at %d...", i);
+		semaphore_P(disk_request_sema);
+		if(disk_reply != DISK_REPLY_OK){
+			kprintf("Root inode write failed. Fail.\n");
+			return;
+		}
+		kprintf("OK.\n");	
+	}
+
 	//Create free datablock list.
+	for(i = first_free_data_block; i < disk_size; i++){
+		free_block_t *free_block;
+		int nxt;
+
+		if(i == disk_size - 1) nxt = NULL_PTR;
+		else nxt = i+1;
+
+		free_block = minifile_create_free_block(nxt);
+		disk_write_block(fresh_disk,i,(char *) free_block);
+
+		kprintf("Writing free data block at %d...", i);
+		semaphore_P(disk_request_sema);
+		if(disk_reply != DISK_REPLY_OK){
+			kprintf("Root inode write failed. Fail.\n");
+			return;
+		}
+		kprintf("OK.\n");
+	}
+
 
 	//Request shutdown.
+	kprintf("Transactions completed. Shutting down disk...\n");
 	disk_shutdown(fresh_disk);
 	
 }

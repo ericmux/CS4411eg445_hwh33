@@ -233,6 +233,12 @@ superblock_t *minifile_create_superblock(int dsk_siz);
 */
 inode_t *minifile_create_root_inode();
 
+/*
+* Creates a free block (inode or data block) set with next_free_block.
+*/
+free_block_t *minifile_create_free_block(int next_free_block);
+
+
 
 
 #endif /* __MINIFILE_H__ */

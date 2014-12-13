@@ -221,3 +221,13 @@ inode_t *minifile_create_root_inode(){
 
 	return root_inode;
 }
+
+
+free_block_t *minifile_create_free_block(int next_free_block){
+	free_block_t *free_block;
+
+	free_block = (free_block_t *) malloc(sizeof(free_block_t));
+	free_block->next_free_block = next_free_block;
+
+	return free_block;
+}

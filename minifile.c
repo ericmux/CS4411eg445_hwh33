@@ -32,14 +32,14 @@ typedef struct minifile {
 
 
 // Version of superblock in memory.
-superblock_t superblock;
+superblock_t *superblock;
 
 // Each block gets a lock to protect its metadata.
 semaphore_t *block_locks;
 
 //Every thread, after getting a hold of a block's lock, should wait until the disk has finished the handling the request
 //and only then should it release the lock. This should guarantee the FS is always in a consistent state.
-seamphore_t *block_op_finished_semas;
+semaphore_t *block_op_finished_semas;
 
 // Maps process IDs to current working directories represented by dir_data structures.
 dir_data_t thread_cd_map[MAX_NUM_THREADS];
@@ -58,7 +58,7 @@ void minifile_disk_handler(void *interrupt_arg){
 
 	disk_request = disk_interrupt->request;
 
-	blocknum = disk_request->blocknum;
+	blocknum = disk_request.blocknum;
 	semaphore_V(block_op_finished_semas[blocknum]);
 }
 
@@ -85,18 +85,15 @@ int minifile_init(disk_t *input_disk) {
 	block_op_finished_semas = (semaphore_t *) malloc(disk_size*sizeof(semaphore_t));
 	for(i = 0; i < disk_size; i++){
 		block_locks[i] = semaphore_create();
-		semaphore_initialize(semblock_locks[i],1);
+		semaphore_initialize(block_locks[i],1);
 
 		block_op_finished_semas[i] = semaphore_create();
 		semaphore_initialize(block_op_finished_semas, 0);
 	}
 
-	//Initialize reply array.
-	block_replies = (disk_reply_t *) malloc(disk_size*sizeof(disk_reply_t));
-
 	//Initialize thread directory map.
 	for(i = 0; i < MAX_NUM_THREADS; i++){
-		thread_cd_map[i].absolutte_path = "/";
+		thread_cd_map[i].absolute_path = "/";
 		thread_cd_map[i].inode_number = 1;
 	}
 

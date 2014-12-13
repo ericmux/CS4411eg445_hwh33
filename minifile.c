@@ -4,6 +4,7 @@
 #include "minifile.h"
 #include "disk.h"
 #include "synch.h"
+#include "interrupts.h"
 
 #define MAX_NUM_THREADS  0xffff
 
@@ -30,6 +31,8 @@ typedef struct minifile {
 	int current_num_rws;
 } minifile;
 
+//Filesystem active.
+int filesystem_active = 0;
 
 // Version of superblock in memory.
 superblock_t *superblock;
@@ -56,8 +59,9 @@ void minifile_disk_handler(void *interrupt_arg){
 	disk_request_t disk_request;
 	disk_interrupt = (disk_interrupt_arg_t *) interrupt_arg; 
 
-	disk_request = disk_interrupt->request;
+	if(!filesystem_active) return;
 
+	disk_request = disk_interrupt->request;
 	blocknum = disk_request.blocknum;
 	semaphore_V(block_op_finished_semas[blocknum]);
 }
@@ -68,6 +72,7 @@ int minifile_init(disk_t *input_disk) {
 
 	int i;
 	int request_result;
+	int old_level;
 
 	//Initialize disk, using the existing one provided by mkfs.
 	use_existing_disk = 1;
@@ -108,6 +113,9 @@ int minifile_init(disk_t *input_disk) {
 		return -1;
 	}
 
+	//Keeps the semaphore count for the superblock's lock consistent. We don't want to P
+	//because all this is happening before concurrency begins.
+	filesystem_active = 1;
 	return 0;
 }
 

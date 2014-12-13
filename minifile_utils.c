@@ -25,7 +25,7 @@ char* get_absolute_path(char *filename) {
 		return abs_path;
 	}
 
-	strcpy(current_directory, thread_cd_map[minithread_id()].absolute_path);
+	strcpy(current_directory, thread_cd_map[0].absolute_path);
 
 	path_separator = "/";
 	strcpy(abs_path,"");

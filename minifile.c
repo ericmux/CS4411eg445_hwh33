@@ -205,6 +205,32 @@ int minifile_stat(char *path){
 
 int minifile_cd(char *path){
 
+	int old_level;
+	inode_t *target_inode;
+
+	if(path == NULL) return -1;
+	if(strcmp(path,"/") == 0){
+		old_level = set_interrupt_level(DISABLED);
+		
+		thread_cd_map[minithread_id()].absolute_path = "/";
+		thread_cd_map[minithread_id()].inode_number = 1;
+		
+		set_interrupt_level(old_level);
+		return 0;
+	}
+
+	if(traverse_to_inode(&target_inode, path) != 0){
+		kprintf("inode traversal failed.\n");
+		return -1;
+	}
+
+	old_level = set_interrupt_level(DISABLED);
+		
+	strcpy(thread_cd_map[minithread_id()].absolute_path, get_absolute_path(path));
+	thread_cd_map[minithread_id()].inode_number = target_inode->data.idx;
+		
+	set_interrupt_level(old_level);	
+
 	return -1;
 }
 

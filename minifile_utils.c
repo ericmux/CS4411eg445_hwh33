@@ -29,7 +29,7 @@ char* get_absolute_path(char *filename) {
 
 	path_separator = "/";
 	strcpy(abs_path,"");
-	
+
 	if(strcmp(current_directory,"/") != 0){
 		strcat(abs_path, current_directory);
 	}
@@ -137,83 +137,97 @@ char** str_split(char *input_string, char delimiter, int *num_substrings) {
 /* Returns the inode number for the file/directory with the given name.
  * Must be a direct child of the given parent.
  */
-int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
-	// indirect_data_block *current_indirect_block;
-	// directory_data_block *current_dir_block;
-	// char *current_inode_name;
-	// int inode_number;
-	
-	// int request_result;
-	// int total_mappings;
-	// int i;
-	// int j;
-	// int i_stop;
-	// int j_stop;
+int traverse_to_inode(inode_t **found_inode, char *path) {
+	int len;
+	char **dirs;
+	int old_level;
+	int i;
+	int j;
+	int k;
 
-	// current_indirect_block = (indirect_data_block *)malloc(sizeof(struct indirect_data_block));
-	// current_dir_block = (directory_data_block *)malloc(sizeof(struct directory_data_block));
+	int base_inode;
 
-	// // Load the first indirect block.
-	// request_result = reliable_read_block(
-	// 	disk, parent_inode->indirect_ptr, (char *)current_indirect_block);
-	// if (request_result == -1) {
-	// 	// If there was an error loading that block, we have to quit.
-	// 	return -1;
-	// }
+	inode_t *cd;
 
-	// // Outer loop iterates through all indirect blocks. 
-	// // Middle loop iterates through all direct pointers.
-	// // Innermost loop iterates through all mappings.
-	// total_mappings = 0;
-	// while (total_mappings < parent_inode->size) {
+	*found_inode = NULL;
 
-	// 	// Determine how many direct pointers we can safely loop over.
-	// 	if ((parent_inode->size - total_mappings) < DIRECT_BLOCKS_PER_INDIRECT) { 
-	// 		i_stop = parent_inode->size - total_mappings;
-	// 	} else {
-	// 		i_stop = DIRECT_BLOCKS_PER_INDIRECT;
-	// 	}
+	dirs = str_split(path, '/', &len);
 
-	// 	for (i = 0; i < i_stop; i++) {
+	if(path == NULL) return -1;
+	if(len == 0) return -1;
 
-	// 		// Load the current directory block.
-	// 		request_result = reliable_read_block(
-	// 			disk, current_indirect_block->direct_ptr[i], (char *)current_dir_block);
-	// 		if (request_result == -1) {
-	// 			// If there was an error loading that block, we have to quit.
-	// 			return -1;
-	// 		}
+	//Check if absolute path.
+	if(strcmp(dirs[0], "") == 0){
+		base_inode = 1;
+	} else {
+		old_level = set_interrupt_level(DISABLED);		
+		base_inode = thread_cd_map[minithread_id()].inode_number;
+		set_interrupt_level(old_level);
+	}
 
-	// 		// Determine how many mappings we can safely loop over.
-	// 		if ((parent_inode->size - total_mappings) < INODE_MAPS_PER_BLOCK) { 
-	// 			j_stop = parent_inode->size - total_mappings;
-	// 		} else {
-	// 			j_stop = INODE_MAPS_PER_BLOCK;
-	// 		}
+	//current directory inode buffer.
+	cd = (inode_t *) malloc(sizeof(inode_t));
 
-	// 		for (j = 0; j < j_stop; j++, total_mappings++) {
-	// 			current_inode_name = current_dir_block->data->inode_map[j]->filename;
-	// 			if strcmp(name_to_find, current_inode_name) {
-	// 				// We found the inode we were looking for!
-	// 				inode_number = current_dir_block->data->inode_map[j]->inode_number;
-	// 				free(current_indirect_block);
-	// 				free(current_dir_block);
-	// 				return inode_number;
-	// 			}
-	// 		}
-	// 	}
+	for(i = 0; i < len; i++){
+		int read_result;
 
-	// 	// Load the next indirect block.
-	// 	request_result = reliable_read_block(
-	// 		disk, current_indirect_block->indirect_ptr, (char *)current_indirect_block);
-	// 	if (request_result == -1) {
-	// 		// If there was an error loading that block, we have to quit.
-	// 		return -1;
-	// 	}
-	// }
+		if(strcmp(dirs[i],"") == 0) continue;
 
-	// // If this point is reached, then the inode was not found.
-	// return -1;
+		semaphore_P(block_locks[base_inode]);
+
+		read_result = disk_read_block(minifile_disk, base_inode, (char *)cd);
+		semaphore_P(block_op_finished_semas[base_inode]);
+		if (read_result != DISK_REQUEST_SUCCESS) {
+			return -1;
+		}
+
+		semaphore_V(block_locks[base_inode]);
+
+		//We just read the target inode, break.
+		if(i == len-1){
+			*found_inode = cd;
+			return 0;
+		}
+
+		if(cd->data.type != DIRECTORY_INODE) return -1;
+
+		//Read direct/indirect ptrs and look for mappings.
+		for(j = 0; j < cd->data.size; j++){
+			int directory_data_blocknum;
+			directory_data_block_t *dir_data_block;
+
+			//shouldn't happen if the filesytem is consistent (size would be wrong). We're still only going for directs.
+			if(cd->data.direct_ptrs[j] == NULL_PTR) {
+				kprintf("The size of directory inode %d is incorrect.\n", cd->data.size);
+				return -1;
+			}
+
+			directory_data_blocknum = cd->data.direct_ptrs[j];
+
+			dir_data_block = (directory_data_block_t *) malloc(sizeof(directory_data_block_t));
+			
+			semaphore_P(block_locks[directory_data_blocknum]);
+
+			read_result = disk_read_block(minifile_disk,directory_data_blocknum,(char *) dir_data_block);
+			semaphore_P(block_op_finished_semas[directory_data_blocknum]);
+			if (read_result != DISK_REQUEST_SUCCESS) {
+				return -1;
+			}
+
+			semaphore_V(block_locks[directory_data_blocknum]);
+
+			//search for the mapping matching dirs[i].
+			for(k = 0; k < dir_data_block->data.num_maps; k++){
+				inode_mapping_t mapping = dir_data_block->data.inode_map[k];
+
+				if(strcmp(dirs[i], mapping.filename) == 0){
+					base_inode = mapping.inode_number;
+				}
+			}
+
+		}
+
+	}
 
 	return -1;
 }

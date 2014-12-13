@@ -60,7 +60,7 @@ char* get_parent_path(char *filename, hashtable_t current_directory_map) {
 /* Attempts to read a block until successful. Stops on DISK_REQUEST_ERROR.
  * Returns 0 on success and -1 on failure.
  */
-int reliable_read_block(disk, blocknum, char* buffer) {
+int reliable_read_block(disk_t *disk, int blocknum, char* buffer) {
 	int request_result = DISK_OVERLOADED;
 
 	while (request_result == DISK_OVERLOADED) {
@@ -126,7 +126,7 @@ char** str_split(char *input_string, char delimiter, int *num_substrings) {
 /* Returns the inode number for the file/directory with the given name.
  * Must be a direct child of the given parent.
  */
-int get_inode_num_in_parent(inode *parent_inode, char *name_to_find) {
+int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 	// indirect_data_block *current_indirect_block;
 	// directory_data_block *current_dir_block;
 	// char *current_inode_name;

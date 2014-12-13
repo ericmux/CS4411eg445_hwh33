@@ -61,7 +61,7 @@ void mkfs(int dsk_siz){
 	disk_read_block(fresh_disk,0,(char *) superblock_in_disk);
 	semaphore_P(disk_request_sema);
 
-	if(superblock_in_disk->magic_number != superblock->magic_number){
+	if(superblock_in_disk->data.magic_number != superblock->data.magic_number){
 		kprintf("Disk and memory superblock do not match. Fail.\n");
 		return;
 	}

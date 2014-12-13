@@ -195,14 +195,14 @@ superblock_t *minifile_create_superblock(int dsk_siz){
 	}
 
 	superblock = (superblock_t *) malloc(sizeof(superblock_t));
-	superblock->magic_number = SUPERBLOCK_MAGIC_NUM;
-	superblock->disk_size = dsk_siz;
-	superblock->root_inode = 1;
-	superblock->first_free_inode = 2;
+	superblock->data.magic_number = SUPERBLOCK_MAGIC_NUM;
+	superblock->data.disk_size = dsk_siz;
+	superblock->data.root_inode = 1;
+	superblock->data.first_free_inode = 2;
 
 	first_free_data_block = ((int)INODE_FRACTION_OF_DISK*dsk_siz) + 1;
 
-	superblock->first_free_data_block = first_free_data_block;
+	superblock->data.first_free_data_block = first_free_data_block;
 
 	return superblock;
 

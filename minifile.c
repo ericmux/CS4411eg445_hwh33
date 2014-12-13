@@ -106,6 +106,8 @@ int minifile_init(disk_t *input_disk) {
 
 	// Initialize the superblock in memory. Check the magic number before proceeding. 
 	// Not grabbing locks since this is called before concurrency begins in minithread.
+	superblock = (superblock_t *) malloc(sizeof(superblock_t));
+
 	request_result = disk_read_block(input_disk, 0, (char *)superblock);
 	if (request_result == DISK_REQUEST_ERROR 
 		|| superblock->data.magic_number != SUPERBLOCK_MAGIC_NUM) {

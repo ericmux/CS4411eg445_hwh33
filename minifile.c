@@ -104,10 +104,6 @@ int minifile_init(disk_t *input_disk) {
 		thread_cd_map[i].inode_number = 1;
 	}
 
-	kprintf("Path for foobar would be: %s\n", get_absolute_path("foobar"));
-
-
-
 	// Initialize the superblock in memory. Check the magic number before proceeding. 
 	// Not grabbing locks since this is called before concurrency begins in minithread.
 	superblock = (superblock_t *) malloc(sizeof(superblock_t));
@@ -218,8 +214,11 @@ char **minifile_ls(char *path){
 }
 
 char* minifile_pwd(void){
+	char *pwd;
+	pwd = (char *) malloc(MAX_CHARS_IN_FNAME);
 
-	return NULL;
+	strcpy(pwd,thread_cd_map[minithread_id()].absolute_path);
+	return pwd;
 }
 
 

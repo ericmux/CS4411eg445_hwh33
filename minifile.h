@@ -55,7 +55,7 @@ typedef struct inode {
 			int size;
 			int parent_inode;
 		
-			int direct_ptrs[DIRECT_BLOCKS_PER_INODE];
+			int direct_ptrs[DIRECT_PTRS_PER_INODE];
 			int indirect_ptr;
 		} data;
 

@@ -13,6 +13,8 @@
 #include "defs.h"
 #include "interrupts.h"
 
+#define DISK_NAME "MINIFILESYSTEM"
+
 #define DISK_INTERRUPT_TYPE 4
 
 #define DISK_BLOCK_SIZE 4096

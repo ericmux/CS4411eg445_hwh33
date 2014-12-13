@@ -34,12 +34,12 @@ typedef struct minifile {
 // Version of superblock in memory.
 superblock_t superblock;
 
-// Current operation number; rolls back over to zero when UINT_MAX is reached.
-unsigned int current_op;
-semaphore_t op_count_mutex;
-
 // Each block gets a lock to protect its metadata.
-semaphore_t *metadata_locks;
+semaphore_t *block_locks;
+
+//Every thread, after getting a hold of a block's lock, should wait until the disk has finished the handling the request
+//and only then should it release the lock. This should guarantee the FS is always in a consistent state.
+seamphore_t *block_op_finished_semas;
 
 // Maps process IDs to current working directories represented by dir_data structures.
 dir_data_t thread_cd_map[MAX_NUM_THREADS];
@@ -48,40 +48,73 @@ dir_data_t thread_cd_map[MAX_NUM_THREADS];
 //Include util functions.
 #include "minifile_utils.c"
 
+
+void minifile_disk_handler(void *interrupt_arg){
+
+	int blocknum;
+	disk_interrupt_arg_t* disk_interrupt;
+	disk_request_t disk_request;
+	disk_interrupt = (disk_interrupt_arg_t *) interrupt_arg; 
+
+	disk_request = disk_interrupt->request;
+
+	blocknum = request->blocknum;
+	semaphore_V(block_op_finished_semas[blocknum]);
+}
+
+
+
 int minifile_init(disk_t *input_disk) {
-	// int INIT_NUM_BUCKETS = 10;
 
-	// int i;
-	// int num_blocks;
-	// int request_result;
+	int i;
+	int num_blocks;
+	int request_result;
 
-	// disk = input_disk;
+	disk = input_disk;
 
-	// // Initialize the superblock in memory. Check the magic number before proceeding.
-	// request_result = disk_read_block(disk, 0, (char *)superblock);
-	// if (request_result == DISK_REQUEST_ERROR 
-	// 	|| superblock->data->magic_number != SUPERBLOCK_MAGIC_NUM) {
-	// 	return -1;
-	// }
+	//Initialize disk, using the existing one provided by mkfs.
+	use_existing_disk = 1;
+	disk_name = DISK_NAME;
 
-	// // Initialize the current_op counter and its mutex.
-	// current_op = increment_op_counter(superblock->data->last_op_written);
-	// sempahore_create(op_count_mutex);
-	// semaphore_initialize(op_count_mutex, 1);
+	input_disk = (disk_t *) malloc(sizeof(disk_t));
+	disk_initialize(input_disk);
 
-	// // Initialize the metadata locks.
-	// num_blocks = superblock->data->disk_size;
-	// // XXX: need to get number of INODES, not blocks (then +1 for superblock)
-	// metadata_locks = (semaphore_t *)malloc(num_blocks * sizeof(semaphore_t));
-	// for (i = 0; i < num_blocks; i++) {
-	// 	metadata_locks[i] = sempahore_create();
-	// 	semaphore_initialize(metadata_locks[i], 1);
-	// }
+	//Install our minifile disk handler.
+	install_disk_handler(minifile_disk_handler);
 
-	// // Create the current directory table.
-	// thread_cd_map = hashtable_create_specify_buckets(INIT_NUM_BUCKETS);
+	//Initialize synchronization structures.
+	block_locks = (semaphore_t *) malloc(disk_size*sizeof(semaphore_t));
+	block_op_finished_semas = (semaphore_t *) malloc(disk_size*sizeof(semaphore_t));
+	for(i = 0; i < disk_size; i++){
+		block_locks[i] = semaphore_create();
+		semaphore_initialize(semblock_locks[i],1);
 
-	return -1;
+		block_op_finished_semas[i] = semaphore_create();
+		semaphore_initialize(block_op_finished_semas, 0);
+	}
+
+	//Initialize reply array.
+	block_replies = (disk_reply_t *) malloc(disk_size*sizeof(disk_reply_t));
+
+	//Initialize thread directory map.
+	for(i = 0; i < MAX_NUM_THREADS; i++){
+		thread_cd_map[i].absolutte_path = "/";
+		thread_cd_map[i].inode_number = 1;
+	}
+
+	kprintf("Path for foobar would be: %s\n", get_absolute_path("foobar"));
+
+
+
+	// Initialize the superblock in memory. Check the magic number before proceeding. 
+	// Not grabbing locks since this is called before concurrency begins in minithread.
+	request_result = disk_read_block(input_disk, 0, (char *)superblock);
+	if (request_result == DISK_REQUEST_ERROR 
+		|| superblock->data.magic_number != SUPERBLOCK_MAGIC_NUM) {
+		return -1;
+	}
+
+	return 0;
 }
 
 minifile_t minifile_creat(char *filename){

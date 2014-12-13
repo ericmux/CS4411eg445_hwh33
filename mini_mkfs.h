@@ -7,8 +7,6 @@
 #include "synch.h"
 #include "disk.h"
 
-#define DISK_NAME "MINIFILESYSTEM"
-
 /*
 * Formats the filesystem, creating a disk with dsk_siz blocks named DISK_NAME.
 */

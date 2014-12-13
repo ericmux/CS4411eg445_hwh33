@@ -11,22 +11,29 @@
 /* Returns the absolute path for the given filename. If the given filename
  * is already an absolute path, it is returned as is.
  */
-char* get_absolute_path(char *filename, char *parent_path) {
+char* get_absolute_path(char *filename) {
 
+	char *abs_path;
 	char current_directory[MAX_CHARS_IN_FNAME];
+
+	abs_path = (char *) malloc(MAX_CHARS_IN_FNAME);
+
+	if(filename == NULL) return NULL;
+	if(filename[0] == '/'){
+		strcpy(abs_path, filename);
+		return abs_path;
+	}
+
 	strcpy(current_directory, thread_cd_map[minithread_id()].absolute_path);
 
-	if (filename[0] != '/') {
-		char *path_separator = "/";
-		char *abs_path = (char *)malloc(
-			strlen(current_directory) + strlen(path_separator) + strlen(filename) + 1);
-		strcat(abs_path, current_directory);
-		strcat(abs_path, path_separator);
-		strcat(abs_path, filename);
-		return abs_path;
-	} else {
-		return filename;
-	}
+	char *path_separator = "/";
+
+	strcpy(abs_path,"");
+	strcat(abs_path, current_directory);
+	strcat(abs_path, path_separator);
+	strcat(abs_path, filename);
+
+	return abs_path;
 }
 
 /* Returns the path to the file's parent. filename can be a local or

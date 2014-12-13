@@ -19,6 +19,7 @@
 #include "miniroute.h"
 #include "minimsg.h"
 #include "minisocket.h"
+#include "minifile.h"
 
 #include <assert.h>
 
@@ -404,6 +405,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	minisocket_initialize();
 	miniroute_initialize();
 	network_initialize(miniroute_network_handler);
+	minifile_init(minifile_disk);
 
 	set_interrupt_level(ENABLED);
 

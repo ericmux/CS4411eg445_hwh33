@@ -176,7 +176,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 			for (j = 0; j < j_stop; j++, total_mappings++) {
 				current_inode_name = current_dir_block->data.inode_map[j].filename;
-				if strcmp(name_to_find, current_inode_name) {
+				if (strcmp(name_to_find, current_inode_name)) {
 					// We found the inode we were looking for.
 					inode_number = current_dir_block->data.inode_map[j].inode_number;
 					free(current_indirect_block);
@@ -218,7 +218,7 @@ int get_inode_num(char *absolute_path) {
 	splits = str_split(absolute_path, '/', &num_substrings);
 
 	// The first inode will be the root inode.
-	current_inode = (inode_t *)malloc(sizeof(struct inode_t));
+	current_inode = (inode_t *)malloc(sizeof(struct inode));
 	current_inode_number = ROOT_INODE_NUM;
 
 	// We iterate through the path as defined by splits. For each member of splits,

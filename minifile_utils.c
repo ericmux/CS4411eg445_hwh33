@@ -9,7 +9,7 @@
 /* Returns the absolute path for the given filename. If the given filename
  * is already an absolute path, it is returned as is.
  */
-char* get_absolute_path(char *filename, char *current_directory) {
+char* get_absolute_path(char *filename, char *parent_path) {
 	if (filename[0] != '/') {
 		char *path_separator = "/";
 		char *abs_path = (char *)malloc(
@@ -30,19 +30,38 @@ char* get_local_name(char *filename) {
 	return NULL;
 }
 
+/* Returns the path to the file's parent. */
+char* get_parent_path(char *filename) {
+
+}
+
 /* Increments op_counter and handles rollover. */
 unsigned int increment_op_counter(unsigned int op_count) {
 	// Implement me
 	return -1;
 }
 
-
 /* Searches for name in dir_inode. If found, the inode number is returned.
  * Else, returns -1. 
  * 'name' can refer to a file or directory, but it must
  * be a direct child of the directory to which dir_inode corresponds.
  */
-int get_inode_num(inode_t *dir_inode, char *name) {
+int get_inode_num(char *parent_path, char *name) {
 	// Implement me
+	return -1;
+}
+
+/* Returns the inode corresponding to the given inode number. */
+inode* get_inode(int inode_number) {
+	// Implement me
+	return -1;
+}
+
+/* Returns the inode number for the next free inode. Handles management of
+ * free inode list. If no free inodes are available, -1 is returned.
+ */
+int get_free_inode() {
+	// Implement me
+	// NOTE: need to lock superblock before manipulation.
 	return -1;
 }

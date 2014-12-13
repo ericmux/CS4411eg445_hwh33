@@ -128,7 +128,7 @@ typedef struct indirect_data_block {
 
 // Represents important data about the directory a process is currently in.
 struct dir_data {
-	char *abs_dirname;
+	char *absolute_path;
 	int inode_number;
 };
 
@@ -152,54 +152,52 @@ hashtable_t thread_cd_map;
 #include "minifile_utils.c"
 
 int minifile_init(disk_t *input_disk) {
-	// int INIT_NUM_BUCKETS = 10;
+	int INIT_NUM_BUCKETS = 10;
 
-	// int i;
-	// int num_blocks;
-	// int request_result;
+	int i;
+	int num_blocks;
+	int request_result;
 
-	// disk = input_disk;
+	disk = input_disk;
 
-	// // Initialize the superblock in memory. Check the magic number before proceeding.
-	// // Also initialize the current_op counter.
-	// request_result = disk_read_block(disk, 0, (char *)superblock);
-	// if (request_result == DISK_REQUEST_ERROR 
-	// 	|| superblock->data->magic_number != SUPERBLOCK_MAGIC_NUM) {
-	// 	return -1;
-	// }
-	// current_op = increment_op_counter(superblock->data->last_op_written);
+	// Initialize the superblock in memory. Check the magic number before proceeding.
+	// Also initialize the current_op counter.
+	request_result = disk_read_block(disk, 0, (char *)superblock);
+	if (request_result == DISK_REQUEST_ERROR 
+		|| superblock->data->magic_number != SUPERBLOCK_MAGIC_NUM) {
+		return -1;
+	}
+	current_op = increment_op_counter(superblock->data->last_op_written);
 
-	// // Initialize the metadata locks.
-	// num_blocks = superblock->data->disk_size;
-	// metadata_locks = (semaphore_t *)malloc(num_blocks * sizeof(semaphore_t));
-	// for (i = 0; i < num_blocks; i++) {
-	// 	metadata_locks[i] = sempahore_create();
-	// 	semaphore_initialize(metadata_locks[i], 1);
-	// }
+	// Initialize the metadata locks.
+	num_blocks = superblock->data->disk_size;
+	metadata_locks = (semaphore_t *)malloc(num_blocks * sizeof(semaphore_t));
+	for (i = 0; i < num_blocks; i++) {
+		metadata_locks[i] = sempahore_create();
+		semaphore_initialize(metadata_locks[i], 1);
+	}
 
-	// thread_cd_map = hashtable_create_specify_buckets(INIT_NUM_BUCKETS);
+	thread_cd_map = hashtable_create_specify_buckets(INIT_NUM_BUCKETS);
 
 	return -1;
 }
 
 minifile_t minifile_creat(char *filename){
-	dir_data *cd_data;
+	char *parent_path;
 	char *abs_filename;
+	dir_data *parent_dir_data;
 	inode *new_inode;
-	inode *cd_inode;
+	inode *parent_inode;
 	int file_inode_number;
 	minifile_t new_minifile;
 
 	int i;
 	int request_result;
 
-	// XXX: WORKING DIRECTORY IS NOT ALWAYS PARENT OF FILE!!
-
-	// Get the process's current working directory.
-	hashtable_get(thread_cd_map, minithread_id(), &cd_data);
-
-	// If the file name is local, adjust it to be absolute.
-	abs_filename = get_absolute_path(filename, cd_data->abs_dirname);
+	// Get the file's parent directory and the file's absolute path (if
+	// the path is already absolute, abs_filename will equal filename).
+	parent_path = get_parent_path(filename);
+	abs_filename = get_absolute_path(filename, parent_path);
 
 	// Create the file's inode.
 	new_inode = (inode *)malloc(sizeof(struct inode));
@@ -210,26 +208,17 @@ minifile_t minifile_creat(char *filename){
 	}
 	new_inode->indirect_ptr = NULL_PTR;
 
-	// Read the inode for the current directory into cd_inode.
-	cd_inode = (inode *)malloc(sizeof(struct inode));
-	request_result = DISK_OVERLOADED;
-	while (request_result == DISK_OVERLOADED) {
-		request_result = disk_read_block(disk, cd_data->inode_number, (char *)cd_inode);
-		// XXX: sleep?
-	}
-	if (request_result == DISK_REQUEST_ERROR) {
-		// XXX: error? idk
-	}
-
 	// Check to see if this file exists in the current directory. If so, we'll overwrite 
 	// that inode block with our new one. If not, get the number of the first free inode.
-	file_inode_number = get_inode_num(cd_inode, filename);
+	file_inode_number = get_inode_num(parent_path, filename);
 	if (file_inode_number == -1) {
-		semaphore_P(metadata_locks[0]);
-		file_inode_number = superblock->data->first_free_inode++;
-		semaphore_V(metadata_locks[0]); 
+		file_inode_number = get_free_inode();
 	}
+
+	// Write the inode and, when finished, free it.
 	disk_write_block(disk, file_inode_number, (char *)new_inode);
+	// XXX: wait for confirmation of write?
+	free(new_inode);
 
 	// Create and return the new minifile pointer.
 	new_minifile = (minifile_t) malloc(sizeof(struct minifile));

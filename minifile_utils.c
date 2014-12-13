@@ -122,10 +122,9 @@ char** str_split(char *input_string, char delimiter, int *num_substrings) {
  * Must be a direct child of the given parent.
  */
 int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
-	indirect_data_block *current_indirect_block;
-	directory_data_block *current_dir_block;
+	indirect_data_block_t *current_indirect_block;
+	directory_data_block_t *current_dir_block;
 	char *current_inode_name;
-	int inode_number;
 	
 	int request_result;
 	int total_mappings;
@@ -139,7 +138,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 	// Load the first indirect block.
 	request_result = reliable_read_block(
-		disk, parent_inode->indirect_ptr, (char *)current_indirect_block);
+		minifile_disk, parent_inode->data->indirect_ptr, (char *)current_indirect_block);
 	if (request_result == -1) {
 		// If there was an error loading that block, we have to quit.
 		return -1;
@@ -149,11 +148,11 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 	// Middle loop iterates through all direct pointers.
 	// Innermost loop iterates through all mappings.
 	total_mappings = 0;
-	while (total_mappings < parent_inode->size) {
+	while (total_mappings < parent_inode->data->size) {
 
 		// Determine how many direct pointers we can safely loop over.
-		if ((parent_inode->size - total_mappings) < DIRECT_BLOCKS_PER_INDIRECT) { 
-			i_stop = parent_inode->size - total_mappings;
+		if ((parent_inode->data->size - total_mappings) < DIRECT_BLOCKS_PER_INDIRECT) { 
+			i_stop = parent_inode->data->size - total_mappings;
 		} else {
 			i_stop = DIRECT_BLOCKS_PER_INDIRECT;
 		}
@@ -162,15 +161,15 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 			// Load the current directory block.
 			request_result = reliable_read_block(
-				disk, current_indirect_block->direct_ptr[i], (char *)current_dir_block);
+				minifile_disk, current_indirect_block->direct_ptr[i], (char *)current_dir_block);
 			if (request_result == -1) {
 				// If there was an error loading that block, we have to quit.
 				return -1;
 			}
 
 			// Determine how many mappings we can safely loop over.
-			if ((parent_inode->size - total_mappings) < INODE_MAPS_PER_BLOCK) { 
-				j_stop = parent_inode->size - total_mappings;
+			if ((parent_inode->data->size - total_mappings) < INODE_MAPS_PER_BLOCK) { 
+				j_stop = parent_inode->data->size - total_mappings;
 			} else {
 				j_stop = INODE_MAPS_PER_BLOCK;
 			}
@@ -189,7 +188,7 @@ int get_inode_num_in_parent(inode_t *parent_inode, char *name_to_find) {
 
 		// Load the next indirect block.
 		request_result = reliable_read_block(
-			disk, current_indirect_block->indirect_ptr, (char *)current_indirect_block);
+			minifile_disk, current_indirect_block->indirect_ptr, (char *)current_indirect_block);
 		if (request_result == -1) {
 			// If there was an error loading that block, we have to quit.
 			free(current_indirect_block);
@@ -231,7 +230,7 @@ int get_inode_num(char *absolute_path) {
 		
 		// Load the current inode.
 		request_result = reliable_read_block(
-			disk, current_inode_number, (char *)current_inode);
+			minifile_disk, current_inode_number, (char *)current_inode);
 		if (request_result == -1) {
 			return -1;
 		}
@@ -267,7 +266,7 @@ int get_free_inode() {
 	// 	return NULL_PTR;
 	// }
 	// fb = (free_block *)malloc(sizeof(struct free_block));
-	// reliable_read_block(disk, free_inode_num, (char *)free_block);
+	// reliable_read_block(minifile_disk, free_inode_num, (char *)free_block);
 	// superblock->first_free_inode = fb->next_free_block;
 	
 	// semaphore_V(metadatalock[0]);

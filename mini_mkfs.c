@@ -58,6 +58,7 @@ void mkfs(int dsk_siz){
 	kprintf("OK.\n");
 
 	//Read from disk just to make sure.
+	superblock_in_disk = (superblock_t *) malloc(sizeof(superblock_t));
 	disk_read_block(fresh_disk,0,(char *) superblock_in_disk);
 	semaphore_P(disk_request_sema);
 

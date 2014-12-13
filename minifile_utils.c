@@ -13,7 +13,7 @@
  */
 char* get_absolute_path(char *filename, char *parent_path) {
 
-	char *current_directory; 
+	char current_directory[MAX_CHARS_IN_FNAME];
 	strcpy(current_directory, thread_cd_map[minithread_id()]);
 
 	if (filename[0] != '/') {

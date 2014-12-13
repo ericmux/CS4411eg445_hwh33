@@ -6,6 +6,16 @@
 #include <string.h>
 #include <limits.h>
 
+// Forward declaration of types from minifile.c for the compiler.
+typedef enum disk_request_return_val;
+typedef struct superblock;
+typedef struct inode;
+typedef struct inode_mapping;
+typedef struct directory_data_block;
+typedef struct free_block;
+typedef struct indirect_data_block;
+
+
 /* Returns the absolute path for the given filename. If the given filename
  * is already an absolute path, it is returned as is.
  */

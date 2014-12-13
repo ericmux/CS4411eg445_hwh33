@@ -30,11 +30,11 @@ typedef enum {
  *     This is the structure that keeps the information about 
  *     the opened file like the position of the cursor, etc.
  */
-struct minifile {
+typedef struct minifile {
 	int inode_number;
 	int cursor_position;
 	int current_num_rws;
-};
+} minifile;
 
 typedef struct superblock {
 	union {
@@ -71,18 +71,6 @@ typedef struct inode {
 	};
 } inode_t;
 
-
-typedef struct free_inode {
-	union {
-
-		int next_free_inode;
-
-		char padding[DISK_BLOCK_SIZE];
-
-	};
-} free_inode_t;
-
-
 // A mapping of a single file or directory to an inode number.
 typedef struct inode_mapping {
 	char filename[MAX_CHARS_IN_FNAME];
@@ -102,16 +90,6 @@ typedef struct directory_data_block {
 	};
 } directory_data_block_t;
 
-typedef struct free_data_block {
-	union {
-
-		int next_free_block;
-
-		char padding [DISK_BLOCK_SIZE];
-
-	};
-} free_data_block_t;
-
 typedef struct indirect_data_block {
 	union {
 
@@ -125,6 +103,17 @@ typedef struct indirect_data_block {
 
 	};
 } indirect_data_block_t;
+
+typedef struct free_block {
+	union {
+
+		int next_free_block;
+
+		char padding [DISK_BLOCK_SIZE];
+
+	};
+} free_block_t;
+
 
 // Represents important data about the directory a process is currently in.
 struct dir_data {
@@ -161,12 +150,13 @@ int minifile_init(disk_t *input_disk) {
 	disk = input_disk;
 
 	// Initialize the superblock in memory. Check the magic number before proceeding.
-	// Also initialize the current_op counter.
 	request_result = disk_read_block(disk, 0, (char *)superblock);
 	if (request_result == DISK_REQUEST_ERROR 
 		|| superblock->data->magic_number != SUPERBLOCK_MAGIC_NUM) {
 		return -1;
 	}
+
+	// Initialize the current_op counter.
 	current_op = increment_op_counter(superblock->data->last_op_written);
 
 	// Initialize the metadata locks.
@@ -177,6 +167,7 @@ int minifile_init(disk_t *input_disk) {
 		semaphore_initialize(metadata_locks[i], 1);
 	}
 
+	// Create the current directory table.
 	thread_cd_map = hashtable_create_specify_buckets(INIT_NUM_BUCKETS);
 
 	return -1;

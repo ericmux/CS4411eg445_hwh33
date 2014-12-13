@@ -190,7 +190,7 @@ superblock_t *minifile_create_superblock(int dsk_siz){
 	int first_free_data_block; 
 
 	if(dsk_siz < MINIMUM_DISK_SIZE){
-		kprintf("Chosen disk size less than minimum of %d. Fail.", MINIMUM_DISK_SIZE);
+		kprintf("Chosen disk size less than minimum of %d. Fail.\n ", MINIMUM_DISK_SIZE);
 		return NULL;
 	}
 

@@ -29,7 +29,10 @@ char* get_absolute_path(char *filename) {
 
 	path_separator = "/";
 	strcpy(abs_path,"");
-	strcat(abs_path, current_directory);
+	
+	if(strcmp(current_directory,"/") != 0){
+		strcat(abs_path, current_directory);
+	}
 	strcat(abs_path, path_separator);
 	strcat(abs_path, filename);
 

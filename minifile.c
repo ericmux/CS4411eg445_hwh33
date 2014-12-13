@@ -72,13 +72,17 @@ int minifile_init(disk_t *input_disk) {
 
 	int i;
 	int request_result;
+	int result;
 
 	//Initialize disk, using the existing one provided by mkfs.
 	use_existing_disk = 1;
 	disk_name = DISK_NAME;
 
 	input_disk = (disk_t *) malloc(sizeof(disk_t));
-	disk_initialize(input_disk);
+	result = disk_initialize(input_disk);
+	if(result == -1){
+		return -1;
+	}
 
 	//Install our minifile disk handler.
 	install_disk_handler(minifile_disk_handler);

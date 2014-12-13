@@ -1,6 +1,7 @@
 #ifndef __MINIFILE_H__
 #define __MINIFILE_H__
 
+#include "disk.h"
 #include "defs.h"
 
 /*
@@ -27,7 +28,7 @@ typedef struct minifile* minifile_t;
 /* Initializes the minifile system from input_disk. Returns 0 on 
  * success and -1 on error.
  */
-int minifile_init(dist_t *input_disk);
+int minifile_init(disk_t *input_disk);
 
 /* 
  * Create a file. If the file exists its contents are truncated.

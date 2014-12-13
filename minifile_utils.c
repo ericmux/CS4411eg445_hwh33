@@ -6,8 +6,9 @@
 #include <string.h>
 #include <limits.h>
 
-#include "disk.h"
-
+/* Returns the absolute path for the given filename. If the given filename
+ * is already an absolute path, it is returned as is.
+ */
 char* get_absolute_path(char *filename, char *current_directory) {
 	if (filename[0] != '/') {
 		char *path_separator = "/";
@@ -22,18 +23,26 @@ char* get_absolute_path(char *filename, char *current_directory) {
 	}
 }
 
+/* Strips off all but the local filename. */
 char* get_local_name(char *filename) {
 	// Implement me
 	// NOTE: maybe this should take in an absolute path?
-	return 'implement me'
+	return NULL;
 }
 
+/* Increments op_counter and handles rollover. */
 unsigned int increment_op_counter(unsigned int op_count) {
 	// Implement me
 	return -1;
 }
 
-int get_inode_num(inode *dir_inode, char *name) {
+
+/* Searches for name in dir_inode. If found, the inode number is returned.
+ * Else, returns -1. 
+ * 'name' can refer to a file or directory, but it must
+ * be a direct child of the directory to which dir_inode corresponds.
+ */
+int get_inode_num(inode_t *dir_inode, char *name) {
 	// Implement me
 	return -1;
 }

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
+#include "hashtable.h"
 #include "minifile.h"
-#include "minifile_utils.h"
 #include "disk.h"
 #include "synch.h"
 
@@ -50,12 +50,12 @@ typedef struct superblock {
 			int first_free_datablock;
 		} data;
 
-		char padding[DISK_BLOCK_SIZE]
+		char padding[DISK_BLOCK_SIZE];
 
 	};
 } superblock_t;
 
-struct inode {
+typedef struct inode {
 	union {
 
 		struct {
@@ -69,28 +69,40 @@ struct inode {
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} inode_t;
+
+
+typedef struct free_inode {
+	union {
+
+		int next_free_inode;
+
+		char padding[DISK_BLOCK_SIZE];
+
+	};
+} free_inode_t;
+
 
 // A mapping of a single file or directory to an inode number.
-struct inode_mapping {
+typedef struct inode_mapping {
 	char filename[MAX_CHARS_IN_FNAME];
 	int inode_number;
-};
+} inode_mapping_t;
 
-struct directory_data_block {
+typedef struct directory_data_block {
 	union {
 
 		struct {
-			inode_mapping inode_map[INODE_MAPS_PER_BLOCK];
+			inode_mapping_t inode_map[INODE_MAPS_PER_BLOCK];
 			int num_maps;
 		} data;
 
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} directory_data_block_t;
 
-struct free_block {
+typedef struct free_data_block {
 	union {
 
 		int next_free_block;
@@ -98,9 +110,9 @@ struct free_block {
 		char padding [DISK_BLOCK_SIZE];
 
 	};
-};
+} free_data_block_t;
 
-struct indirect_data_block {
+typedef struct indirect_data_block {
 	union {
 
 		struct {
@@ -112,7 +124,7 @@ struct indirect_data_block {
 		char padding[DISK_BLOCK_SIZE];
 
 	};
-};
+} indirect_data_block_t;
 
 // Represents important data about the directory a process is currently in.
 struct dir_data {
@@ -135,33 +147,39 @@ semaphore_t *metadata_locks;
 // Maps process IDs to current working directories represented by dir_data structures.
 hashtable_t thread_cd_map;
 
+
+//Include util functions.
+#include "minifile_utils.c"
+
 int minifile_init(disk_t *input_disk) {
-	int INIT_NUM_BUCKETS = 10;
+	// int INIT_NUM_BUCKETS = 10;
 
-	int i;
-	int num_blocks;
-	int request_result;
+	// int i;
+	// int num_blocks;
+	// int request_result;
 
-	disk = input_disk;
+	// disk = input_disk;
 
-	// Initialize the superblock in memory. Check the magic number before proceeding.
-	// Also initialize the current_op counter.
-	request_result = disk_read_block(disk, 0, (char *)superblock);
-	if (request_result == DISK_REQUEST_ERROR 
-		|| superblock->data->magic_number != SUPERBLOCK_MAGIC_NUM) {
-		return -1;
-	}
-	current_op = increment_op_counter(superblock->data->last_op_written);
+	// // Initialize the superblock in memory. Check the magic number before proceeding.
+	// // Also initialize the current_op counter.
+	// request_result = disk_read_block(disk, 0, (char *)superblock);
+	// if (request_result == DISK_REQUEST_ERROR 
+	// 	|| superblock->data->magic_number != SUPERBLOCK_MAGIC_NUM) {
+	// 	return -1;
+	// }
+	// current_op = increment_op_counter(superblock->data->last_op_written);
 
-	// Initialize the metadata locks.
-	num_blocks = superblock->data->disk_size;
-	metadata_locks = (semaphore_t *)malloc(num_blocks * sizeof(semaphore_t));
-	for (i = 0; i < num_blocks; i++) {
-		metadata_locks[i] = sempahore_create();
-		semaphore_initialize(metadata_locks[i], 1);
-	}
+	// // Initialize the metadata locks.
+	// num_blocks = superblock->data->disk_size;
+	// metadata_locks = (semaphore_t *)malloc(num_blocks * sizeof(semaphore_t));
+	// for (i = 0; i < num_blocks; i++) {
+	// 	metadata_locks[i] = sempahore_create();
+	// 	semaphore_initialize(metadata_locks[i], 1);
+	// }
 
-	thread_cd_map = hashtable_create_specify_buckets(INIT_NUM_BUCKETS);
+	// thread_cd_map = hashtable_create_specify_buckets(INIT_NUM_BUCKETS);
+
+	return -1;
 }
 
 minifile_t minifile_creat(char *filename){
@@ -223,45 +241,55 @@ minifile_t minifile_creat(char *filename){
 }
 
 minifile_t minifile_open(char *filename, char *mode){
-
+	return NULL;
 }
 
 int minifile_read(minifile_t file, char *data, int maxlen){
 
+	return -1;
 }
 
 int minifile_write(minifile_t file, char *data, int len){
 
+	return -1;
 }
 
 int minifile_close(minifile_t file){
 
+	return -1;
 }
 
 int minifile_unlink(char *filename){
 
+	return -1;
 }
 
 int minifile_mkdir(char *dirname){
 
+	return -1;
 }
 
 int minifile_rmdir(char *dirname){
 
+	return -1;
 }
 
 int minifile_stat(char *path){
 
+	return -1;
 } 
 
 int minifile_cd(char *path){
 
+	return -1;
 }
 
 char **minifile_ls(char *path){
 
+	return NULL;
 }
 
 char* minifile_pwd(void){
 
+	return NULL;
 }

@@ -200,7 +200,7 @@ superblock_t *minifile_create_superblock(int dsk_siz){
 	superblock->data.root_inode = 1;
 	superblock->data.first_free_inode = 2;
 
-	first_free_data_block = ((int) INODE_FRACTION_OF_DISK*((float)dsk_siz)) + 1;
+	first_free_data_block = (dsk_siz/INODE_RATIO_IN_DISK) + 1;
 
 	superblock->data.first_free_data_block = first_free_data_block;
 

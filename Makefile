@@ -10,7 +10,7 @@ default: all
 #    necessary PortOS code.
 #
 # this would be a good place to add your tests
-all: conn-network1 conn-network2 conn-network3 mkfs 
+all: conn-network1 conn-network2 conn-network3 mkfs shell
 
 
 # running "make clean" will remove all files ignored by git.  To ignore more

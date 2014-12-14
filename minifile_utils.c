@@ -116,7 +116,7 @@ void disk_op_alarm_handler(void *sema){
 /*
 * Tries to read a block or fails if the timeout expires.
 */
-int read_block_with_timeout(disk_t *disk, int blocknum, char *buffer){
+int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 
 	int read_result;
 	alarm_id timeout_alarm;
@@ -264,7 +264,7 @@ int get_free_inode() {
 		return NULL_PTR;
 	}
 	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
-	//reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
+	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
 	superblock->data.first_free_inode = free_inode_block->next_free_block;
 	
 	semaphore_V(block_locks[0]);

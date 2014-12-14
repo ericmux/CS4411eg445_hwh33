@@ -214,6 +214,8 @@ int minifile_mkdir(char *dirname){
 
 	int dir_inode_number;
 
+	inode_mapping_t new_mapping;
+
 	parent_path = get_parent_path(dirname);
 
 	if(traverse_to_inode(&target_folder, parent_path) != 0){
@@ -280,7 +282,9 @@ int minifile_mkdir(char *dirname){
 	semaphore_V(block_locks[dir_inode_number]);
 
 	//Update target_folder to have a mapping to this new folder.
-	// call harry's function.
+	strcpy(new_mapping.filename, get_local_filename(dirname));
+	new_mapping.inode_number = dir_inode_number;
+	add_mapping(target_inode, &new_mapping);
 
 	semaphore_V(block_locks[0]);
 

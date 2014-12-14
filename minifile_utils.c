@@ -161,16 +161,11 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 		read_result = disk_read_block(minifile_disk, base_inode, (char *)cd);
 		semaphore_P(block_op_finished_semas[base_inode]);
 		if (read_result != DISK_REQUEST_SUCCESS) {
+			semaphore_V(block_locks[base_inode]);			
 			return -1;
 		}
 
 		semaphore_V(block_locks[base_inode]);
-
-		//We just read the target inode, break.
-		if(i == len-1){
-			*found_inode = cd;
-			return 0;
-		}
 
 		if(cd->data.type != DIRECTORY_INODE) return -1;
 
@@ -194,6 +189,7 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 			read_result = disk_read_block(minifile_disk,directory_data_blocknum,(char *) dir_data_block);
 			semaphore_P(block_op_finished_semas[directory_data_blocknum]);
 			if (read_result != DISK_REQUEST_SUCCESS) {
+				semaphore_V(block_locks[directory_data_blocknum]);
 				return -1;
 			}
 
@@ -211,7 +207,20 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 		}
 	}
 
-	return -1;
+	semaphore_P(block_locks[base_inode]);
+
+	read_result = disk_read_block(minifile_disk, base_inode, (char *)cd);
+	semaphore_P(block_op_finished_semas[base_inode]);
+	if (read_result != DISK_REQUEST_SUCCESS) {
+		semaphore_V(block_locks[base_inode]);
+		return -1;
+	}
+
+	semaphore_V(block_locks[base_inode]);
+
+	//basenode points to target node, read and return.
+	*found_inode = cd;
+	return 0;
 }
 
 /* Returns the inode number for the next free inode. Handles management of

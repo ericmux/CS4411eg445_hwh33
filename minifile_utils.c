@@ -19,22 +19,29 @@ typedef enum {
 
 /* Returns the appropriate settings based on the input mode. */
 int get_settings(char *mode, int *cursor_position) {
-	if (mode == "r") {
+	char *read = "r"
+	char *write = "w"
+	char *append = "a"
+	char *readp = "r+"
+	char *writep = "w+"
+	char *appendp = "a+"
+
+	if (mode == read) {
 		*cursor_position = 0;
 		return NO_CHANGE;
-	} else if (mode == "w") {
+	} else if (mode == write) {
 		*cursor_position = 0;
 		return ERASE_CONTENTS;
-	} else if (mode == "a") {
+	} else if (mode == append) {
 		*cursor_position = file_inode->data.size;
 		return NO_CHANGE;
-	} else if (mode == "r+") {
+	} else if (mode == readp) {
 		*cursor_position = 0;
 		return NO_CHANGE;
-	} else if (mode == "w+") {
+	} else if (mode == writep) {
 		*cursor_position = 0;
 		return ERASE_CONTENTS;		
-	} else if (mode == "a+") {
+	} else if (mode == appendp) {
 		*cursor_position = file_inode->data.size;		
 		return NO_CHANGE;
 	}

@@ -114,7 +114,7 @@ int minifile_init(disk_t *input_disk) {
 	}
 
 	//Initialize the open files hashtable.
-	open_files = hashtable_create()
+	open_files = hashtable_create();
 
 	set_interrupt_level(old_level);
 
@@ -188,7 +188,7 @@ minifile_t minifile_creat(char *filename){
 	new_minifile = (minifile_t) malloc(sizeof(struct minifile));
 	new_minifile->inode_number = file_inode_number;
 	new_minifile->cursor_position = 0;
-	new_minifile->current_num_rws = 0;
+	new_minifile->user_modes = linked_list_create();
 
 	return new_minifile;
 }
@@ -217,26 +217,26 @@ minifile_t minifile_open(char *filename, char *mode){
 	new_user_mode = (user_mode_t *)malloc(sizeof(struct user_mode));
 	new_user_mode->process_ID = minithread_id();
 	mode_copy = (char *)malloc(strlen(mode) + 1);
-	strcopy(mode_copy, mode);
+	strcpy(mode_copy, mode);
 	new_user_mode->mode = mode_copy;
 
 	// Check to see if a minifile_t for this file currently exists, then
 	// behave appropriately.
 	request_result = hashtable_get(
-		open_files, file_inode->data.idx, &open_minifile);
+		open_files, file_inode->data.idx, (void**) &open_minifile);
 	if (request_result == -1) {
 		// The minifile doesn't exist. Create a new one and add it
 		// to the table.
-		open_minifile->inode_number = file_inode->data.idx
+		open_minifile->inode_number = file_inode->data.idx;
 		open_minifile->cursor_position = cursor_position;
 		new_user_modes = linked_list_create();
 		linked_list_append(new_user_modes, 0, new_user_mode);
-		open_minifile->modes = new_user_modes;
+		open_minifile->user_modes = new_user_modes;
 		open_files = hashtable_put(open_files, file_inode->data.idx, open_minifile);
 	} else {
 		// The minifile does exist. Simply add the user mode to the list
 		// and return it.
-		linked_list_append(open_minifile->modes, 0, new_user_mode);
+		linked_list_append(open_minifile->user_modes, 0, new_user_mode);
 	}
 	
 	return open_minifile;
@@ -246,7 +246,7 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 	inode_t *file_inode;
 	char *current_db;
 
-	int i, j, k;
+	int i;
 	int start_block;
 	int bytes_read, bytes_to_read, bytes_to_copy;
 	int request_result;
@@ -255,8 +255,8 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 	// the file doesn't exist and return NULL.
 	file_inode = (inode_t *)malloc(sizeof(struct inode));
 	request_result = reliable_read_block(
-		minifile_disk, file->inode_number, &file_inode);
-	if (request_result == -1) return NULL;
+		minifile_disk, file->inode_number, (void **) &file_inode);
+	if (request_result == -1) return -1;
 
 	// should check modes
 
@@ -266,21 +266,21 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 	// Read until we hit the end of the file or we have read maxlen
 	// bytes.
 	bytes_read = 0;
-	bytes_to_read = (file->cursor_position + maxlen < file_inode->size - file->cursor_position) ?
-		file->cursor_position + maxlen : file_inode->size - file->cursor_position;
+	bytes_to_read = (file->cursor_position + maxlen < file_inode->data.size - file->cursor_position) ?
+		file->cursor_position + maxlen : file_inode->data.size - file->cursor_position;
 	// Traverse the direct pointers.
-	for (int i = start_block; bytes_read < bytes_to_read; i++) {
+	for (i = start_block; bytes_read < bytes_to_read; i++) {
 		// Load the current datablock.
 		request_result = reliable_read_block(
-			minifile_disk, file_inode->direct_ptrs[i], &current_db);
+			minifile_disk, file_inode->data.direct_ptrs[i], &current_db);
 		// Copy over the number of bytes left.
-		if (bytes_to_read - bytes_read > file_inode->size - file->cursor_position) {
-			bytes_to_copy = file_inode->size - file_inode->cursor_position;
+		if (bytes_to_read - bytes_read > file_inode->data.size - file->cursor_position) {
+			bytes_to_copy = file_inode->data.size - file->cursor_position;
 		} else {
 			bytes_to_copy = (bytes_to_read - bytes_read < DISK_BLOCK_SIZE) ?
 				bytes_to_read - bytes_read : DISK_BLOCK_SIZE;
 		}
-		memcpy(data[bytes_read], current_db, bytes_to_copy;
+		memcpy(data[bytes_read], current_db, bytes_to_copy);
 		bytes_read = bytes_read + bytes_to_copy;
 		file->cursor_position = file->cursor_position + bytes_to_copy;
 	}

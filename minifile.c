@@ -199,6 +199,7 @@ int minifile_unlink(char *filename){
 int minifile_mkdir(char *dirname){
 
 	int i;
+	int read_result;
 	char *parent_path;
 	inode_t *target_folder;
 	inode_t *dir_inode;
@@ -275,7 +276,7 @@ int minifile_mkdir(char *dirname){
 	//Update target_folder to have a mapping to this new folder.
 	strcpy(new_mapping.filename, get_local_filename(dirname));
 	new_mapping.inode_number = dir_inode_number;
-	add_mapping(target_inode, &new_mapping);
+	add_mapping(target_folder, &new_mapping);
 
 	semaphore_V(block_locks[0]);
 

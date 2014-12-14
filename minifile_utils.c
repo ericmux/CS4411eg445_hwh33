@@ -169,6 +169,9 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 
 		if(cd->data.type != DIRECTORY_INODE) return -1;
 
+		// Empty/uninitialized directory.
+		if(cd->data.size < 1) return -1;
+
 		//Read direct/indirect ptrs and look for mappings.
 		for(j = 0; j < cd->data.size; j++){
 			int directory_data_blocknum;

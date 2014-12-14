@@ -214,6 +214,7 @@ minifile_t minifile_open(char *filename, char *mode){
 	// Get the settings from the given mode.
 	mode_interpret_val = get_settings(mode, &cursor_position);
 	if (mode_interpret_val == INVALID_MODE) return NULL;
+	if (cursor_position == -1) cursor_position = file_inode->data.size;
 	new_user_mode = (user_mode_t *)malloc(sizeof(struct user_mode));
 	new_user_mode->process_ID = minithread_id();
 	mode_copy = (char *)malloc(strlen(mode) + 1);

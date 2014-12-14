@@ -383,6 +383,10 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 		if (request_result == -1) return -1;
 		return 0;
 	}
+
+	// We should go check the indirect ptrs, but we're running out of time...
+	return -1;
+
 	// } else {
 	// 	// We need to traverse the indirect blocks to find the mapping.
 	// }

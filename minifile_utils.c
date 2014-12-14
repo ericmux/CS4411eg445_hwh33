@@ -221,7 +221,7 @@ int get_free_inode() {
 	int free_inode_num;
 	free_block_t *free_inode_block;
 
-	semaphore_P(metadatalock[0]);
+	semaphore_P(blocklocks[0]);
 	
 	free_inode_num = superblock->data.first_free_inode;
 	if (free_inode_num == NULL_PTR) {
@@ -229,9 +229,9 @@ int get_free_inode() {
 	}
 	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
 	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
-	superblock->first_free_inode = free_inode_block->next_free_block;
+	superblock->data.first_free_inode = free_inode_block->next_free_block;
 	
-	semaphore_V(metadatalock[0]);
+	semaphore_V(blocklocks[0]);
 
 	return free_inode_num;
 }

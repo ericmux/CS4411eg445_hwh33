@@ -375,7 +375,7 @@ char **minifile_ls(char *path){
 
 		for(; i < dir_data_block->data.num_maps; i++){
 			dirs[i] = (char *) malloc(MAX_CHARS_IN_FNAME);
-			strcpy(dirs[i], get_local_filename(dir_data_block->data.inode_map[i].absolute_path));
+			strcpy(dirs[i], dir_data_block->data.inode_map[i].filename);
 		}
 	}
 

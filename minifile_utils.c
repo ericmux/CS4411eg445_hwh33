@@ -149,8 +149,7 @@ int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 
 	read_result = disk_read_block(disk, blocknum, buffer);
 	semaphore_P(block_op_finished_semas[blocknum]);
-	if (read_result != DISK_REQUEST_SUCCESS) {
-		semaphore_V(block_locks[blocknum]);			
+	if (read_result != DISK_REQUEST_SUCCESS) {		
 		return -1;
 	}
 

@@ -365,7 +365,7 @@ char **minifile_ls(char *path){
 		dir_data_blocknum = target_folder->data.direct_ptrs[i / INODE_MAPS_PER_BLOCK];
 		semaphore_P(block_locks[dir_data_blocknum]);
 
-		read_result = reliable_read_block(minifile_disk, dir_data_blocknum, dir_data_block);
+		read_result = reliable_read_block(minifile_disk, dir_data_blocknum, (char *) dir_data_block);
 		if(read_result != DISK_REQUEST_SUCCESS){
 			semaphore_V(block_locks[dir_data_blocknum]);			
 			return NULL;

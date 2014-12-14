@@ -7,6 +7,9 @@
 #include <limits.h>
 
 #include "minithread.h"
+#include "alarm.h"
+
+#define DISK_OP_TIMEOUT 500*MILLISECOND
 
 /* Returns the absolute path for the given filename. If the given filename
  * is already an absolute path, it is returned as is.
@@ -64,19 +67,6 @@ char* get_parent_path(char *filename) {
 	}
 }
 
-/* Attempts to read a block until successful. Stops on DISK_REQUEST_ERROR.
- * Returns 0 on success and -1 on failure.
- */
-int reliable_read_block(disk_t *disk, int blocknum, char* buffer) {
-	int request_result = DISK_OVERLOADED;
-
-	while (request_result == DISK_OVERLOADED) {
-		request_result = disk_read_block(disk, blocknum, buffer);
-	}
-
-	return request_result;
-}
-
 /* Returns a list of substrings split by the given delimiter. Stores the
  * number of substrings returned in num_substrings. 
  */
@@ -116,6 +106,40 @@ char** str_split(char *input_string, char delimiter, int *num_substrings) {
 
 	return return_array;
 }
+
+
+void disk_op_alarm_handler(void *sema){
+	semaphore_t *s = (semaphore_t *) sema;
+	semaphore_V(s);
+}
+
+/*
+* Tries to read a block or fails if the timeout expires.
+*/
+int read_block_with_timeout(disk_t *disk, int blocknum, char *buffer){
+
+	int read_result;
+	alarm_id timeout_alarm;
+
+	read_result = DISK_REQUEST_ERROR;
+
+	semaphore_P(block_locks[blocknum]);
+
+	timeout_alarm = register_alarm(DISK_OP_TIMEOUT, disk_op_alarm_handler, block_op_finished_semas[blocknum]);
+
+	read_result = disk_read_block(disk, blocknum, buffer);
+	semaphore_P(block_op_finished_semas[blocknum]);
+	if (read_result != DISK_REQUEST_SUCCESS) {
+		semaphore_V(block_locks[base_inode]);			
+		return -1;
+	}
+
+	deregister_alarm(timeout_alarm);
+
+	semaphore_V(block_locks[blocknum]);
+}
+
+
 
 /* Returns the inode at the given path in found_inode. The return value
  * is 0 on success and -1 on error.

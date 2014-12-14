@@ -135,12 +135,12 @@ minifile_t minifile_creat(char *filename){
 
 	// Create the file's inode.
 	new_inode = (inode_t *)malloc(sizeof(struct inode));
-	new_inode->data.inode_type = FILE;
+	new_inode->data.type = FILE;
 	new_inode->data.size = 0;
 	for (i = 0; i < DIRECT_PTRS_PER_INODE; i++) {
-		new_inode->data->direct_ptrs[i] = NULL_PTR;
+		new_inode->data.direct_ptrs[i] = NULL_PTR;
 	}
-	new_inode->indirect_ptr = NULL_PTR;
+	new_inode->data.indirect_ptr = NULL_PTR;
 
 	// Check to see if this file exists in the current directory. If so, we'll overwrite 
 	// that inode block with our new one. If not, get the number of the first free inode.
@@ -152,7 +152,7 @@ minifile_t minifile_creat(char *filename){
 	}
 
 	// Write the inode and, when finished, free it.
-	disk_write_block(disk, file_inode_number, (char *)new_inode);
+	disk_write_block(minifile_disk, file_inode_number, (char *)new_inode);
 	// XXX: wait for confirmation of write?
 	free(new_inode);
 

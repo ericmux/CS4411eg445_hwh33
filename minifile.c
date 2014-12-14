@@ -358,6 +358,11 @@ char **minifile_ls(char *path){
 	dir_data_block = (directory_data_block_t *) malloc(sizeof(directory_data_block_t));
 
 	dirs = (char **) malloc(target_folder->data.size*sizeof(char *));
+	for(i = 0; i < target_folder->data.size; i++){
+		dirs[i] = "";
+	}
+
+
 	for(i = 0; i < target_folder->data.size; ){
 		int dir_data_blocknum;
 

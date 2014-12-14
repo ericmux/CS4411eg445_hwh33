@@ -292,6 +292,7 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 
 		//Read direct/indirect ptrs and look for mappings.
 		for(j = 0; j < cd->data.size; j++){
+			int found_inode;
 			int directory_data_blocknum;
 			directory_data_block_t *dir_data_block;
 
@@ -315,15 +316,19 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 			}
 
 			semaphore_V(block_locks[directory_data_blocknum]);
-
+			found_inode = 0;
 			//search for the mapping matching dirs[i].
 			for(k = 0; k < dir_data_block->data.num_maps; k++){
 				inode_mapping_t mapping = dir_data_block->data.inode_map[k];
 
 				if(strcmp(dirs[i], mapping.filename) == 0){
 					base_inode = mapping.inode_number;
+					found_inode = 1;
+					break;
 				}
 			}
+
+			if(found_inode) break;
 
 		}
 	}

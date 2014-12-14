@@ -6,6 +6,8 @@
 #include "disk.h"
 #include "synch.h"
 #include "interrupts.h"
+#include "linked_list.h"
+#include "hashtable.h"
 
 #define MAX_NUM_THREADS  0xffff
 #define SUPERBLOCK_NUM 0
@@ -23,6 +25,11 @@ typedef enum {
 	DIRECTORY_INODE = 1
 } inode_type_t;
 
+typedef struct user_mode {
+	int process_ID;
+	char *mode;
+} user_mode_t;
+
 /*
  * struct minifile:
  *     This is the structure that keeps the information about 
@@ -31,7 +38,7 @@ typedef enum {
 typedef struct minifile {
 	int inode_number;
 	int cursor_position;
-	int current_num_rws;
+	linked_list_t user_modes;
 } minifile;
 
 // Version of superblock in memory.
@@ -46,6 +53,8 @@ semaphore_t *block_op_finished_semas;
 
 // Maps process IDs to current working directories represented by dir_data structures.
 dir_data_t thread_cd_map[MAX_NUM_THREADS];
+
+hashtable_t open_files;
 
 
 //Include util functions.
@@ -104,6 +113,8 @@ int minifile_init(disk_t *input_disk) {
 		thread_cd_map[i].inode_number = 1;
 	}
 
+	//Initialize the open files hashtable.
+	open_files = hashtable_create()
 
 	set_interrupt_level(old_level);
 
@@ -183,12 +194,97 @@ minifile_t minifile_creat(char *filename){
 }
 
 minifile_t minifile_open(char *filename, char *mode){
-	return NULL;
+	inode_t *file_inode;
+	int request_result;
+	minifile_t open_minifile;
+	int cursor_position;
+	int mode_interpret_val;
+	user_mode_t *new_user_mode;
+	linked_list_t new_user_modes;
+	char *mode_copy;
+
+	open_minifile = (minifile_t) malloc(sizeof(struct minifile));
+
+	// Get the file's inode. If it doesn't exist, conclude that
+	// the file doesn't exist and return NULL.
+	file_inode = (inode_t *)malloc(sizeof(struct inode));
+	request_result = traverse_to_inode(&file_inode, filename);
+	if (request_result == -1) return NULL;
+
+	// Get the settings from the given mode.
+	mode_interpret_val = get_settings(mode, &cursor_position);
+	if (mode_interpret_val == INVALID_MODE) return NULL;
+	new_user_mode = (user_mode_t *)malloc(sizeof(struct user_mode));
+	new_user_mode->process_ID = minithread_id();
+	mode_copy = (char *)malloc(strlen(mode) + 1);
+	strcopy(mode_copy, mode);
+	new_user_mode->mode = mode_copy;
+
+	// Check to see if a minifile_t for this file currently exists, then
+	// behave appropriately.
+	request_result = hashtable_get(
+		open_files, file_inode->data.idx, &open_minifile);
+	if (request_result == -1) {
+		// The minifile doesn't exist. Create a new one and add it
+		// to the table.
+		open_minifile->inode_number = file_inode->data.idx
+		open_minifile->cursor_position = cursor_position;
+		new_user_modes = linked_list_create();
+		linked_list_append(new_user_modes, 0, new_user_mode);
+		open_minifile->modes = new_user_modes;
+		open_files = hashtable_put(open_files, file_inode->data.idx, open_minifile);
+	} else {
+		// The minifile does exist. Simply add the user mode to the list
+		// and return it.
+		linked_list_append(open_minifile->modes, 0, new_user_mode);
+	}
+	
+	return open_minifile;
 }
 
 int minifile_read(minifile_t file, char *data, int maxlen){
+	inode_t *file_inode;
+	char *current_db;
 
-	return -1;
+	int i, j, k;
+	int start_block;
+	int bytes_read, bytes_to_read, bytes_to_copy;
+	int request_result;
+
+	// Get the file's inode. If it doesn't exist, conclude that
+	// the file doesn't exist and return NULL.
+	file_inode = (inode_t *)malloc(sizeof(struct inode));
+	request_result = reliable_read_block(
+		minifile_disk, file->inode_number, &file_inode);
+	if (request_result == -1) return NULL;
+
+	// should check modes
+
+	// Find the block to start on.
+	start_block = file->cursor_position / DISK_BLOCK_SIZE;
+
+	// Read until we hit the end of the file or we have read maxlen
+	// bytes.
+	bytes_read = 0;
+	bytes_to_read = (file->cursor_position + maxlen < file_inode->size - file->cursor_position) ?
+		file->cursor_position + maxlen : file_inode->size - file->cursor_position;
+	// Traverse the direct pointers.
+	for (int i = start_block; bytes_read < bytes_to_read; i++) {
+		// Load the current datablock.
+		request_result = reliable_read_block(
+			minifile_disk, file_inode->direct_ptrs[i], &current_db);
+		// Copy over the number of bytes left.
+		if (bytes_to_read - bytes_read > file_inode->size - file->cursor_position) {
+			bytes_to_copy = file_inode->size - file_inode->cursor_position;
+		} else {
+			bytes_to_copy = (bytes_to_read - bytes_read < DISK_BLOCK_SIZE) ?
+				bytes_to_read - bytes_read : DISK_BLOCK_SIZE;
+		}
+		memcpy(data[bytes_read], current_db, bytes_to_copy;
+		bytes_read = bytes_read + bytes_to_copy;
+		file->cursor_position = file->cursor_position + bytes_to_copy;
+	}
+
 }
 
 int minifile_write(minifile_t file, char *data, int len){

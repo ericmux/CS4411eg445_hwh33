@@ -114,7 +114,7 @@ void disk_op_alarm_handler(void *sema){
 }
 
 /*
-* Tries to read a block or fails if the timeout expires.
+* Tries to read a block or fails if the timeout expires. Assumes lock already held. (REMOVE BLOCK_LOCK GUARDS!!!)
 */
 int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 

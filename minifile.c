@@ -100,7 +100,7 @@ int minifile_init(disk_t *input_disk) {
 
 	//Initialize thread directory map.
 	for(i = 0; i < MAX_NUM_THREADS; i++){
-		thread_cd_map[i].absolute_path = "/";
+		strcpy(thread_cd_map[i].absolute_path,"/");
 		thread_cd_map[i].inode_number = 1;
 	}
 
@@ -212,7 +212,7 @@ int minifile_cd(char *path){
 	if(strcmp(path,"/") == 0){
 		old_level = set_interrupt_level(DISABLED);
 		
-		thread_cd_map[minithread_id()].absolute_path = "/";
+		strcpy(thread_cd_map[minithread_id()].absolute_path,"/");
 		thread_cd_map[minithread_id()].inode_number = 1;
 		
 		set_interrupt_level(old_level);

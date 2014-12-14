@@ -202,7 +202,7 @@ int reliable_write_block(disk_t *disk, int blocknum, char *buffer){
 
 	timeout_alarm = register_alarm(DISK_OP_TIMEOUT, disk_op_alarm_handler, block_op_finished_semas[blocknum]);
 
-	read_result = disk_read_block(disk, blocknum, buffer);
+	read_result = disk_write_block(disk, blocknum, buffer);
 	semaphore_P(block_op_finished_semas[blocknum]);
 	if (read_result != DISK_REQUEST_SUCCESS) {		
 		return -1;

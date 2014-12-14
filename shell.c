@@ -182,10 +182,7 @@ int shell(int *g) {
 		  printf("File listing for %s\n", arg1);
 		  for(i = 0; files != NULL && files[i] != NULL; ++i) {
 		    printf("\t%s\n",files[i]);
-		    free(files[i]);
 		  }
-		  if(files != NULL)
-		    free(files);
 		} else if(strcmp(func,"pwd") == 0)
 		        printf("%s\n", minifile_pwd());
 		else if(strcmp(func,"mkdir") == 0)

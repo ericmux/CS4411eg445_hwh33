@@ -2,6 +2,7 @@
 #include "mini_mkfs.h"
 #include "minifile.h"
 #include "synch.h"
+#include "interrupts.h"
 
 
 
@@ -31,6 +32,9 @@ void mkfs(int dsk_siz){
 	int first_free_inode;
 	int first_free_data_block;
 	int i;
+	int old_level;
+
+	old_level = set_interrupt_level(DISABLED);
 
 	disk_request_sema = semaphore_create();
 	semaphore_initialize(disk_request_sema,0);
@@ -49,6 +53,8 @@ void mkfs(int dsk_siz){
 
 	//Install mkfs's disk handler.
 	install_disk_handler(mkfs_disk_handler);
+
+	set_interrupt_level(old_level);
 
 	//Create superblock.
 	superblock = minifile_create_superblock(disk_size);

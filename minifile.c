@@ -264,6 +264,8 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 	// Find the block to start on.
 	start_block = file->cursor_position / DISK_BLOCK_SIZE;
 
+	current_db = (char *)malloc(DISK_BLOCK_SIZE);
+
 	// Read until we hit the end of the file or we have read maxlen
 	// bytes.
 	bytes_read = 0;

@@ -409,6 +409,7 @@ void minithread_system_initialize(proc_t mainproc, arg_t mainarg) {
 	set_interrupt_level(ENABLED);
 
 	//Initialize file system.
+	minifile_initialize_disk();
 	minifile_init(minifile_disk);
 
 	//Start concurrency.

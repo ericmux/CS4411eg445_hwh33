@@ -224,6 +224,9 @@ char **minifile_ls(char *path);
 char* minifile_pwd(void);
 
 
+//allocates the disk global metadata.
+int minifile_initialize_disk();
+
 //Block API.
 
 /*

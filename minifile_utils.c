@@ -124,6 +124,7 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 	int len;
 	char **dirs;
 	int old_level;
+	int read_result;
 	int i;
 	int j;
 	int k;
@@ -152,7 +153,6 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 	cd = (inode_t *) malloc(sizeof(inode_t));
 
 	for(i = 0; i < len; i++){
-		int read_result;
 
 		if(strcmp(dirs[i],"") == 0) continue;
 

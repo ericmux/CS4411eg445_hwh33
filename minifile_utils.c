@@ -117,9 +117,8 @@ char** str_split(char *input_string, char delimiter, int *num_substrings) {
 	return return_array;
 }
 
-
-/* Returns the inode number for the file/directory with the given name.
- * Must be a direct child of the given parent.
+/* Returns the inode at the given path in found_inode. The return value
+ * is 0 on success and -1 on error.
  */
 int traverse_to_inode(inode_t **found_inode, char *path) {
 	int len;
@@ -211,47 +210,6 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 
 		}
 	}
-
-	return -1;
-}
-
-/* Searches for name in the given parent directory. If found, the inode 
- * number is returned. Else, returns -1.
- */
-int get_inode_num(char *absolute_path) {
-	int num_substrings;
-	char **splits;
-	int i;
-	inode_t *current_inode;
-	int current_inode_number;
-	int request_result;
-
-	// The last split is the file/directory whose inode number we are looking for.
-	splits = str_split(absolute_path, '/', &num_substrings);
-
-	// The first inode will be the root inode.
-	current_inode = (inode_t *)malloc(sizeof(struct inode));
-	current_inode_number = ROOT_INODE_NUM;
-
-	// We iterate through the path as defined by splits. For each member of splits,
-	// we find its inode number, then use that to get the inode of the next member
-	// down the path. The final inode number is the one to return. If we ever get
-	// -1 from get_inode_num_in_parent or reliable_read_block, we must return that.
-	for (i = 1; i < num_substrings; i++) {
-		
-		// Load the current inode.
-		request_result = reliable_read_block(
-			minifile_disk, current_inode_number, (char *)current_inode);
-		if (request_result == -1) {
-			return -1;
-		}
-
-		// Get the inode number for splits[i].
-		current_inode_number = get_inode_num_in_parent(current_inode, splits[i]);
-	}
-
-	// The last inode number obtained is the one we want.
-	return current_inode_number;
 
 	return -1;
 }

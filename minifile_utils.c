@@ -109,7 +109,7 @@ char** str_split(char *input_string, char delimiter, int *num_substrings) {
 
 
 void disk_op_alarm_handler(void *sema){
-	semaphore_t *s = (semaphore_t *) sema;
+	semaphore_t s = (semaphore_t) sema;
 	semaphore_V(s);
 }
 
@@ -130,7 +130,7 @@ int read_block_with_timeout(disk_t *disk, int blocknum, char *buffer){
 	read_result = disk_read_block(disk, blocknum, buffer);
 	semaphore_P(block_op_finished_semas[blocknum]);
 	if (read_result != DISK_REQUEST_SUCCESS) {
-		semaphore_V(block_locks[base_inode]);			
+		semaphore_V(block_locks[blocknum]);			
 		return -1;
 	}
 
@@ -264,7 +264,7 @@ int get_free_inode() {
 		return NULL_PTR;
 	}
 	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
-	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
+	//reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
 	superblock->data.first_free_inode = free_inode_block->next_free_block;
 	
 	semaphore_V(block_locks[0]);

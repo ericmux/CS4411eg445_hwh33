@@ -264,6 +264,8 @@ int minifile_mkdir(char *dirname){
 		return -1;
 	}
 
+	semaphore_V(block_locks[0]);
+
 	//Update dir_inode to have actual directory inode valid data.
 	dir_inode->data.idx = dir_inode_number;
 	dir_inode->data.type = DIRECTORY_INODE;
@@ -287,8 +289,6 @@ int minifile_mkdir(char *dirname){
 	strcpy(new_mapping.filename, get_local_filename(dirname));
 	new_mapping.inode_number = dir_inode_number;
 	add_mapping(target_folder, &new_mapping);
-
-	semaphore_V(block_locks[0]);
 
 	return -1;
 }

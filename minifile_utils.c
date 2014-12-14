@@ -162,7 +162,49 @@ int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 	return 0;
 }
 
+/* Returns the inode number for the next free inode. Handles management of
+ * free inode list. If no free inodes are available, -1 is returned.
+ */
+int get_free_inode() {
+	int free_inode_num;
+	free_block_t *free_inode_block;
 
+	semaphore_P(block_locks[0]);
+	
+	free_inode_num = superblock->data.first_free_inode;
+	if (free_inode_num == NULL_PTR) {
+		return NULL_PTR;
+	}
+	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
+	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
+	superblock->data.first_free_inode = free_inode_block->next_free_block;
+	
+	semaphore_V(block_locks[0]);
+
+	return free_inode_num;
+}
+
+/* Returns the block number for the next free datablock. Handles management of
+ * free datablock list. If no free inodes are available, -1 is returned.
+ */
+int get_free_datablock() {
+	int free_datablock_num;
+	free_block_t *free_datablock;
+
+	semaphore_P(block_locks[0]);
+	
+	free_datablock_num = superblock->data.first_free_data_block;
+	if (free_datablock_num == NULL_PTR) {
+		return NULL_PTR;
+	}
+	free_datablock = (free_block_t *)malloc(sizeof(struct free_block));
+	reliable_read_block(minifile_disk, free_datablock_num, (char *)free_datablock);
+	superblock->data.first_free_data_block = free_datablock->next_free_block;
+	
+	semaphore_V(block_locks[0]);
+
+	return free_datablock_num;
+}
 
 /* Returns the inode at the given path in found_inode. The return value
  * is 0 on success and -1 on error.
@@ -278,6 +320,7 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 	int max_direct_mappings;
 	int directory_data_blocknum;
 	int request_result;
+	int new_block_num;
 	directory_data_block_t *current_dir_db;
 
 	current_dir_db = (directory_data_block_t *)malloc(sizeof(struct directory_data_block));
@@ -291,9 +334,10 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 			// We need to create a new directory_data_block with our mapping.
 			current_dir_db->data.inode_map[0] = *new_mapping;
 			current_dir_db->data.num_maps = 1;
-			inode->data.direct_ptrs[directory_data_blocknum] = current_dir_db;
-			// XXX : write new_dir_db
+			new_block_num = get_free_datablock();
+			// XXX : write new_dir_db to new_block_num
 			// XXX : write inode
+			inode->data.direct_ptrs[directory_data_blocknum] = new_block_num;
 			return 0;
 		}
 		// Load the appropriate directory datablock and add the mapping.
@@ -301,56 +345,10 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 			minifile_disk, directory_data_blocknum, &current_dir_db);
 		current_dir_db->data.inode_map[current_dir_db->data.num_maps] = new_mapping;
 		current_dir_db->data.num_maps++;
-		inode->data.direct_ptrs[directory_data_blocknum] = current_dir_db;
-		// XXX : write new_dir_db
-		// XXX : write inode
+		// XXX : write new_dir_db at dir_block_num
 		return 0;
 	}
 	// } else {
 	// 	// We need to traverse the indirect blocks to find the mapping.
 	// }
-}
-
-/* Returns the inode number for the next free inode. Handles management of
- * free inode list. If no free inodes are available, -1 is returned.
- */
-int get_free_inode() {
-	int free_inode_num;
-	free_block_t *free_inode_block;
-
-	semaphore_P(block_locks[0]);
-	
-	free_inode_num = superblock->data.first_free_inode;
-	if (free_inode_num == NULL_PTR) {
-		return NULL_PTR;
-	}
-	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
-	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
-	superblock->data.first_free_inode = free_inode_block->next_free_block;
-	
-	semaphore_V(block_locks[0]);
-
-	return free_inode_num;
-}
-
-/* Returns the block number for the next free datablock. Handles management of
- * free datablock list. If no free inodes are available, -1 is returned.
- */
-int get_free_datablock() {
-	int free_datablock_num;
-	free_block_t *free_datablock;
-
-	semaphore_P(block_locks[0]);
-	
-	free_datablock_num = superblock->data.first_free_data_block;
-	if (free_datablock_num == NULL_PTR) {
-		return NULL_PTR;
-	}
-	free_datablock = (free_block_t *)malloc(sizeof(struct free_block));
-	reliable_read_block(minifile_disk, free_datablock_num, (char *)free_datablock);
-	superblock->data.first_free_data_block = free_datablock->next_free_block;
-	
-	semaphore_V(block_locks[0]);
-
-	return free_datablock_num;
 }

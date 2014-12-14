@@ -11,6 +11,37 @@
 
 #define DISK_OP_TIMEOUT 300*MILLISECOND
 
+typedef enum {
+	NO_CHANGE = 0,
+	ERASE_CONTENTS = 1,
+	INVALID_MODE = 2
+} mode_interpret_values;
+
+/* Returns the appropriate settings based on the input mode. */
+int get_settings(char *mode, int *cursor_position) {
+	if (mode == "r") {
+		*cursor_position = 0;
+		return NO_CHANGE;
+	} else if (mode == "w") {
+		*cursor_position = 0;
+		return ERASE_CONTENTS;
+	} else if (mode == "a") {
+		*cursor_position = file_inode->data.size;
+		return NO_CHANGE;
+	} else if (mode == "r+") {
+		*cursor_position = 0;
+		return NO_CHANGE;
+	} else if (mode == "w+") {
+		*cursor_position = 0;
+		return ERASE_CONTENTS;		
+	} else if (mode == "a+") {
+		*cursor_position = file_inode->data.size;		
+		return NO_CHANGE;
+	}
+
+	return INVALID_MODE;
+}
+
 /* Returns the absolute path for the given filename. If the given filename
  * is already an absolute path, it is returned as is.
  */

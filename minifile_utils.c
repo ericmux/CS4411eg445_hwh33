@@ -235,3 +235,25 @@ int get_free_inode() {
 
 	return free_inode_num;
 }
+
+/* Returns the block number for the next free datablock. Handles management of
+ * free datablock list. If no free inodes are available, -1 is returned.
+ */
+int get_free_datablock() {
+	int free_datablock_num;
+	free_block_t *free_datablock;
+
+	semaphore_P(block_locks[0]);
+	
+	free_datablock_num = superblock->data.first_free_data_block;
+	if (free_datablock_num == NULL_PTR) {
+		return NULL_PTR;
+	}
+	free_datablock = (free_block_t *)malloc(sizeof(struct free_block));
+	reliable_read_block(minifile_disk, free_datablock_num, (char *)free_datablock);
+	superblock->data.first_free_data_block = free_datablock->next_free_block;
+	
+	semaphore_V(block_locks[0]);
+
+	return free_datablock_num;
+}

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "hashtable.h"
 #include "minifile.h"
@@ -123,6 +124,7 @@ int minifile_init(disk_t *input_disk) {
 
 minifile_t minifile_creat(char *filename){
 	char *parent_path;
+	char *local_filename;
 	inode_t *new_inode;
 	inode_t *old_inode;
 	inode_t *parent_inode;
@@ -162,7 +164,8 @@ minifile_t minifile_creat(char *filename){
 
 	// Create a new mapping for this inode and add it to the parent inode.
 	new_mapping = (inode_mapping_t *)malloc(sizeof(struct inode_mapping));
-	new_mapping->filename = get_local_filename(filename);
+	local_filename = get_local_filename(filename);
+	strcpy(new_mapping->filename, local_filename); 
 	new_mapping->inode_number = file_inode_number;
 	parent_inode = (inode_t *)malloc(sizeof(struct inode));
 	request_result = traverse_to_inode(&parent_inode, parent_path);

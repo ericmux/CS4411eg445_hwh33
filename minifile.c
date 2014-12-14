@@ -290,7 +290,7 @@ int minifile_mkdir(char *dirname){
 	new_mapping.inode_number = dir_inode_number;
 	add_mapping(target_folder, &new_mapping);
 
-	return -1;
+	return 0;
 }
 
 int minifile_rmdir(char *dirname){
@@ -331,7 +331,7 @@ int minifile_cd(char *path){
 		
 	set_interrupt_level(old_level);	
 
-	return -1;
+	return 0;
 }
 
 char **minifile_ls(char *path){

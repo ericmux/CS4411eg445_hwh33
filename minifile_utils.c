@@ -188,6 +188,7 @@ int reliable_write_block(disk_t *disk, int blocknum, char *buffer){
 int get_free_inode() {
 	int free_inode_num;
 	free_block_t *free_inode_block;
+	int request_result;
 
 	semaphore_P(block_locks[0]);
 	
@@ -198,7 +199,11 @@ int get_free_inode() {
 	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
 	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
 	superblock->data.first_free_inode = free_inode_block->next_free_block;
-	
+	// Write our changes to the superblock to disk.
+	request_result = reliable_write_block(
+		minifile_disk, SUPERBLOCK_NUM, (char *)superblock);
+	if (request_result == -1) return -1;
+
 	semaphore_V(block_locks[0]);
 
 	return free_inode_num;
@@ -210,6 +215,7 @@ int get_free_inode() {
 int get_free_datablock() {
 	int free_datablock_num;
 	free_block_t *free_datablock;
+	int request_result;
 
 	semaphore_P(block_locks[0]);
 	
@@ -220,7 +226,11 @@ int get_free_datablock() {
 	free_datablock = (free_block_t *)malloc(sizeof(struct free_block));
 	reliable_read_block(minifile_disk, free_datablock_num, (char *)free_datablock);
 	superblock->data.first_free_data_block = free_datablock->next_free_block;
-	
+	// Write our changes to the superblock to disk.
+	request_result = reliable_write_block(
+		minifile_disk, SUPERBLOCK_NUM, (char *)superblock);
+	if (request_result == -1) return -1;
+
 	semaphore_V(block_locks[0]);
 
 	return free_datablock_num;

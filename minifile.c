@@ -169,6 +169,7 @@ minifile_t minifile_creat(char *filename){
 	// new_minifile->current_num_rws = 0;
 
 	// return new_minifile;
+	return NULL;
 }
 
 minifile_t minifile_open(char *filename, char *mode){

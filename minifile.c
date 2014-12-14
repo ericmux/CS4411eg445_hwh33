@@ -79,7 +79,6 @@ int minifile_init(disk_t *input_disk) {
 	use_existing_disk = 1;
 	disk_name = DISK_NAME;
 
-	input_disk = (disk_t *) malloc(sizeof(disk_t));
 	result = disk_initialize(input_disk);
 	if(result == -1){
 		return -1;
@@ -246,6 +245,15 @@ char* minifile_pwd(void){
 
 	strcpy(pwd,thread_cd_map[minithread_id()].absolute_path);
 	return pwd;
+}
+
+int minifile_initialize_disk(){
+	minifile_disk = (disk_t *) malloc(sizeof(disk_t));
+	if(minifile_disk == NULL){
+		return -1;
+	}
+
+	return 0;
 }
 
 

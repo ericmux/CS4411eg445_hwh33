@@ -255,7 +255,7 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 	// the file doesn't exist and return NULL.
 	file_inode = (inode_t *)malloc(sizeof(struct inode));
 	request_result = reliable_read_block(
-		minifile_disk, file->inode_number, (void **) &file_inode);
+		minifile_disk, file->inode_number, (char *) &file_inode);
 	if (request_result == -1) return -1;
 
 	// should check modes
@@ -272,7 +272,7 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 	for (i = start_block; bytes_read < bytes_to_read; i++) {
 		// Load the current datablock.
 		request_result = reliable_read_block(
-			minifile_disk, file_inode->data.direct_ptrs[i], &current_db);
+			minifile_disk, file_inode->data.direct_ptrs[i], current_db);
 		// Copy over the number of bytes left.
 		if (bytes_to_read - bytes_read > file_inode->data.size - file->cursor_position) {
 			bytes_to_copy = file_inode->data.size - file->cursor_position;
@@ -280,7 +280,7 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 			bytes_to_copy = (bytes_to_read - bytes_read < DISK_BLOCK_SIZE) ?
 				bytes_to_read - bytes_read : DISK_BLOCK_SIZE;
 		}
-		memcpy(data[bytes_read], current_db, bytes_to_copy);
+		memcpy(&data[bytes_read], current_db, bytes_to_copy);
 		bytes_read = bytes_read + bytes_to_copy;
 		file->cursor_position = file->cursor_position + bytes_to_copy;
 	}

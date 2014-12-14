@@ -19,12 +19,12 @@ typedef enum {
 
 /* Returns the appropriate settings based on the input mode. */
 int get_settings(char *mode, int *cursor_position) {
-	char *read = "r"
-	char *write = "w"
-	char *append = "a"
-	char *readp = "r+"
-	char *writep = "w+"
-	char *appendp = "a+"
+	char *read = "r";
+	char *write = "w";
+	char *append = "a";
+	char *readp = "r+";
+	char *writep = "w+";
+	char *appendp = "a+";
 
 	if (mode == read) {
 		*cursor_position = 0;

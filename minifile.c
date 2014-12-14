@@ -361,6 +361,7 @@ char **minifile_ls(char *path){
 	for(i = 0; i < target_folder->data.size; i++){
 		dirs[i] = "";
 	}
+	dirs[i] = NULL;
 
 
 	for(i = 0; i < target_folder->data.size; ){

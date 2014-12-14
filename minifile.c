@@ -7,6 +7,7 @@
 #include "interrupts.h"
 
 #define MAX_NUM_THREADS  0xffff
+#define SUPERBLOCK_NUM 0
 #define ROOT_INODE_NUM 1
 
 // Return values from disk requests.
@@ -124,6 +125,7 @@ minifile_t minifile_creat(char *filename){
 	// char *parent_path;
 	// inode_t *new_inode;
 	// inode_t *old_inode;
+	// inode_t *parent_inode;
 	// int file_inode_number;
 	// minifile_t new_minifile;
 	// inode_mapping_t *new_mapping;
@@ -153,14 +155,20 @@ minifile_t minifile_creat(char *filename){
 	// }
 
 	// // Write the inode and, when finished, free it.
-	// disk_write_block(minifile_disk, file_inode_number, (char *)new_inode);
-	// // XXX: wait for confirmation of write?
+	// request_result = reliable_write_block(
+	// 	minifile_disk, file_inode_number, (char *)new_inode);
+	// if (request_result == -1) return NULL;
 	// free(new_inode);
 
-	// // Create a new mapping for this inode and add it to the 
+	// // Create a new mapping for this inode and add it to the parent inode.
 	// new_mapping = (inode_mapping_t *)malloc(sizeof(struct inode_mapping));
-	// new_mapping->filename = filename; //adjust for locality
+	// new_mapping->filename = get_local_filename(filename);
 	// new_mapping->inode_number = file_inode_number;
+	// parent_inode = (inode_t *)malloc(sizeof(struct inode));
+	// request_result = traverse_to_inode(&parent_inode, parent_path);
+	// add_mapping(parent_inode, new_mapping);
+	// free(new_mapping);
+	// free(parent_inode);
 
 	// // Create and return the new minifile pointer.
 	// new_minifile = (minifile_t) malloc(sizeof(struct minifile));
@@ -169,6 +177,7 @@ minifile_t minifile_creat(char *filename){
 	// new_minifile->current_num_rws = 0;
 
 	// return new_minifile;
+
 	return NULL;
 }
 

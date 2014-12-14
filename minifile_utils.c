@@ -33,7 +33,7 @@ int get_settings(char *mode, int *cursor_position) {
 		*cursor_position = 0;
 		return ERASE_CONTENTS;
 	} else if (mode == append) {
-		*cursor_position = file_inode->data.size;
+		*cursor_position = -1;
 		return NO_CHANGE;
 	} else if (mode == readp) {
 		*cursor_position = 0;
@@ -42,7 +42,7 @@ int get_settings(char *mode, int *cursor_position) {
 		*cursor_position = 0;
 		return ERASE_CONTENTS;		
 	} else if (mode == appendp) {
-		*cursor_position = file_inode->data.size;		
+		*cursor_position = -1;		
 		return NO_CHANGE;
 	}
 

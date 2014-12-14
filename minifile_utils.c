@@ -273,14 +273,42 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 	return 0;
 }
 
-// /* Adds a new mapping to the inode. Returns -1 on error and 0 on success. */
-// int add_mapping(inode_t inode, inode_mapping_t new_mapping) {
-// 	int max_direct_mappings;
+/* Adds a new mapping to the inode. Returns -1 on error and 0 on success. */
+int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
+	int max_direct_mappings;
+	int directory_data_blocknum;
+	directory_data_block_t *new_dir_db;
 
-// 	// Find the appropriate location for the new mapping.
-// 	max_direct_mappings = DIRECT_PTRS_PER_INODE * INODE_MAPS_PER_BLOCK;
-// 	if (inode->data.size < )
-// }
+	current_dir_db = (directory_data_block_t *)malloc(sizeof(directory_data_block));
+
+	// Find the appropriate location for the new mapping.
+	max_direct_mappings = DIRECT_PTRS_PER_INODE * INODE_MAPS_PER_BLOCK;
+	if (inode->data.size < max_direct_mappings) {
+		// The mapping will go in the direct mappings.
+		directory_data_blocknum = inode->data.size / max_direct_mappings;
+		if (inode->data.size % max_direct_mappings == 0) {
+			// We need to create a new directory_data_block with our mapping.
+			current_dir_db->data.inode_map[0] = new_mapping;
+			current_dir_db->data.num_maps = 1;
+			inode->data.direct_ptrs[directory_data_blocknum] = current_dir_db;
+			// XXX : write new_dir_db
+			// XXX : write inode
+			return 0;
+		}
+		// Load the appropriate directory datablock and add the mapping.
+		request_result = reliable_read_block(
+			minifile_disk, directory_data_blocknum, &current_dir_db);
+		current_dir_db->data.inode_map[current_dir_db->data.num_maps] = new_mapping;
+		current_dir_db->data.num_maps++;
+		inode->data.direct_ptrs[directory_data_blocknum] = current_dir_db;
+		// XXX : write new_dir_db
+		// XXX : write inode
+		return 0;
+	}
+	// } else {
+	// 	// We need to traverse the indirect blocks to find the mapping.
+	// }
+}
 
 /* Returns the inode number for the next free inode. Handles management of
  * free inode list. If no free inodes are available, -1 is returned.

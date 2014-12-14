@@ -32,9 +32,6 @@ typedef struct minifile {
 	int current_num_rws;
 } minifile;
 
-//Filesystem active.
-int filesystem_active = 0;
-
 // Version of superblock in memory.
 superblock_t *superblock;
 
@@ -60,8 +57,6 @@ void minifile_disk_handler(void *interrupt_arg){
 	disk_request_t disk_request;
 	disk_interrupt = (disk_interrupt_arg_t *) interrupt_arg; 
 
-	if(!filesystem_active) return;
-
 	disk_request = disk_interrupt->request;
 	blocknum = disk_request.blocknum;
 	semaphore_V(block_op_finished_semas[blocknum]);
@@ -74,6 +69,9 @@ int minifile_init(disk_t *input_disk) {
 	int i;
 	int request_result;
 	int result;
+	int old_level;
+
+	old_level = set_interrupt_level(DISABLED);
 
 	//Initialize disk, using the existing one provided by mkfs.
 	use_existing_disk = 1;
@@ -81,6 +79,7 @@ int minifile_init(disk_t *input_disk) {
 
 	result = disk_initialize(input_disk);
 	if(result == -1){
+		set_interrupt_level(old_level);
 		return -1;
 	}
 
@@ -104,6 +103,9 @@ int minifile_init(disk_t *input_disk) {
 		thread_cd_map[i].inode_number = 1;
 	}
 
+
+	set_interrupt_level(old_level);
+
 	// Initialize the superblock in memory. Check the magic number before proceeding. 
 	// Not grabbing locks since this is called before concurrency begins in minithread.
 	superblock = (superblock_t *) malloc(sizeof(superblock_t));
@@ -116,7 +118,6 @@ int minifile_init(disk_t *input_disk) {
 
 	//Keeps the semaphore count for the superblock's lock consistent. We don't want to P
 	//because all this is happening before concurrency begins.
-	filesystem_active = 1;
 	return 0;
 }
 

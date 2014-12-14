@@ -214,33 +214,24 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 	return -1;
 }
 
-// // XXX: necessary?
-//  Returns the inode corresponding to the given inode number. 
-// inode* get_inode(int inode_number) {
-// 	// Implement me
-// 	return -1;
-// }
-
 /* Returns the inode number for the next free inode. Handles management of
  * free inode list. If no free inodes are available, -1 is returned.
  */
 int get_free_inode() {
-	// int free_inode_num;
-	// free_block *fb;
+	int free_inode_num;
+	free_block_t *free_inode_block;
 
-	// semaphore_P(metadatalock[0]);
+	semaphore_P(block_locks[0]);
 	
-	// free_inode_num = superblock->data->first_free_inode;
-	// if (free_inode_num == NULL_PTR) {
-	// 	return NULL_PTR;
-	// }
-	// fb = (free_block *)malloc(sizeof(struct free_block));
-	// reliable_read_block(minifile_disk, free_inode_num, (char *)free_block);
-	// superblock->first_free_inode = fb->next_free_block;
+	free_inode_num = superblock->data.first_free_inode;
+	if (free_inode_num == NULL_PTR) {
+		return NULL_PTR;
+	}
+	free_inode_block = (free_block_t *)malloc(sizeof(struct free_block));
+	reliable_read_block(minifile_disk, free_inode_num, (char *)free_inode_block);
+	superblock->data.first_free_inode = free_inode_block->next_free_block;
 	
-	// semaphore_V(metadatalock[0]);
+	semaphore_V(block_locks[0]);
 
-	// return free_inode_num;
-
-	return -1;
+	return free_inode_num;
 }

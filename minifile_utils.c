@@ -355,9 +355,15 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 			current_dir_db->data.inode_map[0] = *new_mapping;
 			current_dir_db->data.num_maps = 1;
 			new_block_num = get_free_datablock();
-			// XXX : write new_dir_db to new_block_num
-			// XXX : write inode
+			// Write the new directory data block.
+			request_result = reliable_write_block(
+				minifile_disk, new_block_num, (char *)current_dir_db);
+			if (request_result == -1) return -1;
+			// Update the inode and write to disk.
 			inode->data.direct_ptrs[directory_data_blocknum] = new_block_num;
+			request_result = reliable_write_block(
+				minifile_disk, inode->idx, (char *)inode);
+			if (request_result == -1) return -1;			
 			return 0;
 		}
 		// Load the appropriate directory datablock and add the mapping.
@@ -365,7 +371,10 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 			minifile_disk, directory_data_blocknum, &current_dir_db);
 		current_dir_db->data.inode_map[current_dir_db->data.num_maps] = new_mapping;
 		current_dir_db->data.num_maps++;
-		// XXX : write new_dir_db at dir_block_num
+		// Update the directory data block and write to disk.
+		request_result = reliable_write_block(
+				minifile_disk, directory_data_blocknum, (char *)current_dir_db);
+		if (request_result == -1) return -1;
 		return 0;
 	}
 	// } else {

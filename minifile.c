@@ -65,7 +65,6 @@ void minifile_disk_handler(void *interrupt_arg){
 
 
 int minifile_init(disk_t *input_disk) {
-
 	int i;
 	int request_result;
 	int result;
@@ -122,48 +121,55 @@ int minifile_init(disk_t *input_disk) {
 }
 
 minifile_t minifile_creat(char *filename){
-	char *parent_path;
-	inode_t *new_inode;
-	inode_t *old_inode;
-	int file_inode_number;
-	minifile_t new_minifile;
+	// char *parent_path;
+	// inode_t *new_inode;
+	// inode_t *old_inode;
+	// int file_inode_number;
+	// minifile_t new_minifile;
+	// inode_mapping_t *new_mapping;
 
-	int i;
-	int request_result;
+	// int i;
+	// int request_result;
 
-	// Get the file's parent directory.
-	parent_path = get_parent_path(filename);
+	// // Get the file's parent directory.
+	// parent_path = get_parent_path(filename);
 
-	// Create the file's inode.
-	new_inode = (inode_t *)malloc(sizeof(struct inode));
-	new_inode->data.type = FILE_INODE;
-	new_inode->data.size = 0;
-	for (i = 0; i < DIRECT_PTRS_PER_INODE; i++) {
-		new_inode->data.direct_ptrs[i] = NULL_PTR;
-	}
-	new_inode->data.indirect_ptr = NULL_PTR;
+	// // Create the file's inode.
+	// new_inode = (inode_t *)malloc(sizeof(struct inode));
+	// new_inode->data.type = FILE_INODE;
+	// new_inode->data.size = 0;
+	// for (i = 0; i < DIRECT_PTRS_PER_INODE; i++) {
+	// 	new_inode->data.direct_ptrs[i] = NULL_PTR;
+	// }
+	// new_inode->data.indirect_ptr = NULL_PTR;
 
-	// Check to see if this file exists in the current directory. If so, we'll overwrite 
-	// that inode block with our new one. If not, get the number of the first free inode.
-	request_result = traverse_to_inode(&old_inode, filename);
-	if (request_result == -1) {
-		file_inode_number = get_free_inode();
-	} else {
-		file_inode_number = old_inode->data.idx;
-	}
+	// // Check to see if this file exists in the current directory. If so, we'll overwrite 
+	// // that inode block with our new one. If not, get the number of the first free inode.
+	// request_result = traverse_to_inode(&old_inode, filename);
+	// if (request_result == -1) {
+	// 	file_inode_number = get_free_inode();
+	// } else {
+	// 	file_inode_number = old_inode->data.idx;
+	// }
 
-	// Write the inode and, when finished, free it.
-	disk_write_block(minifile_disk, file_inode_number, (char *)new_inode);
-	// XXX: wait for confirmation of write?
-	free(new_inode);
+	// // Write the inode and, when finished, free it.
+	// disk_write_block(minifile_disk, file_inode_number, (char *)new_inode);
+	// // XXX: wait for confirmation of write?
+	// free(new_inode);
 
-	// Create and return the new minifile pointer.
-	new_minifile = (minifile_t) malloc(sizeof(struct minifile));
-	new_minifile->inode_number = file_inode_number;
-	new_minifile->cursor_position = 0;
-	new_minifile->current_num_rws = 0;
+	// // Create a new mapping for this inode and add it to the 
+	// new_mapping = (inode_mapping_t *)malloc(sizeof(struct inode_mapping));
+	// new_mapping->filename = filename; //adjust for locality
+	// new_mapping->inode_number = file_inode_number;
 
-	return new_minifile;
+	// // Create and return the new minifile pointer.
+	// new_minifile = (minifile_t) malloc(sizeof(struct minifile));
+	// new_minifile->inode_number = file_inode_number;
+	// new_minifile->cursor_position = 0;
+	// new_minifile->current_num_rws = 0;
+
+	// return new_minifile;
+	return NULL;
 }
 
 minifile_t minifile_open(char *filename, char *mode){

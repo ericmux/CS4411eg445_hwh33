@@ -45,11 +45,9 @@ char* get_absolute_path(char *filename) {
 /* Returns the path to the file's parent. filename can be a local or
  * absolute path.
  */
-
 char* get_parent_path(char *filename) {
 	int last_separator_index;
 	int i;
-	// dir_data *parent_dir_data;
 	char *parent_path;
 
 	if (filename[0] == '/') {
@@ -64,6 +62,29 @@ char* get_parent_path(char *filename) {
 		return parent_path;
 	} else {
 		return thread_cd_map[minithread_id()].absolute_path;
+	}
+}
+
+/* Given '/path/to/filename' returns 'filename'. Can take local
+ * or absolute paths.
+ */
+char* get_local_filename(char *filename) {
+	int last_separator_index;
+	int i;
+	char *local_name;
+
+	if (filename[0] == '/') {
+		last_separator_index = 0;
+		for (i = 1; i < strlen(filename); i++) {
+			if (filename[i] == '/') {
+				last_separator_index = i;
+			}
+		}
+		local_name = (char *)malloc(strlen(filename) - last_separator_index);
+		strcpy(local_name, &filename[last_separator_index + 1]);
+		return local_name;
+	} else {
+		return filename;
 	}
 }
 
@@ -251,6 +272,15 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 	*found_inode = cd;
 	return 0;
 }
+
+// /* Adds a new mapping to the inode. Returns -1 on error and 0 on success. */
+// int add_mapping(inode_t inode, inode_mapping_t new_mapping) {
+// 	int max_direct_mappings;
+
+// 	// Find the appropriate location for the new mapping.
+// 	max_direct_mappings = DIRECT_PTRS_PER_INODE * INODE_MAPS_PER_BLOCK;
+// 	if (inode->data.size < )
+// }
 
 /* Returns the inode number for the next free inode. Handles management of
  * free inode list. If no free inodes are available, -1 is returned.

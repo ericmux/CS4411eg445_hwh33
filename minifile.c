@@ -230,8 +230,8 @@ int minifile_mkdir(char *dirname){
 	//Grab a free inode block.
 	semaphore_P(block_locks[0]);
 
-	read_result = disk_read_block(minifile_disk, 0, (char *)superblock);
-	semaphore_P(block_op_finished_semas[0]);
+
+	read_result = reliable_read_block(minifile_disk, 0, (char *) superblock);
 	if (read_result != DISK_REQUEST_SUCCESS) {
 		semaphore_V(block_locks[0]);			
 		return -1;
@@ -336,7 +336,51 @@ int minifile_cd(char *path){
 
 char **minifile_ls(char *path){
 
-	return NULL;
+	int read_result;
+	int i;
+	inode_t *target_folder;
+	char **dirs;
+
+	directory_data_block_t *dir_data_block;
+
+	if(traverse_to_inode(&target_folder, path) != 0){
+		kprintf("ls path not valid.\n");
+		return NULL;
+	}
+
+	//List all contents.
+	if(target_folder->data.size == 0){
+		dirs = NULL;
+		return NULL;
+	}
+
+
+	dir_data_block = (directory_data_block_t *) malloc(sizeof(directory_data_block_t));
+
+	dirs = (char **) malloc(target_folder->data.size*sizeof(char *));
+	for(i = 0; i < target_folder->data.size; ){
+		int dir_data_blocknum;
+
+		//Read mappings.
+		dir_data_blocknum = target_folder->data.direct_ptrs[i / INODE_MAPS_PER_BLOCK];
+		semaphore_P(block_locks[dir_data_blocknum]);
+
+		read_result = reliable_read_block(minifile_disk, dir_data_blocknum, dir_data_block);
+		if(read_result != DISK_REQUEST_SUCCESS){
+			semaphore_V(block_locks[dir_data_blocknum]);			
+			return NULL;
+		}
+
+		semaphore_V(block_locks[dir_data_blocknum]);
+
+		for(; i < dir_data_block->data.num_maps; i++){
+			dirs[i] = (char *) malloc(MAX_CHARS_IN_FNAME);
+			strcpy(dirs[i], get_local_filename(dir_data_block->data.inode_map[i].absolute_path));
+		}
+	}
+
+
+	return dirs;
 }
 
 char* minifile_pwd(void){

@@ -112,7 +112,7 @@ typedef struct free_block {
 
 // Represents important data about the directory a process is currently in.
 typedef struct dir_data {
-	char *absolute_path;
+	char absolute_path[MAX_CHARS_IN_FNAME];
 	int inode_number;
 } dir_data_t;
 

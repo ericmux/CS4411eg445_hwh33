@@ -277,7 +277,8 @@ int traverse_to_inode(inode_t **found_inode, char *path) {
 int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 	int max_direct_mappings;
 	int directory_data_blocknum;
-	directory_data_block_t *new_dir_db;
+	int request_result;
+	directory_data_block_t *current_dir_db;
 
 	current_dir_db = (directory_data_block_t *)malloc(sizeof(directory_data_block));
 

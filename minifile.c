@@ -135,7 +135,7 @@ minifile_t minifile_creat(char *filename){
 
 	// Create the file's inode.
 	new_inode = (inode_t *)malloc(sizeof(struct inode));
-	new_inode->data.type = FILE;
+	new_inode->data.type = FILE_INODE;
 	new_inode->data.size = 0;
 	for (i = 0; i < DIRECT_PTRS_PER_INODE; i++) {
 		new_inode->data.direct_ptrs[i] = NULL_PTR;

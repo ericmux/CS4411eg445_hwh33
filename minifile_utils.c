@@ -378,7 +378,7 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 		}
 		// Load the appropriate directory datablock and add the mapping.
 		request_result = reliable_read_block(
-			minifile_disk, directory_data_blocknum, (char *)current_dir_db);
+			minifile_disk, inode->data.direct_ptrs[directory_data_blocknum], (char *)current_dir_db);
 		current_dir_db->data.inode_map[current_dir_db->data.num_maps] = *new_mapping;
 		current_dir_db->data.num_maps+=1;
 		// Update the directory data block and write to disk.

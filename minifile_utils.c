@@ -137,6 +137,8 @@ int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 	deregister_alarm(timeout_alarm);
 
 	semaphore_V(block_locks[blocknum]);
+
+	return 0;
 }
 
 

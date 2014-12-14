@@ -300,7 +300,7 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 	int request_result;
 	directory_data_block_t *current_dir_db;
 
-	current_dir_db = (directory_data_block_t *)malloc(sizeof(directory_data_block));
+	current_dir_db = (directory_data_block_t *)malloc(sizeof(struct directory_data_block));
 
 	// Find the appropriate location for the new mapping.
 	max_direct_mappings = DIRECT_PTRS_PER_INODE * INODE_MAPS_PER_BLOCK;
@@ -309,7 +309,7 @@ int add_mapping(inode_t *inode, inode_mapping_t *new_mapping) {
 		directory_data_blocknum = inode->data.size / max_direct_mappings;
 		if (inode->data.size % max_direct_mappings == 0) {
 			// We need to create a new directory_data_block with our mapping.
-			current_dir_db->data.inode_map[0] = new_mapping;
+			current_dir_db->data.inode_map[0] = *new_mapping;
 			current_dir_db->data.num_maps = 1;
 			inode->data.direct_ptrs[directory_data_blocknum] = current_dir_db;
 			// XXX : write new_dir_db

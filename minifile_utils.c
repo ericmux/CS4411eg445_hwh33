@@ -9,7 +9,7 @@
 #include "minithread.h"
 #include "alarm.h"
 
-#define DISK_OP_TIMEOUT 500*MILLISECOND
+#define DISK_OP_TIMEOUT 300*MILLISECOND
 
 /* Returns the absolute path for the given filename. If the given filename
  * is already an absolute path, it is returned as is.
@@ -135,7 +135,7 @@ void disk_op_alarm_handler(void *sema){
 }
 
 /*
-* Tries to read a block or fails if the timeout expires.
+* Tries to read a block or fails if the timeout expires. Assumes lock already held.
 */
 int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 
@@ -144,7 +144,6 @@ int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 
 	read_result = DISK_REQUEST_ERROR;
 
-	semaphore_P(block_locks[blocknum]);
 
 	timeout_alarm = register_alarm(DISK_OP_TIMEOUT, disk_op_alarm_handler, block_op_finished_semas[blocknum]);
 
@@ -157,7 +156,28 @@ int reliable_read_block(disk_t *disk, int blocknum, char *buffer){
 
 	deregister_alarm(timeout_alarm);
 
-	semaphore_V(block_locks[blocknum]);
+	return 0;
+}
+
+/*
+* Tries to write a block or fails if the timeout expires. Assumes lock already held.
+*/
+int reliable_write_block(disk_t *disk, int blocknum, char *buffer){
+
+	int read_result;
+	alarm_id timeout_alarm;
+
+	read_result = DISK_REQUEST_ERROR;
+
+	timeout_alarm = register_alarm(DISK_OP_TIMEOUT, disk_op_alarm_handler, block_op_finished_semas[blocknum]);
+
+	read_result = disk_read_block(disk, blocknum, buffer);
+	semaphore_P(block_op_finished_semas[blocknum]);
+	if (read_result != DISK_REQUEST_SUCCESS) {		
+		return -1;
+	}
+
+	deregister_alarm(timeout_alarm);
 
 	return 0;
 }

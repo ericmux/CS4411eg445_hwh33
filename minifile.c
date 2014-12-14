@@ -198,6 +198,83 @@ int minifile_unlink(char *filename){
 
 int minifile_mkdir(char *dirname){
 
+	int i;
+	char *parent_path;
+	inode_t *target_folder;
+	inode_t *dir_inode;
+
+	int dir_inode_number;
+
+	parent_path = get_parent_path(dirname);
+
+	if(traverse_to_inode(&target_folder, parent_path) != 0){
+		kprintf("mkdir path not valid.\n");
+		return -1;
+	}
+
+	dir_inode = (inode_t *) malloc(sizeof(inode_t));
+
+	//Grab a free inode block.
+	semaphore_P(block_locks[0]);
+
+	read_result = disk_read_block(minifile_disk, 0, (char *)superblock);
+	semaphore_P(block_op_finished_semas[0]);
+	if (read_result != DISK_REQUEST_SUCCESS) {
+		semaphore_V(block_locks[0]);			
+		return -1;
+	}
+
+	dir_inode_number = superblock->data.first_free_inode;
+	if(dir_inode_number == NULL_PTR){
+		kprintf("Disk if full. No more free inode blocks available.\n");
+		semaphore_V(block_locks[0]);
+		return -1;		
+	}
+
+	//Grab the free inode block.
+	semaphore_P(block_locks[dir_inode_number]);
+
+	read_result = disk_read_block(minifile_disk, dir_inode_number, (char *)dir_inode);
+	semaphore_P(block_op_finished_semas[dir_inode_number]);
+	if (read_result != DISK_REQUEST_SUCCESS) {
+		semaphore_V(block_locks[dir_inode_number]);			
+		return -1;
+	}	
+	semaphore_V(block_locks[dir_inode_number]);
+
+	//remove dir_inode from free block list and update superblock.
+	superblock->data.first_free_inode = ((free_block_t *) dir_inode)->next_free_block;
+	read_result = disk_write_block(minifile_disk, 0, (char *)superblock);
+	semaphore_P(block_op_finished_semas[0]);
+	if (read_result != DISK_REQUEST_SUCCESS) {
+		semaphore_V(block_locks[0]);			
+		return -1;
+	}
+
+	//Update dir_inode to have actual directory inode valid data.
+	dir_inode->data.idx = dir_inode_number;
+	dir_inode->data.type = DIRECTORY_INODE;
+	dir_inode->data.size = 0;
+	for(i = 0; i < DIRECT_PTRS_PER_INODE; i++){
+		dir_inode->data.direct_ptrs[i] = NULL_PTR;
+	}
+	dir_inode->data.indirect_ptr = NULL_PTR;
+
+	semaphore_P(block_op_finished_semas[dir_inode_number]);
+
+	read_result = disk_write_block(minifile_disk, dir_inode_number, (char *)dir_inode);
+	semaphore_P(block_op_finished_semas[dir_inode_number]);
+	if (read_result != DISK_REQUEST_SUCCESS) {
+		semaphore_V(block_locks[dir_inode_number]);			
+		return -1;
+	}
+	semaphore_V(block_locks[dir_inode_number]);
+
+	//Update target_folder to have a mapping to this new folder.
+	// call harry's function.
+
+	semaphore_V(block_locks[0]);
+
 	return -1;
 }
 
@@ -290,14 +367,17 @@ superblock_t *minifile_create_superblock(int dsk_siz){
 }
 
 inode_t *minifile_create_root_inode(){
+	int i;
 	inode_t *root_inode;
 
 	root_inode = (inode_t *) malloc(sizeof(inode_t));
 	root_inode->data.idx = 1;
 	root_inode->data.type = DIRECTORY_INODE;
 	root_inode->data.size = 0;
-	root_inode->data.parent_inode = NULL_PTR;
-	memset(root_inode->data.direct_ptrs, NULL_PTR, DIRECT_PTRS_PER_INODE);
+
+	for(i = 0; i < DIRECT_PTRS_PER_INODE; i++){
+		root_inode->data.direct_ptrs[i] = NULL_PTR;
+	}
 	root_inode->data.indirect_ptr = NULL_PTR;
 
 	return root_inode;

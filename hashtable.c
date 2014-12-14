@@ -19,7 +19,7 @@
 // to have. The trade-off is that a large number of
 // initial buckets will mean less initial expanding of
 // the table but longer initialization.  
-#define DEFAULT_INITIAL_NUM_BUCKETS 100
+#define DEFAULT_INITIAL_NUM_BUCKETS 10
 
 // Hash function. This was found at:
 // http://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key

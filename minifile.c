@@ -272,7 +272,7 @@ int minifile_mkdir(char *dirname){
 	}
 	dir_inode->data.indirect_ptr = NULL_PTR;
 
-	semaphore_P(block_op_finished_semas[dir_inode_number]);
+	semaphore_P(block_locks[dir_inode_number]);
 
 	read_result = disk_write_block(minifile_disk, dir_inode_number, (char *)dir_inode);
 	semaphore_P(block_op_finished_semas[dir_inode_number]);

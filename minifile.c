@@ -286,6 +286,7 @@ int minifile_read(minifile_t file, char *data, int maxlen){
 		file->cursor_position = file->cursor_position + bytes_to_copy;
 	}
 
+	return bytes_read;
 }
 
 int minifile_write(minifile_t file, char *data, int len){
